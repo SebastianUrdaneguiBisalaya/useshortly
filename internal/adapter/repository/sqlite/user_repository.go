@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
@@ -40,9 +41,9 @@ func (r *UserRepository) Create(ctx context.Context, u user.User, a user.Account
 		return user.User{}, fmt.Errorf("user repo: user id: %w", err)
 	}
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO accounts (user_id, account_id, provider_id, password, created_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		id, a.AccountID, string(a.Provider), nullString(a.PasswordHash), formatTime(a.CreatedAt))
+		`INSERT INTO accounts (user_id, account_id, provider_id, password, scope, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		id, a.AccountID, string(a.Provider), nullString(a.PasswordHash), nullString(a.Scope), formatTime(a.CreatedAt))
 	if err != nil {
 		return user.User{}, fmt.Errorf("user repo: insert account: %w", err)
 	}
@@ -88,7 +89,7 @@ func (r *UserRepository) findOne(ctx context.Context, query string, arg any) (us
 	return u, nil
 }
 
-const accountColumns = `id, user_id, account_id, provider_id, password, created_at`
+const accountColumns = `id, user_id, account_id, provider_id, password, scope, created_at, updated_at`
 
 func (r *UserRepository) FindAccount(ctx context.Context, userID int64, provider user.Provider) (user.Account, error) {
 	return r.findAccount(ctx, `SELECT `+accountColumns+` FROM accounts WHERE user_id = ? AND provider_id = ?`, userID, string(provider))
@@ -102,11 +103,13 @@ func (r *UserRepository) findAccount(ctx context.Context, query string, args ...
 	var (
 		a         user.Account
 		password  sql.NullString
+		scope     sql.NullString
 		providerS string
 		createdAt string
+		updatedAt sql.NullString
 	)
 	err := r.db.QueryRowContext(ctx, query, args...).
-		Scan(&a.ID, &a.UserID, &a.AccountID, &providerS, &password, &createdAt)
+		Scan(&a.ID, &a.UserID, &a.AccountID, &providerS, &password, &scope, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return user.Account{}, user.ErrNotFound
 	}
@@ -114,23 +117,42 @@ func (r *UserRepository) findAccount(ctx context.Context, query string, args ...
 		return user.Account{}, fmt.Errorf("user repo: find account: %w", err)
 	}
 	a.Provider = user.Provider(providerS)
-	a.PasswordHash = password.String
+	a.PasswordHash, a.Scope = password.String, scope.String
 	if a.CreatedAt, err = parseTime(createdAt); err != nil {
 		return user.Account{}, fmt.Errorf("user repo: account created_at: %w", err)
+	}
+	if a.UpdatedAt, err = parseNullTime(updatedAt); err != nil {
+		return user.Account{}, fmt.Errorf("user repo: account updated_at: %w", err)
 	}
 	return a, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64, hash string) error {
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64, hash string, at time.Time) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE accounts SET password = ?, updated_at = `+nowSQL+` WHERE user_id = ? AND provider_id = ?`,
-		hash, userID, string(user.ProviderDefault))
+		`UPDATE accounts SET password = ?, updated_at = ? WHERE user_id = ? AND provider_id = ?`,
+		hash, formatTime(at), userID, string(user.ProviderDefault))
 	if err != nil {
 		return fmt.Errorf("user repo: update password: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("user repo: update password: %w", err)
+	}
+	if n == 0 {
+		return user.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdateAccountScope(ctx context.Context, accountID int64, scope string, at time.Time) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE accounts SET scope = ?, updated_at = ? WHERE id = ?`, nullString(scope), formatTime(at), accountID)
+	if err != nil {
+		return fmt.Errorf("user repo: update scope: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("user repo: update scope: %w", err)
 	}
 	if n == 0 {
 		return user.ErrNotFound

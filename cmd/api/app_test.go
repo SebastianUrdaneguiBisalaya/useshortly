@@ -653,3 +653,28 @@ func TestTimesInResponsesAreUTC(t *testing.T) {
 	require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT expires_at FROM links`).Scan(&stored))
 	assert.Equal(t, "2099-03-04T05:00:00.000Z", stored)
 }
+
+// The key is bound to the tenant AND to the member who created it: when that member leaves
+// the organization their keys stop working, while the keys of the others keep working.
+func TestAPIKeyStopsWorkingWhenItsCreatorLeavesTheOrganization(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	inv := e.do("POST", "/api/v1/orgs/"+acme+"/invitations", ana, map[string]string{"email": "bob@example.com"})
+	require.Equal(t, http.StatusCreated, inv.status)
+	require.Equal(t, http.StatusOK, e.do("POST", "/api/v1/invitations/"+inv.id()+"/accept", bob, nil).status)
+
+	anaKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ana-ci"}).str("secret")
+	bobKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", bob, map[string]string{"name": "bob-ci"}).str("secret")
+	link := map[string]string{"url": "https://example.com"}
+	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", bobKey, link).status)
+
+	bobMe := e.do("GET", "/api/v1/me", bob, nil)
+	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme+"/members/"+bobMe.id(), ana, nil).status)
+
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", bobKey, link)
+	assert.Equal(t, http.StatusForbidden, res.status)
+	assert.Equal(t, "api_key_owner_not_member", res.errCode())
+	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", anaKey, link).status, "other members' keys are unaffected")
+}

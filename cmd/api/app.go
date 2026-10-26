@@ -54,7 +54,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	passwords := hasher.NewArgon2id()
 	otp := user.NewOTP(a.codes, cfg.OTPSecret)
 
-	// Refresh tokens also serve as the session revoker of the services that must end sessions.
+	// The refresh service also ends every session when a password is reset.
 	refresh := auth.NewRefreshService(refreshRepo, cfg.RefreshTTL)
 
 	users := user.NewService(userRepo, passwords, tokens, refresh, mail, otp)
@@ -63,7 +63,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	if a.google != nil {
 		google = user.NewGoogleService(userRepo, a.google, tokens, refresh, mail)
 	}
-	orgs := org.NewService(orgRepo, mail, refresh)
+	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
 	links := link.NewService(linkRepo, codegen.NewBase62())
 

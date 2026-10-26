@@ -24,6 +24,7 @@ type linkBody struct {
 	ShortURL  string  `json:"short_url"`
 	OriginURL string  `json:"origin_url"`
 	ExpiresAt *string `json:"expires_at"`
+	MaxClicks *int64  `json:"max_clicks"`
 	CreatedAt string  `json:"created_at"`
 }
 
@@ -38,18 +39,22 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		URL       string     `json:"url"`
 		ExpiresAt *time.Time `json:"expires_at"`
 		Alias     string     `json:"alias"`
+		MaxClicks *int64     `json:"max_clicks"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	l, err := h.links.Shorten(r.Context(), tenant.ID, PrincipalFrom(r).UserID, in.URL, in.Alias, in.ExpiresAt)
+	l, err := h.links.Shorten(r.Context(), link.ShortenInput{
+		TenantID: tenant.ID, UserID: PrincipalFrom(r).UserID,
+		URL: in.URL, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks,
+	})
 	if err != nil {
 		WriteError(w, r, err)
 		return
 	}
 	writeData(w, http.StatusCreated, linkBody{
 		ID: l.ID, Code: l.Code, ShortURL: h.baseURL + "/" + l.Code, OriginURL: l.OriginURL,
-		ExpiresAt: formatTimePtr(l.ExpiresAt), CreatedAt: formatTime(l.CreatedAt),
+		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, CreatedAt: formatTime(l.CreatedAt),
 	})
 }
 

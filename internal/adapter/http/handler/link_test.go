@@ -6,7 +6,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,6 +26,16 @@ func (r *fakeLinkRepo) Create(_ context.Context, l link.Link) (link.Link, error)
 	l.ID = int64(len(r.links) + 1)
 	r.links[l.Code] = l
 	return l, nil
+}
+
+func (r *fakeLinkRepo) ConsumeClick(_ context.Context, code string) error {
+	l := r.links[code]
+	if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
+		return link.ErrExpired
+	}
+	l.ClickCount++
+	r.links[code] = l
+	return nil
 }
 
 func (r *fakeLinkRepo) FindByCode(_ context.Context, code string) (link.Link, error) {
@@ -69,4 +81,55 @@ func TestCreateLinkAlias(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "invalid_alias")
 	})
+}
+
+func TestCreateLinkExpiration(t *testing.T) {
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), "http://x")
+	future := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
+
+	t.Run("accepts expires_at and max_clicks", func(t *testing.T) {
+		rec := createLink(t, h, `{"url":"https://example.com","expires_at":"`+future+`","max_clicks":5}`)
+		require.Equal(t, http.StatusCreated, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"max_clicks":5`)
+		assert.Contains(t, rec.Body.String(), `"expires_at":"`+future)
+	})
+
+	t.Run("expires_at in the past is a 400", func(t *testing.T) {
+		rec := createLink(t, h, `{"url":"https://example.com","expires_at":"2020-01-01T00:00:00Z"}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "invalid_expiry")
+	})
+
+	t.Run("expires_at that is not RFC3339 is a 400", func(t *testing.T) {
+		rec := createLink(t, h, `{"url":"https://example.com","expires_at":"tomorrow"}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "invalid_body")
+	})
+
+	t.Run("max_clicks below 1 is a 400", func(t *testing.T) {
+		for _, n := range []string{"0", "-3"} {
+			rec := createLink(t, h, `{"url":"https://example.com","max_clicks":`+n+`}`)
+			assert.Equal(t, http.StatusBadRequest, rec.Code, n)
+			assert.Contains(t, rec.Body.String(), "invalid_max_clicks", n)
+		}
+	})
+}
+
+func TestRedirectStopsAfterMaxClicks(t *testing.T) {
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), "http://x")
+	require.Equal(t, http.StatusCreated, createLink(t, h, `{"url":"https://example.com/t","alias":"once","max_clicks":1}`).Code)
+
+	redirect := func() *httptest.ResponseRecorder {
+		req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/once", nil), map[string]string{"code": "once"})
+		rec := httptest.NewRecorder()
+		h.Redirect(rec, req)
+		return rec
+	}
+	first := redirect()
+	assert.Equal(t, http.StatusFound, first.Code)
+	assert.Equal(t, "https://example.com/t", first.Header().Get("Location"))
+
+	second := redirect()
+	assert.Equal(t, http.StatusGone, second.Code)
+	assert.Contains(t, second.Body.String(), "link_expired")
 }

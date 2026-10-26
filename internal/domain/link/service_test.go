@@ -15,6 +15,7 @@ type fakeRepo struct {
 	links     map[string]Link
 	createErr error
 	calls     int
+	consumes  int
 }
 
 func newFakeRepo() *fakeRepo {
@@ -40,6 +41,20 @@ func (r *fakeRepo) FindByCode(_ context.Context, code string) (Link, error) {
 		return Link{}, ErrNotFound
 	}
 	return l, nil
+}
+
+func (r *fakeRepo) ConsumeClick(_ context.Context, code string) error {
+	r.consumes++
+	l, ok := r.links[code]
+	if !ok {
+		return ErrNotFound
+	}
+	if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
+		return ErrExpired
+	}
+	l.ClickCount++
+	r.links[code] = l
+	return nil
 }
 
 type fakeGen struct {
@@ -71,7 +86,7 @@ func TestShorten(t *testing.T) {
 	t.Run("stores link with generated code for the tenant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		l, err := s.Shorten(ctx, 3, 7, "https://example.com/a?b=1", "", nil)
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 3, UserID: 7, URL: "https://example.com/a?b=1"})
 		require.NoError(t, err)
 		assert.Equal(t, Link{
 			ID: 1, Code: "abc1234", OriginURL: "https://example.com/a?b=1",
@@ -90,7 +105,7 @@ func TestShorten(t *testing.T) {
 			"https://example.com/" + strings.Repeat("a", 300),
 		} {
 			s := newSvc(newFakeRepo(), &fakeGen{codes: []string{"abc1234"}})
-			_, err := s.Shorten(ctx, 1, 1, raw, "", nil)
+			_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: raw})
 			assert.ErrorIs(t, err, ErrInvalidURL, raw)
 		}
 	})
@@ -99,7 +114,7 @@ func TestShorten(t *testing.T) {
 		repo := newFakeRepo()
 		repo.links["dup0000"] = Link{Code: "dup0000"}
 		s := newSvc(repo, &fakeGen{codes: []string{"dup0000", "dup0000", "new1111"}})
-		l, err := s.Shorten(ctx, 1, 1, "https://example.com", "", nil)
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
 		require.NoError(t, err)
 		assert.Equal(t, "new1111", l.Code)
 	})
@@ -108,7 +123,7 @@ func TestShorten(t *testing.T) {
 		repo := newFakeRepo()
 		repo.createErr = ErrCodeTaken
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
 		assert.ErrorIs(t, err, ErrCodeTaken)
 		assert.Equal(t, maxRetries, repo.calls)
 	})
@@ -116,7 +131,7 @@ func TestShorten(t *testing.T) {
 	t.Run("propagates generator error", func(t *testing.T) {
 		boom := errors.New("boom")
 		s := newSvc(newFakeRepo(), &fakeGen{err: boom})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
 		assert.ErrorIs(t, err, boom)
 	})
 
@@ -125,7 +140,7 @@ func TestShorten(t *testing.T) {
 		repo := newFakeRepo()
 		repo.createErr = boom
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
 		assert.ErrorIs(t, err, boom)
 		assert.Equal(t, 1, repo.calls)
 	})
@@ -204,7 +219,7 @@ func TestShortenAlias(t *testing.T) {
 		repo := newFakeRepo()
 		gen := &fakeGen{codes: []string{"abc1234"}}
 		s := newSvc(repo, gen)
-		l, err := s.Shorten(ctx, 3, 7, "https://example.com", "promo", nil)
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 3, UserID: 7, URL: "https://example.com", Alias: "promo"})
 		require.NoError(t, err)
 		assert.Equal(t, "promo", l.Code)
 		assert.Contains(t, repo.links, "promo")
@@ -214,7 +229,7 @@ func TestShortenAlias(t *testing.T) {
 	t.Run("rejects an invalid alias without touching the repository", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "a/b", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", Alias: "a/b"})
 		assert.ErrorIs(t, err, ErrInvalidAlias)
 		assert.Zero(t, repo.calls)
 	})
@@ -223,7 +238,7 @@ func TestShortenAlias(t *testing.T) {
 		repo := newFakeRepo()
 		repo.links["promo"] = Link{Code: "promo"}
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "promo", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", Alias: "promo"})
 		assert.ErrorIs(t, err, ErrAliasTaken)
 		assert.Equal(t, 1, repo.calls)
 	})
@@ -233,7 +248,110 @@ func TestShortenAlias(t *testing.T) {
 		repo := newFakeRepo()
 		repo.createErr = boom
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
-		_, err := s.Shorten(ctx, 1, 1, "https://example.com", "promo", nil)
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", Alias: "promo"})
 		assert.ErrorIs(t, err, boom)
 	})
+}
+
+func TestShortenExpiration(t *testing.T) {
+	ctx := context.Background()
+	past := fixedNow.Add(-time.Hour)
+	future := fixedNow.Add(time.Hour)
+	zero, neg, three := int64(0), int64(-1), int64(3)
+
+	t.Run("stores expires_at in UTC and max_clicks", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
+		local := future.In(time.FixedZone("UTC-5", -5*3600))
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", ExpiresAt: &local, MaxClicks: &three})
+		require.NoError(t, err)
+		require.NotNil(t, l.ExpiresAt)
+		assert.Equal(t, time.UTC, l.ExpiresAt.Location())
+		assert.True(t, l.ExpiresAt.Equal(future))
+		assert.Equal(t, &three, l.MaxClicks)
+	})
+
+	t.Run("rejects expires_at that is not in the future", func(t *testing.T) {
+		for name, at := range map[string]time.Time{"past": past, "now": fixedNow} {
+			s := newSvc(newFakeRepo(), &fakeGen{codes: []string{"abc1234"}})
+			_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", ExpiresAt: &at})
+			assert.ErrorIs(t, err, ErrInvalidExpiry, name)
+		}
+	})
+
+	t.Run("rejects max_clicks below 1", func(t *testing.T) {
+		for _, n := range []*int64{&zero, &neg} {
+			repo := newFakeRepo()
+			s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
+			_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", MaxClicks: n})
+			assert.ErrorIs(t, err, ErrInvalidMaxClicks, "%d", *n)
+			assert.Zero(t, repo.calls)
+		}
+	})
+
+	t.Run("applies to aliases too", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", Alias: "promo", MaxClicks: &zero})
+		assert.ErrorIs(t, err, ErrInvalidMaxClicks)
+		assert.Zero(t, repo.calls)
+	})
+}
+
+func TestResolveMaxClicks(t *testing.T) {
+	ctx := context.Background()
+	two := int64(2)
+	repo := newFakeRepo()
+	repo.links["limit00"] = Link{Code: "limit00", OriginURL: "https://example.com/limit", MaxClicks: &two}
+	repo.links["free000"] = Link{Code: "free000", OriginURL: "https://example.com/free"}
+	s := newSvc(repo, &fakeGen{codes: []string{"x"}})
+
+	t.Run("serves the link until it uses all its clicks", func(t *testing.T) {
+		for range 2 {
+			got, err := s.Resolve(ctx, "limit00")
+			require.NoError(t, err)
+			assert.Equal(t, "https://example.com/limit", got)
+		}
+		_, err := s.Resolve(ctx, "limit00")
+		assert.ErrorIs(t, err, ErrExpired)
+		assert.EqualValues(t, 2, repo.links["limit00"].ClickCount)
+	})
+
+	t.Run("unlimited links never touch the counter", func(t *testing.T) {
+		before := repo.consumes
+		_, err := s.Resolve(ctx, "free000")
+		require.NoError(t, err)
+		assert.Equal(t, before, repo.consumes)
+	})
+
+	t.Run("a link already out of clicks is expired before counting", func(t *testing.T) {
+		repo.links["spent00"] = Link{Code: "spent00", MaxClicks: &two, ClickCount: 2}
+		before := repo.consumes
+		_, err := s.Resolve(ctx, "spent00")
+		assert.ErrorIs(t, err, ErrExpired)
+		assert.Equal(t, before, repo.consumes)
+	})
+}
+
+func TestIsExpired(t *testing.T) {
+	past, future := fixedNow.Add(-time.Hour), fixedNow.Add(time.Hour)
+	two := int64(2)
+	tests := []struct {
+		name string
+		l    Link
+		want bool
+	}{
+		{"no limits", Link{}, false},
+		{"date in the past", Link{ExpiresAt: &past}, true},
+		{"date in the future", Link{ExpiresAt: &future}, false},
+		{"clicks left", Link{MaxClicks: &two, ClickCount: 1}, false},
+		{"clicks used", Link{MaxClicks: &two, ClickCount: 2}, true},
+		{"date ok but clicks used", Link{ExpiresAt: &future, MaxClicks: &two, ClickCount: 2}, true},
+		{"clicks left but date passed", Link{ExpiresAt: &past, MaxClicks: &two}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.l.IsExpired(fixedNow))
+		})
+	}
 }

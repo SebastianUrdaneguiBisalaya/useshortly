@@ -193,6 +193,40 @@ func TestLinkRepository(t *testing.T) {
 	assert.ErrorIs(t, err, link.ErrCodeTaken)
 }
 
+func TestLinkRepositoryMaxClicks(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	two := int64(2)
+	_, err = repo.Create(ctx, link.Link{Code: "limit00", OriginURL: "https://example.com", MaxClicks: &two, TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+	_, err = repo.Create(ctx, link.Link{Code: "free000", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	got, err := repo.FindByCode(ctx, "limit00")
+	require.NoError(t, err)
+	assert.Equal(t, &two, got.MaxClicks)
+	assert.Zero(t, got.ClickCount)
+
+	require.NoError(t, repo.ConsumeClick(ctx, "limit00"))
+	require.NoError(t, repo.ConsumeClick(ctx, "limit00"))
+	assert.ErrorIs(t, repo.ConsumeClick(ctx, "limit00"), link.ErrExpired)
+	got, err = repo.FindByCode(ctx, "limit00")
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, got.ClickCount)
+
+	free, err := repo.FindByCode(ctx, "free000")
+	require.NoError(t, err)
+	assert.Nil(t, free.MaxClicks)
+
+	_, err = db.ExecContext(ctx, `UPDATE links SET max_clicks = 0 WHERE code = 'free000'`)
+	assert.Error(t, err, "the database rejects max_clicks below 1")
+}
+
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)

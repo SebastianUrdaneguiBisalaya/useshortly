@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS links (
     code TEXT NOT NULL UNIQUE CHECK (length(code) <= 15),
     origin_url TEXT NOT NULL CHECK (length(origin_url) <= 255),
     expires_at TEXT,
+    max_clicks INTEGER CHECK (max_clicks IS NULL OR max_clicks > 0),
+    click_count INTEGER NOT NULL DEFAULT 0,
     tenant_id INTEGER NOT NULL,
     created_by INTEGER NOT NULL,
     updated_by INTEGER,

@@ -32,6 +32,13 @@ func nullTime(t *time.Time) any {
 	return formatTime(*t)
 }
 
+func nullInt64(n *int64) any {
+	if n == nil {
+		return nil
+	}
+	return *n
+}
+
 func isUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }

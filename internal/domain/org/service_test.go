@@ -283,18 +283,18 @@ func TestAcceptInvitation(t *testing.T) {
 	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
 	require.NoError(t, err)
 
-	_, err = svc.AcceptInvitation(ctx, 20, "mallory@x.com", inv.ID)
+	_, err = svc.AcceptInvitation(ctx, 20, "mallory@x.com", true, inv.ID)
 	assert.ErrorIs(t, err, ErrInvitationNotFound, "invitation for another email")
 
-	m, err := svc.AcceptInvitation(ctx, 20, "BOB@x.com", inv.ID)
+	m, err := svc.AcceptInvitation(ctx, 20, "BOB@x.com", true, inv.ID)
 	require.NoError(t, err)
 	assert.Equal(t, RoleAdmin, m.Role)
 	_, err = repo.FindMember(ctx, o.ID, 20)
 	assert.NoError(t, err)
 
-	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", inv.ID)
+	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	assert.ErrorIs(t, err, ErrInvitationNotPending)
-	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", 999)
+	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", true, 999)
 	assert.ErrorIs(t, err, ErrInvitationNotFound)
 }
 
@@ -303,7 +303,7 @@ func TestAcceptExpiredInvitation(t *testing.T) {
 	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
 	require.NoError(t, err)
 	svc.now = func() time.Time { return time.Now().Add(8 * 24 * time.Hour) }
-	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", inv.ID)
+	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	assert.ErrorIs(t, err, ErrInvitationExpired)
 }
 
@@ -321,7 +321,7 @@ func TestRejectInvitation(t *testing.T) {
 func TestRemoveMember(t *testing.T) {
 	svc, repo, o, _, revoker := setupAll(t)
 	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
-	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", inv.ID)
+	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	require.NoError(t, err)
 
 	assert.ErrorIs(t, svc.RemoveMember(ctx, 99, o.ID, 20), ErrNotMember, "actor must be a member")
@@ -337,7 +337,7 @@ func TestRemoveMember(t *testing.T) {
 func TestRemoveMemberKeepsMemberIfRevokeFails(t *testing.T) {
 	svc, repo, o, _, revoker := setupAll(t)
 	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
-	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", inv.ID)
+	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	require.NoError(t, err)
 
 	revoker.err = errors.New("db down")
@@ -351,4 +351,16 @@ func TestRemoveRejectedMembersDoNotRevoke(t *testing.T) {
 	assert.ErrorIs(t, svc.RemoveMember(ctx, 10, o.ID, 10), ErrCannotRemoveOwner)
 	assert.ErrorIs(t, svc.RemoveMember(ctx, 10, o.ID, 99), ErrNotMember)
 	assert.Empty(t, revoker.calls)
+}
+
+func TestAcceptInvitationRequiresVerifiedEmail(t *testing.T) {
+	svc, repo, o := setup(t)
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	require.NoError(t, err)
+
+	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", false, inv.ID)
+	assert.ErrorIs(t, err, ErrEmailNotVerified)
+	_, err = repo.FindMember(ctx, o.ID, 20)
+	assert.ErrorIs(t, err, ErrNotMember)
+	assert.Equal(t, InvitationPending, repo.invs[inv.ID].Status, "the invitation stays usable")
 }

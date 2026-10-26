@@ -86,3 +86,12 @@ func (r *RefreshTokenRepository) RevokeForMember(ctx context.Context, userID, te
 	}
 	return nil
 }
+
+func (r *RefreshTokenRepository) RevokeForUser(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = `+nowSQL+` WHERE user_id = ? AND revoked_at IS NULL`, userID)
+	if err != nil {
+		return fmt.Errorf("refresh repo: revoke for user: %w", err)
+	}
+	return nil
+}

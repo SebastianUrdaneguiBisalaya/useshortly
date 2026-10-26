@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -32,6 +33,25 @@ func (r *fakeRepo) Create(_ context.Context, u User, a Account) (User, error) {
 	u.ID, a.UserID = r.nextID, r.nextID
 	r.users[u.ID], r.accounts[u.ID] = u, a
 	return u, nil
+}
+
+func (r *fakeRepo) FindAccountByProvider(_ context.Context, p Provider, accountID string) (Account, error) {
+	for _, a := range r.accounts {
+		if a.Provider == p && a.AccountID == accountID {
+			return a, nil
+		}
+	}
+	return Account{}, ErrNotFound
+}
+
+func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string) error {
+	a, ok := r.accounts[userID]
+	if !ok || a.Provider != ProviderDefault {
+		return ErrNotFound
+	}
+	a.PasswordHash = hash
+	r.accounts[userID] = a
+	return nil
 }
 
 func (r *fakeRepo) FindByEmail(_ context.Context, email string) (User, error) {
@@ -91,27 +111,210 @@ func (m *fakeMailer) Send(_ context.Context, code, to string, data map[string]st
 	return m.err
 }
 
-func newService() (*Service, *fakeRepo) {
-	svc, repo, _ := newServiceWithMailer()
-	return svc, repo
+// fakeStore mimics the Redis store: per purpose and email a hashed code with its payload,
+// an attempt counter, single use and a cooldown.
+type fakeStore struct {
+	entries  map[string]*storedCode
+	cooldown map[string]bool
+	putErr   error
 }
 
-func newServiceWithMailer() (*Service, *fakeRepo, *fakeMailer) {
-	repo, mailer := newFakeRepo(), &fakeMailer{}
-	return NewService(repo, fakeHasher{}, fakeTokens{}, mailer), repo, mailer
+type storedCode struct {
+	hash, payload string
+	attempts      int
+}
+
+func newFakeStore() *fakeStore {
+	return &fakeStore{entries: map[string]*storedCode{}, cooldown: map[string]bool{}}
+}
+
+func storeKey(p Purpose, email string) string { return string(p) + ":" + email }
+
+func (f *fakeStore) Put(_ context.Context, p Purpose, email, codeHash, payload string, _, _ time.Duration) error {
+	if f.putErr != nil {
+		return f.putErr
+	}
+	k := storeKey(p, email)
+	if f.cooldown[k] {
+		return ErrCodeTooSoon
+	}
+	f.cooldown[k] = true
+	f.entries[k] = &storedCode{hash: codeHash, payload: payload}
+	return nil
+}
+
+func (f *fakeStore) Check(_ context.Context, p Purpose, email, codeHash string, max int) (string, error) {
+	k := storeKey(p, email)
+	e, ok := f.entries[k]
+	if !ok {
+		return "", ErrInvalidCode
+	}
+	e.attempts++
+	if e.hash == codeHash {
+		delete(f.entries, k)
+		return e.payload, nil
+	}
+	if e.attempts >= max {
+		delete(f.entries, k)
+		return "", ErrTooManyAttempts
+	}
+	return "", ErrInvalidCode
+}
+
+// env wires a Service with fakes. Codes are always 123456.
+type env struct {
+	svc    *Service
+	repo   *fakeRepo
+	mailer *fakeMailer
+	store  *fakeStore
+	otp    *OTP
+}
+
+const testCode = "123456"
+
+func newEnvWithRepo(repo *fakeRepo) *env {
+	e := &env{repo: repo, mailer: &fakeMailer{}, store: newFakeStore()}
+	e.otp = NewOTP(e.store, "test-key-test-key-test-key-test-key")
+	e.otp.newCode = func() (string, error) { return testCode, nil }
+	e.svc = NewService(repo, fakeHasher{}, fakeTokens{}, e.mailer, e.otp)
+	return e
+}
+
+func newEnv() *env { return newEnvWithRepo(newFakeRepo()) }
+
+// signUp completes a registration and forgets the emails it sent.
+func (e *env) signUp(t *testing.T, in RegisterInput) User {
+	t.Helper()
+	require.NoError(t, e.svc.Register(context.Background(), in))
+	s, err := e.svc.VerifyRegistration(context.Background(), in.Email, testCode)
+	require.NoError(t, err)
+	e.mailer.sent = nil
+	return s.User
 }
 
 var valid = RegisterInput{Email: "  Ana@Example.com ", Password: "s3cretpass", FirstName: "Ana", LastName: "Lopez"}
 
-func TestRegister(t *testing.T) {
-	svc, repo := newService()
-	u, err := svc.Register(context.Background(), valid)
+var ctx = context.Background()
+
+func TestRegisterOnlyStartsTheSignup(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	assert.Empty(t, e.repo.users, "no user before the email is confirmed")
+
+	require.Len(t, e.mailer.sent, 1)
+	m := e.mailer.sent[0]
+	assert.Equal(t, "VERIFY_EMAIL", m.code)
+	assert.Equal(t, "ana@example.com", m.to)
+	assert.Equal(t, testCode, m.data["Code"])
+	assert.Equal(t, "Ana", m.data["FirstName"])
+	assert.Equal(t, "10", m.data["ExpiresInMinutes"])
+	assert.Equal(t, "3", m.data["MaxAttempts"])
+}
+
+func TestPendingSignupNeverStoresThePlainPassword(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	for _, entry := range e.store.entries {
+		var fields map[string]string
+		require.NoError(t, json.Unmarshal([]byte(entry.payload), &fields))
+		assert.ElementsMatch(t, []string{"first_name", "last_name", "password_hash"}, keysOf(fields), "no plain password field")
+		assert.Equal(t, "hash:s3cretpass", fields["password_hash"])
+		assert.NotContains(t, entry.hash, testCode, "only an HMAC of the code is stored")
+	}
+}
+
+func keysOf(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func TestVerifyRegistrationCreatesAVerifiedUserAndSignsThemIn(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	e.mailer.sent = nil
+
+	s, err := e.svc.VerifyRegistration(ctx, " ANA@example.com ", testCode)
 	require.NoError(t, err)
-	assert.Equal(t, "ana@example.com", u.Email)
-	assert.NotZero(t, u.ID)
-	acc := repo.accounts[u.ID]
+	assert.Equal(t, "ana@example.com", s.User.Email)
+	assert.True(t, s.User.EmailVerified)
+	assert.NotZero(t, s.User.ID)
+	assert.Equal(t, "tok:1", s.Token.Value)
+
+	acc := e.repo.accounts[s.User.ID]
 	assert.Equal(t, ProviderDefault, acc.Provider)
 	assert.Equal(t, "hash:s3cretpass", acc.PasswordHash)
+
+	require.Len(t, e.mailer.sent, 1)
+	assert.Equal(t, "WELCOME", e.mailer.sent[0].code)
+}
+
+func TestVerifyRegistrationWrongCodeThenTooManyAttempts(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	_, err := e.svc.VerifyRegistration(ctx, valid.Email, "000000")
+	assert.ErrorIs(t, err, ErrInvalidCode)
+	_, err = e.svc.VerifyRegistration(ctx, valid.Email, "000001")
+	assert.ErrorIs(t, err, ErrInvalidCode)
+	_, err = e.svc.VerifyRegistration(ctx, valid.Email, "000002")
+	assert.ErrorIs(t, err, ErrTooManyAttempts)
+	_, err = e.svc.VerifyRegistration(ctx, valid.Email, testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode, "the right code is dead after the third failure")
+	assert.Empty(t, e.repo.users)
+}
+
+func TestVerifyRegistrationCodeWorksOnce(t *testing.T) {
+	e := newEnv()
+	e.signUp(t, valid)
+	_, err := e.svc.VerifyRegistration(ctx, valid.Email, testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode)
+	assert.Len(t, e.repo.users, 1)
+}
+
+func TestVerifyRegistrationWithoutRegisterOrForAnotherEmail(t *testing.T) {
+	e := newEnv()
+	_, err := e.svc.VerifyRegistration(ctx, "ana@example.com", testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode)
+	_, err = e.svc.VerifyRegistration(ctx, "nope", testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode)
+
+	require.NoError(t, e.svc.Register(ctx, valid))
+	_, err = e.svc.VerifyRegistration(ctx, "other@example.com", testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode, "a code is bound to its email")
+}
+
+func TestAResetCodeCannotCompleteASignup(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	// Same email and same code string, but issued for another purpose.
+	e.store.entries = map[string]*storedCode{}
+	_, err := e.otp.issue(ctx, PurposeReset, "ana@example.com", "")
+	require.NoError(t, err)
+	_, err = e.svc.VerifyRegistration(ctx, valid.Email, testCode)
+	assert.ErrorIs(t, err, ErrInvalidCode)
+}
+
+// The address is only held by someone who proves they own it.
+func TestNobodyCanSquatAnAddressTheyDoNotOwn(t *testing.T) {
+	e := newEnv()
+	// An attacker registers somebody else's address and never gets the code.
+	attacker := valid
+	attacker.Password = "attacker-pass"
+	require.NoError(t, e.svc.Register(ctx, attacker))
+	assert.Empty(t, e.repo.users, "nothing reserved the address")
+
+	// The real owner can still use it, with Google as well.
+	g := NewGoogleService(e.repo, fakeVerifier{ana, nil}, fakeTokens{}, e.mailer)
+	s, err := g.Login(ctx, "idtoken")
+	require.NoError(t, err)
+	assert.Equal(t, "ana@example.com", s.User.Email)
+
+	// And the attacker's pending signup can no longer take the address.
+	_, err = e.svc.VerifyRegistration(ctx, valid.Email, testCode)
+	assert.ErrorIs(t, err, ErrEmailTaken)
+	assert.Len(t, e.repo.users, 1)
 }
 
 func TestRegisterValidation(t *testing.T) {
@@ -128,123 +331,116 @@ func TestRegisterValidation(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			svc, _ := newService()
+			e := newEnv()
 			in := valid
 			tc.mutate(&in)
-			_, err := svc.Register(context.Background(), in)
-			assert.ErrorIs(t, err, tc.want)
+			assert.ErrorIs(t, e.svc.Register(ctx, in), tc.want)
+			assert.Empty(t, e.mailer.sent)
+			assert.Empty(t, e.store.entries)
 		})
 	}
 }
 
 func TestRegisterEmailTaken(t *testing.T) {
-	svc, _ := newService()
-	_, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
+	e := newEnv()
+	e.signUp(t, valid)
 	in := valid
 	in.Email = "ANA@example.com"
-	_, err = svc.Register(context.Background(), in)
-	assert.ErrorIs(t, err, ErrEmailTaken)
+	assert.ErrorIs(t, e.svc.Register(ctx, in), ErrEmailTaken)
+	assert.Empty(t, e.mailer.sent)
+}
+
+func TestRegisterAgainBeforeVerifyingIsRateLimited(t *testing.T) {
+	e := newEnv()
+	require.NoError(t, e.svc.Register(ctx, valid))
+	assert.ErrorIs(t, e.svc.Register(ctx, valid), ErrCodeTooSoon)
+	assert.Len(t, e.mailer.sent, 1)
+}
+
+func TestRegisterSurvivesMailFailure(t *testing.T) {
+	e := newEnv()
+	e.mailer.err = errors.New("provider down")
+	assert.NoError(t, e.svc.Register(ctx, valid), "a failing mailer must not fail the call")
+	_, err := e.svc.VerifyRegistration(ctx, valid.Email, testCode)
+	assert.NoError(t, err, "welcome email failure does not block the account either")
+}
+
+func TestRegisterStoreFailureIsReported(t *testing.T) {
+	e := newEnv()
+	e.store.putErr = errors.New("redis down")
+	assert.ErrorIs(t, e.svc.Register(ctx, valid), e.store.putErr)
+	assert.Empty(t, e.mailer.sent)
 }
 
 func TestLogin(t *testing.T) {
-	svc, _ := newService()
-	u, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
-	s, err := svc.Login(context.Background(), "ANA@example.com", "s3cretpass")
+	e := newEnv()
+	u := e.signUp(t, valid)
+	s, err := e.svc.Login(ctx, "ANA@example.com", "s3cretpass")
 	require.NoError(t, err)
 	assert.Equal(t, u.ID, s.User.ID)
 	assert.Equal(t, "tok:1", s.Token.Value)
 }
 
 func TestLoginFailuresAreIndistinguishable(t *testing.T) {
-	svc, _ := newService()
-	_, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
+	e := newEnv()
+	e.signUp(t, valid)
 	for name, c := range map[string][2]string{
 		"wrong password": {"ana@example.com", "wrongpass1"},
 		"unknown email":  {"who@example.com", "s3cretpass"},
 		"invalid email":  {"nope", "s3cretpass"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := svc.Login(context.Background(), c[0], c[1])
+			_, err := e.svc.Login(ctx, c[0], c[1])
 			assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 		})
 	}
 }
 
 func TestLoginWithoutPasswordAccount(t *testing.T) {
-	svc, repo := newService()
-	u, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
-	repo.accounts[u.ID] = Account{UserID: u.ID, Provider: ProviderGoogle}
-	_, err = svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+	e := newEnv()
+	u := e.signUp(t, valid)
+	e.repo.accounts[u.ID] = Account{UserID: u.ID, Provider: ProviderGoogle}
+	_, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 
-func TestAuthenticate(t *testing.T) {
-	svc, _ := newService()
-	u, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
-	s, err := svc.Login(context.Background(), "ana@example.com", "s3cretpass")
-	require.NoError(t, err)
-
-	got, err := svc.Authenticate(context.Background(), s.Token.Value)
-	require.NoError(t, err)
-	assert.Equal(t, u.ID, got.ID)
-
-	_, err = svc.Authenticate(context.Background(), "tok:99") // user no longer exists
-	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
-	_, err = svc.Authenticate(context.Background(), "tok:abc") // non numeric subject
-	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
-	_, err = svc.Authenticate(context.Background(), "bad")
-	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
-}
-
-func TestRegisterAndLoginSendEmailsAndSurviveMailFailure(t *testing.T) {
-	svc, _, mailer := newServiceWithMailer()
-	_, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
-	require.Len(t, mailer.sent, 1)
-	assert.Equal(t, "WELCOME", mailer.sent[0].code)
-	assert.Equal(t, "ana@example.com", mailer.sent[0].to)
-	assert.Equal(t, "Ana", mailer.sent[0].data["FirstName"])
-	mailer.sent = nil
-
-	mailer.err = errors.New("provider down")
-	s, err := svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+func TestLoginSendsAlertAndSurvivesMailFailure(t *testing.T) {
+	e := newEnv()
+	e.signUp(t, valid)
+	e.mailer.err = errors.New("provider down")
+	s, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
 	require.NoError(t, err, "a failing mailer must not fail the login")
 	assert.NotEmpty(t, s.Token.Value)
-	require.Len(t, mailer.sent, 1)
-	assert.Equal(t, "LOGIN", mailer.sent[0].code)
-	assert.Equal(t, "ana@example.com", mailer.sent[0].to)
-	assert.Equal(t, "Ana", mailer.sent[0].data["FirstName"])
-	assert.NotEmpty(t, mailer.sent[0].data["Time"])
+	require.Len(t, e.mailer.sent, 1)
+	assert.Equal(t, "LOGIN", e.mailer.sent[0].code)
+	assert.Equal(t, "ana@example.com", e.mailer.sent[0].to)
+	assert.Equal(t, "Ana", e.mailer.sent[0].data["FirstName"])
+	assert.NotEmpty(t, e.mailer.sent[0].data["Time"])
 }
 
 func TestFailedLoginSendsNoMail(t *testing.T) {
-	svc, _, mailer := newServiceWithMailer()
-	_, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err)
-	mailer.sent = nil // ignore the welcome email
-	_, err = svc.Login(context.Background(), "ana@example.com", "wrongpass1")
+	e := newEnv()
+	e.signUp(t, valid)
+	_, err := e.svc.Login(ctx, "ana@example.com", "wrongpass1")
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
-	assert.Empty(t, mailer.sent)
+	assert.Empty(t, e.mailer.sent)
 }
 
-func TestRegisterSurvivesMailFailure(t *testing.T) {
-	svc, repo, mailer := newServiceWithMailer()
-	mailer.err = errors.New("provider down")
-	u, err := svc.Register(context.Background(), valid)
-	require.NoError(t, err, "a failing mailer must not block the account creation")
-	assert.Contains(t, repo.users, u.ID)
-}
+func TestAuthenticate(t *testing.T) {
+	e := newEnv()
+	u := e.signUp(t, valid)
+	s, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
+	require.NoError(t, err)
 
-func TestFailedRegisterSendsNoMail(t *testing.T) {
-	svc, _, mailer := newServiceWithMailer()
-	in := valid
-	in.Email = "nope"
-	_, err := svc.Register(context.Background(), in)
-	assert.ErrorIs(t, err, ErrInvalidEmail)
-	assert.Empty(t, mailer.sent)
+	got, err := e.svc.Authenticate(ctx, s.Token.Value)
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+	assert.True(t, got.EmailVerified)
+
+	_, err = e.svc.Authenticate(ctx, "tok:99") // user no longer exists
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	_, err = e.svc.Authenticate(ctx, "tok:abc") // non numeric subject
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	_, err = e.svc.Authenticate(ctx, "bad")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }

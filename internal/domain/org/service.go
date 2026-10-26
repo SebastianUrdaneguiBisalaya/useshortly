@@ -137,8 +137,13 @@ func (s *Service) ListPendingInvitations(ctx context.Context, actorID, tenantID 
 	return s.repo.ListPendingInvitations(ctx, tenantID)
 }
 
-// AcceptInvitation adds the user (whose verified email is userEmail) to the tenant.
-func (s *Service) AcceptInvitation(ctx context.Context, userID int64, userEmail string, invitationID int64) (Member, error) {
+// AcceptInvitation adds the user to the tenant. Invitations are matched by email, so the
+// user must have a verified email: otherwise anyone could take an invitation by signing up
+// with an address they do not own.
+func (s *Service) AcceptInvitation(ctx context.Context, userID int64, userEmail string, emailVerified bool, invitationID int64) (Member, error) {
+	if !emailVerified {
+		return Member{}, ErrEmailNotVerified
+	}
 	inv, err := s.ownInvitation(ctx, userEmail, invitationID)
 	if err != nil {
 		return Member{}, err

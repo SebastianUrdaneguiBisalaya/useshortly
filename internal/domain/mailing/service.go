@@ -70,7 +70,7 @@ func (s *Service) Send(ctx context.Context, req Request) error {
 		CreatedAt: s.now(),
 	}
 	if sendErr != nil {
-		entry.Status, entry.ProviderID, entry.ErrorMetadata = LogFailed, "", sendErr.Error()
+		entry.Status, entry.ProviderID, entry.Error = LogFailed, "", asProviderError(sendErr)
 	}
 	// The send already happened: log with a context that survives a cancelled request.
 	logErr := s.logs.Create(context.WithoutCancel(ctx), entry)

@@ -3,6 +3,7 @@ package mailing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -112,10 +113,36 @@ func TestSendLogsTheProviderErrorOnFailure(t *testing.T) {
 	err := svc.Send(ctx, Request{Code: TemplateWelcome, To: "ana@x.com", Data: map[string]string{"Name": "Ana"}})
 	assert.ErrorIs(t, err, sender.err)
 	require.Len(t, logs.logs, 1)
-	assert.Equal(t, EmailLog{
-		TemplateID: 9, To: "ana@x.com", Status: LogFailed, Provider: "FAKE",
-		ErrorMetadata: "provider down", CreatedAt: fixedNow,
-	}, logs.logs[0])
+	assert.Equal(t, LogFailed, logs.logs[0].Status)
+	assert.Equal(t, "FAKE", logs.logs[0].Provider)
+	assert.Empty(t, logs.logs[0].ProviderID)
+	assert.Equal(t, ErrorTypeUnknown, logs.logs[0].Error.Type, "a plain error says nothing about its origin")
+	assert.Equal(t, "provider down", logs.logs[0].Error.Message)
+}
+
+func TestSendLogsTheTypeCodeAndMessageOfAProviderError(t *testing.T) {
+	svc, sender, logs := newSvc(hello)
+	sender.err = &ProviderError{Type: ErrorTypeRateLimit, Code: "rate_limit_exceeded", Message: "Too many requests"}
+
+	err := svc.Send(ctx, Request{Code: TemplateWelcome, To: "ana@x.com", Data: map[string]string{"Name": "Ana"}})
+	var pe *ProviderError
+	require.ErrorAs(t, err, &pe)
+	require.Len(t, logs.logs, 1)
+	assert.Equal(t, &ProviderError{Type: ErrorTypeRateLimit, Code: "rate_limit_exceeded", Message: "Too many requests"}, logs.logs[0].Error)
+}
+
+func TestSendLogsAWrappedProviderError(t *testing.T) {
+	svc, sender, logs := newSvc(hello)
+	sender.err = fmt.Errorf("wrapped: %w", &ProviderError{Type: ErrorTypeAuth, Code: "invalid_api_key", Message: "API key is invalid"})
+
+	require.Error(t, svc.Send(ctx, Request{Code: TemplateWelcome, To: "ana@x.com", Data: map[string]string{"Name": "Ana"}}))
+	assert.Equal(t, ErrorTypeAuth, logs.logs[0].Error.Type)
+	assert.Equal(t, "invalid_api_key", logs.logs[0].Error.Code)
+}
+
+func TestProviderErrorText(t *testing.T) {
+	assert.Equal(t, "validation (validation_error): bad from", (&ProviderError{Type: ErrorTypeValidation, Code: "validation_error", Message: "bad from"}).Error())
+	assert.Equal(t, "network: timeout", (&ProviderError{Type: ErrorTypeNetwork, Message: "timeout"}).Error())
 }
 
 func TestSendReportsALogFailureWithoutHidingTheSendResult(t *testing.T) {

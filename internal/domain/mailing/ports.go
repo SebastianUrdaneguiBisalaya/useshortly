@@ -4,7 +4,8 @@ import "context"
 
 // Sender delivers a rendered message through a provider (Resend, SMTP...). It returns the
 // provider's Receipt: on success the id of the accepted email, on failure at least the
-// provider name together with the error.
+// provider name together with the error. Failures should be a *ProviderError so the log
+// can store their type, code and message separately; any other error is logged as unknown.
 type Sender interface {
 	Send(ctx context.Context, m Message) (Receipt, error)
 }

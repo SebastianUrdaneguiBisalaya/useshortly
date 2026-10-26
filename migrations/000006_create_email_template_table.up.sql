@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
     status TEXT NOT NULL CHECK (status IN ('SENT', 'FAILED')),
     email_provider TEXT NOT NULL,
     email_provider_id TEXT, -- the unique id the provider returns when it accepts the email
-    error_metadata TEXT,    -- the provider error when it does not
+    error_metadata TEXT,    -- when it does not: JSON {"type", "code", "message"}
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     FOREIGN KEY (template_id) REFERENCES email_templates(id)
 );

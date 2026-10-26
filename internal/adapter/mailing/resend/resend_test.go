@@ -3,7 +3,6 @@ package resend
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -68,46 +67,119 @@ func TestSendOmitsEmptyCopies(t *testing.T) {
 	assert.NotContains(t, body, "bcc")
 }
 
-func TestSendFailureKeepsTheProviderAndTheMessage(t *testing.T) {
-	s := newTestSender(t, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"statusCode":422,"name":"validation_error","message":"The from address is invalid"}`))
-	})
-	receipt, err := s.Send(context.Background(), mailing.Message{To: "ana@x.com", Subject: "Hi", Text: "Hi"})
-	require.Error(t, err)
-	assert.Equal(t, mailing.Receipt{Provider: "RESEND"}, receipt, "no id, but the provider is known")
-	assert.ErrorContains(t, err, "resend: send")
-	assert.ErrorContains(t, err, "The from address is invalid")
+func providerError(t *testing.T, err error) *mailing.ProviderError {
+	t.Helper()
+	var pe *mailing.ProviderError
+	require.ErrorAs(t, err, &pe)
+	return pe
 }
 
-func TestSendRateLimitIsDetectable(t *testing.T) {
-	s := newTestSender(t, func(w http.ResponseWriter, _ *http.Request) {
+func failWith(status int, body string, headers map[string]string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("retry-after", "7")
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = w.Write([]byte(`{"message":"Too many requests"}`))
-	})
-	receipt, err := s.Send(context.Background(), mailing.Message{To: "ana@x.com", Subject: "Hi", Text: "Hi"})
-	assert.ErrorIs(t, err, resendlib.ErrRateLimit)
-	assert.ErrorContains(t, err, "retry after: 7")
+		for k, v := range headers {
+			w.Header().Set(k, v)
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}
+}
+
+var msg = mailing.Message{To: "ana@x.com", Subject: "Hi", Text: "Hi"}
+
+func TestSendValidationErrorKeepsTypeCodeAndMessage(t *testing.T) {
+	s := newTestSender(t, failWith(http.StatusUnprocessableEntity,
+		`{"statusCode":422,"name":"validation_error","message":"The from address is invalid"}`, nil))
+	receipt, err := s.Send(context.Background(), msg)
+	require.Error(t, err)
+	assert.Equal(t, mailing.Receipt{Provider: "RESEND"}, receipt, "no id, but the provider is known")
+	pe := providerError(t, err)
+	assert.Equal(t, mailing.ErrorTypeValidation, pe.Type)
+	assert.Equal(t, "validation_error", pe.Code, "the name the SDK throws away")
+	assert.Equal(t, "The from address is invalid", pe.Message)
+}
+
+func TestSendClassifiesByStatus(t *testing.T) {
+	for _, tc := range []struct {
+		status int
+		body   string
+		kind   mailing.ErrorType
+		code   string
+	}{
+		{400, `{"statusCode":400,"name":"missing_required_field","message":"Missing ` + "`to`" + ` field"}`, mailing.ErrorTypeValidation, "missing_required_field"},
+		{401, `{"statusCode":401,"name":"missing_api_key","message":"Missing API key"}`, mailing.ErrorTypeAuth, "missing_api_key"},
+		{403, `{"statusCode":403,"name":"invalid_api_key","message":"API key is invalid"}`, mailing.ErrorTypeAuth, "invalid_api_key"},
+		{500, `{"statusCode":500,"name":"application_error","message":"Internal error"}`, mailing.ErrorTypeProvider, "application_error"},
+		{502, `not json at all`, mailing.ErrorTypeProvider, "502"},
+	} {
+		s := newTestSender(t, failWith(tc.status, tc.body, nil))
+		_, err := s.Send(context.Background(), msg)
+		pe := providerError(t, err)
+		assert.Equal(t, tc.kind, pe.Type, tc.status)
+		assert.Equal(t, tc.code, pe.Code, tc.status)
+		assert.NotEmpty(t, pe.Message, tc.status)
+	}
+}
+
+func TestSendRateLimit(t *testing.T) {
+	s := newTestSender(t, failWith(http.StatusTooManyRequests,
+		`{"statusCode":429,"name":"rate_limit_exceeded","message":"Too many requests"}`, map[string]string{"retry-after": "7"}))
+	receipt, err := s.Send(context.Background(), msg)
+	pe := providerError(t, err)
+	assert.Equal(t, mailing.ErrorTypeRateLimit, pe.Type)
+	assert.Equal(t, "rate_limit_exceeded", pe.Code)
+	assert.Equal(t, "Too many requests (retry after 7s)", pe.Message)
+	assert.ErrorIs(t, err, resendlib.ErrRateLimit, "the SDK error stays reachable")
 	assert.Equal(t, "RESEND", receipt.Provider)
 	assert.Empty(t, receipt.ProviderID)
 }
 
-func TestSendServerErrorAndNetworkFailure(t *testing.T) {
-	s := newTestSender(t, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(`{"message":"Internal error"}`))
-	})
-	_, err := s.Send(context.Background(), mailing.Message{To: "ana@x.com", Subject: "Hi", Text: "Hi"})
-	assert.ErrorContains(t, err, "Internal error")
-
+func TestSendNetworkFailure(t *testing.T) {
+	s := newTestSender(t, func(http.ResponseWriter, *http.Request) {})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	receipt, err := s.Send(ctx, mailing.Message{To: "ana@x.com", Subject: "Hi", Text: "Hi"})
-	assert.Error(t, err)
-	assert.True(t, errors.Is(err, context.Canceled))
+	receipt, err := s.Send(ctx, msg)
+	pe := providerError(t, err)
+	assert.Equal(t, mailing.ErrorTypeNetwork, pe.Type)
+	assert.Empty(t, pe.Code)
+	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, "RESEND", receipt.Provider)
+}
+
+func TestConcurrentSendsDoNotMixUpTheirErrors(t *testing.T) {
+	s := newTestSender(t, func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Subject string `json:"subject"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Subject == "bad" {
+			failWith(http.StatusUnprocessableEntity, `{"name":"validation_error","message":"bad one"}`, nil)(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"ok"}`))
+	})
+	done := make(chan struct{}, 40)
+	for i := range 40 {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			m := msg
+			m.Subject = "good"
+			if i%2 == 0 {
+				m.Subject = "bad"
+			}
+			receipt, err := s.Send(context.Background(), m)
+			if i%2 == 0 {
+				var pe *mailing.ProviderError
+				assert.ErrorAs(t, err, &pe)
+				assert.Equal(t, "bad one", pe.Message)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, "ok", receipt.ProviderID)
+			}
+		}()
+	}
+	for range 40 {
+		<-done
+	}
 }

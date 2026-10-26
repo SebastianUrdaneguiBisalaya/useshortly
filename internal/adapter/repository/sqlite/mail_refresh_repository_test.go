@@ -259,7 +259,9 @@ func TestEmailLogsRecordSuccessWithTheProviderID(t *testing.T) {
 func TestEmailLogsRecordFailuresWithTheProviderError(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
-	sender := &captureSender{err: errors.New("resend: send: [ERROR]: The from address is invalid")}
+	sender := &captureSender{err: &mailing.ProviderError{
+		Type: mailing.ErrorTypeValidation, Code: "validation_error", Message: "The from address is invalid",
+	}}
 	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
 
 	err := svc.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: "ana@example.com", Data: map[string]string{"FirstName": "Ana", "LastName": "L"}})
@@ -270,7 +272,19 @@ func TestEmailLogsRecordFailuresWithTheProviderError(t *testing.T) {
 	assert.Equal(t, "FAILED", logs[0].status)
 	assert.Equal(t, "FAKE", logs[0].provider)
 	assert.False(t, logs[0].providerID.Valid)
-	assert.Equal(t, "resend: send: [ERROR]: The from address is invalid", logs[0].errorMsg.String)
+	assert.JSONEq(t, `{"type":"validation","code":"validation_error","message":"The from address is invalid"}`, logs[0].errorMsg.String)
+}
+
+func TestEmailLogsStoreAPlainErrorAsUnknown(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	sender := &captureSender{err: errors.New("boom")}
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
+	require.Error(t, svc.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: "ana@example.com", Data: map[string]string{"FirstName": "Ana", "LastName": "L"}}))
+
+	logs := readLogs(t, db)
+	require.Len(t, logs, 1)
+	assert.JSONEq(t, `{"type":"unknown","message":"boom"}`, logs[0].errorMsg.String, "no code key when there is none")
 }
 
 func TestEmailLogsSurviveDeletingTheUser(t *testing.T) {

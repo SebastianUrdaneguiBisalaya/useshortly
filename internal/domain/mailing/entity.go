@@ -59,14 +59,14 @@ const (
 
 // EmailLog is the record of one delivery attempt, kept for both outcomes.
 type EmailLog struct {
-	ID            int64
-	TemplateID    int64
-	To            string
-	CC            []string
-	BCC           []string
-	Status        LogStatus
-	Provider      string
-	ProviderID    string // set when SENT
-	ErrorMetadata string // set when FAILED
-	CreatedAt     time.Time
+	ID         int64
+	TemplateID int64
+	To         string
+	CC         []string
+	BCC        []string
+	Status     LogStatus
+	Provider   string
+	ProviderID string         // set when SENT
+	Error      *ProviderError // set when FAILED
+	CreatedAt  time.Time
 }

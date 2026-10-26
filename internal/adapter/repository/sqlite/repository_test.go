@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -154,4 +155,54 @@ func TestForeignKeysAreEnforced(t *testing.T) {
 	var n int
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT count(*) FROM accounts`).Scan(&n))
 	assert.Zero(t, n)
+}
+
+func TestLinkRepository(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	exp := now.Add(time.Hour)
+	created, err := repo.Create(ctx, link.Link{
+		Code: "abc1234", OriginURL: "https://example.com/a", ExpiresAt: &exp, TenantID: 1, CreatedBy: u.ID, CreatedAt: now,
+	})
+	require.NoError(t, err)
+	assert.NotZero(t, created.ID)
+
+	got, err := repo.FindByCode(ctx, "abc1234")
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, got.ID)
+	assert.Equal(t, "https://example.com/a", got.OriginURL)
+	assert.EqualValues(t, 1, got.TenantID)
+	assert.Equal(t, u.ID, got.CreatedBy)
+	assert.Nil(t, got.UpdatedBy)
+	assert.Nil(t, got.UpdatedAt)
+	require.NotNil(t, got.ExpiresAt)
+	assert.True(t, got.ExpiresAt.Equal(exp))
+	assert.True(t, got.CreatedAt.Equal(now))
+
+	_, err = repo.FindByCode(ctx, "nope000")
+	assert.ErrorIs(t, err, link.ErrNotFound)
+
+	_, err = repo.Create(ctx, link.Link{Code: "abc1234", OriginURL: "https://other.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	assert.ErrorIs(t, err, link.ErrCodeTaken)
+}
+
+func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+	now := time.Now().UTC()
+	exp := now.Add(time.Hour)
+	for _, code := range []string{"aaaaaaa", "bbbbbbb"} {
+		_, err := repo.Create(ctx, link.Link{Code: code, OriginURL: "https://example.com", ExpiresAt: &exp, TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+		require.NoError(t, err, code)
+	}
 }

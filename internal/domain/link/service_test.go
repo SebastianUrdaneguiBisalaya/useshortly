@@ -197,7 +197,7 @@ func TestResolve(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := s.Resolve(ctx, tt.code)
 			assert.ErrorIs(t, err, tt.wantErr)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got.OriginURL)
 		})
 	}
 }
@@ -336,7 +336,7 @@ func TestResolveMaxClicks(t *testing.T) {
 		for range 2 {
 			got, err := s.Resolve(ctx, "limit00")
 			require.NoError(t, err)
-			assert.Equal(t, "https://example.com/limit", got)
+			assert.Equal(t, "https://example.com/limit", got.OriginURL)
 		}
 		_, err := s.Resolve(ctx, "limit00")
 		assert.ErrorIs(t, err, ErrExpired)

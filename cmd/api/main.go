@@ -5,6 +5,7 @@ import (
 	"log"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/logsender"
@@ -77,6 +78,14 @@ func run() error {
 	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient)})
 	// Let emails still in flight finish before the database and Redis close.
 	defer a.mail.Wait()
+	// Flush the queued clicks before the database closes.
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := a.clicks.Close(ctx); err != nil {
+			log.Printf("clicks not flushed: %v", err)
+		}
+	}()
 
 	return server.NewServer(cfg.Port, a.handler).Run(ctx)
 }

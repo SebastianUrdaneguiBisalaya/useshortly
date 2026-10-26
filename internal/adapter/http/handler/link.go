@@ -5,17 +5,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/gorilla/mux"
 )
 
-type LinkHandler struct {
-	links   *link.Service
-	baseURL string // public URL short links are served from
+// ClickRecorder takes note of a redirect without making the visitor wait for it.
+type ClickRecorder interface {
+	Record(c analytics.Click)
 }
 
-func NewLinkHandler(links *link.Service, baseURL string) *LinkHandler {
-	return &LinkHandler{links: links, baseURL: strings.TrimRight(baseURL, "/")}
+type LinkHandler struct {
+	links   *link.Service
+	clicks  ClickRecorder // nil records nothing
+	baseURL string        // public URL short links are served from
+}
+
+func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string) *LinkHandler {
+	return &LinkHandler{links: links, clicks: clicks, baseURL: strings.TrimRight(baseURL, "/")}
 }
 
 type linkBody struct {
@@ -103,10 +110,13 @@ func (h *LinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Redirect answers 302 (not 301) so every click reaches the server.
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
-	target, err := h.links.Resolve(r.Context(), mux.Vars(r)["code"])
+	l, err := h.links.Resolve(r.Context(), mux.Vars(r)["code"])
 	if err != nil {
 		WriteError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, target, http.StatusFound)
+	if h.clicks != nil {
+		h.clicks.Record(analytics.Click{LinkID: l.ID, Referrer: r.Referer(), UserAgent: r.UserAgent()})
+	}
+	http.Redirect(w, r, l.OriginURL, http.StatusFound)
 }

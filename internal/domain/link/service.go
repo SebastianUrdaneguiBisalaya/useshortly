@@ -105,18 +105,20 @@ func (s *Service) Delete(ctx context.Context, tenantID, id int64) error {
 	return s.repo.Delete(ctx, tenantID, id)
 }
 
-func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
+// Resolve returns the link a code points to, ready to redirect to l.OriginURL. It counts the
+// visit against max_clicks, so call it once per redirect.
+func (s *Service) Resolve(ctx context.Context, code string) (Link, error) {
 	l, err := s.repo.FindByCode(ctx, code)
 	if err != nil {
-		return "", err
+		return Link{}, err
 	}
 	if l.IsExpired(s.now()) {
-		return "", ErrExpired
+		return Link{}, ErrExpired
 	}
 	if l.MaxClicks != nil {
 		if err := s.repo.ConsumeClick(ctx, code); err != nil {
-			return "", err
+			return Link{}, err
 		}
 	}
-	return l.OriginURL, nil
+	return l, nil
 }

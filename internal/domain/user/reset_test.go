@@ -4,48 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// fakeStore mimics the Redis store: hashed code, attempt counter, single use, cooldown.
-type fakeStore struct {
-	hash     string
-	attempts int
-	cooldown bool
-	puts     int
-	putErr   error
-}
-
-func (f *fakeStore) Put(_ context.Context, _, codeHash string, _, _ time.Duration) error {
-	if f.putErr != nil {
-		return f.putErr
-	}
-	if f.cooldown {
-		return ErrResetTooSoon
-	}
-	f.hash, f.attempts, f.cooldown = codeHash, 0, true
-	f.puts++
-	return nil
-}
-
-func (f *fakeStore) Check(_ context.Context, _, codeHash string, max int) error {
-	if f.hash == "" {
-		return ErrInvalidResetCode
-	}
-	f.attempts++
-	if f.hash == codeHash {
-		f.hash = ""
-		return nil
-	}
-	if f.attempts >= max {
-		f.hash = ""
-		return ErrTooManyAttempts
-	}
-	return ErrInvalidResetCode
-}
 
 type fakeRevoker struct {
 	revoked []int64
@@ -61,28 +23,28 @@ func (r *fakeRevoker) RevokeForUser(_ context.Context, userID int64) error {
 }
 
 type resetEnv struct {
-	svc     *PasswordResetService
-	repo    *fakeRepo
-	store   *fakeStore
-	mailer  *fakeMailer
+	*env
+	reset   *PasswordResetService
 	revoker *fakeRevoker
 	user    User
 }
 
 func newResetEnv(t *testing.T) resetEnv {
 	t.Helper()
-	users, repo, _ := newServiceWithMailer()
-	u, err := users.Register(context.Background(), valid)
-	require.NoError(t, err)
-	e := resetEnv{repo: repo, store: &fakeStore{}, mailer: &fakeMailer{}, revoker: &fakeRevoker{}, user: u}
-	e.svc = NewPasswordResetService(repo, fakeHasher{}, e.store, e.mailer, e.revoker, "test-key-test-key-test-key-test-key")
-	e.svc.newCode = func() (string, error) { return "123456", nil }
-	return e
+	e := newEnv()
+	u := e.signUp(t, valid)
+	r := &fakeRevoker{}
+	return resetEnv{
+		env:     e,
+		reset:   NewPasswordResetService(e.repo, fakeHasher{}, e.otp, e.mailer, r),
+		revoker: r,
+		user:    u,
+	}
 }
 
 func (e resetEnv) forgot(t *testing.T) {
 	t.Helper()
-	require.NoError(t, e.svc.ForgotPassword(context.Background(), "ana@example.com"))
+	require.NoError(t, e.reset.ForgotPassword(ctx, "ana@example.com"))
 }
 
 func TestForgotPasswordSendsCodeByEmail(t *testing.T) {
@@ -92,23 +54,24 @@ func TestForgotPasswordSendsCodeByEmail(t *testing.T) {
 	m := e.mailer.sent[0]
 	assert.Equal(t, "PASSWORD_RESET", m.code)
 	assert.Equal(t, "ana@example.com", m.to)
-	assert.Equal(t, "123456", m.data["Code"])
+	assert.Equal(t, testCode, m.data["Code"])
 	assert.Equal(t, "10", m.data["ExpiresInMinutes"])
 	assert.Equal(t, "3", m.data["MaxAttempts"])
-	assert.NotContains(t, e.store.hash, "123456", "only an HMAC of the code is stored")
-	assert.Len(t, e.store.hash, 64)
+	entry := e.store.entries[storeKey(PurposeReset, "ana@example.com")]
+	require.NotNil(t, entry)
+	assert.NotContains(t, entry.hash, testCode, "only an HMAC of the code is stored")
+	assert.Len(t, entry.hash, 64)
 }
 
 func TestForgotPasswordNeverRevealsWhetherTheEmailExists(t *testing.T) {
 	e := newResetEnv(t)
-	ctx := context.Background()
-	assert.NoError(t, e.svc.ForgotPassword(ctx, "nobody@example.com"))
-	assert.NoError(t, e.svc.ForgotPassword(ctx, "not-an-email"))
+	assert.NoError(t, e.reset.ForgotPassword(ctx, "nobody@example.com"))
+	assert.NoError(t, e.reset.ForgotPassword(ctx, "not-an-email"))
 	assert.Empty(t, e.mailer.sent)
-	assert.Zero(t, e.store.puts)
+	assert.Empty(t, e.store.entries)
 
 	e.forgot(t)
-	assert.NoError(t, e.svc.ForgotPassword(ctx, "ana@example.com"), "rate limited requests look the same")
+	assert.NoError(t, e.reset.ForgotPassword(ctx, "ana@example.com"), "rate limited requests look the same")
 	assert.Len(t, e.mailer.sent, 1, "the second request sent nothing")
 }
 
@@ -122,36 +85,34 @@ func TestForgotPasswordSkipsUsersWithoutPassword(t *testing.T) {
 func TestForgotPasswordSurvivesMailFailureButNotStoreFailure(t *testing.T) {
 	e := newResetEnv(t)
 	e.mailer.err = errors.New("provider down")
-	assert.NoError(t, e.svc.ForgotPassword(context.Background(), "ana@example.com"))
+	assert.NoError(t, e.reset.ForgotPassword(ctx, "ana@example.com"))
 
 	e = newResetEnv(t)
 	e.store.putErr = errors.New("redis down")
-	assert.ErrorIs(t, e.svc.ForgotPassword(context.Background(), "ana@example.com"), e.store.putErr)
+	assert.ErrorIs(t, e.reset.ForgotPassword(ctx, "ana@example.com"), e.store.putErr)
 }
 
 func TestResetPassword(t *testing.T) {
 	e := newResetEnv(t)
-	ctx := context.Background()
 	e.forgot(t)
 
-	require.NoError(t, e.svc.ResetPassword(ctx, " ANA@example.com ", "123456", "brand-new-pass"))
+	require.NoError(t, e.reset.ResetPassword(ctx, " ANA@example.com ", testCode, "brand-new-pass"))
 	assert.Equal(t, "hash:brand-new-pass", e.repo.accounts[e.user.ID].PasswordHash)
 	assert.Equal(t, []int64{e.user.ID}, e.revoker.revoked, "all sessions revoked")
 
-	err := e.svc.ResetPassword(ctx, "ana@example.com", "123456", "another-pass-1")
-	assert.ErrorIs(t, err, ErrInvalidResetCode, "a code works once")
+	err := e.reset.ResetPassword(ctx, "ana@example.com", testCode, "another-pass-1")
+	assert.ErrorIs(t, err, ErrInvalidCode, "a code works once")
 }
 
 func TestResetPasswordWrongCodeThenTooManyAttempts(t *testing.T) {
 	e := newResetEnv(t)
-	ctx := context.Background()
 	e.forgot(t)
 
-	assert.ErrorIs(t, e.svc.ResetPassword(ctx, "ana@example.com", "000000", "brand-new-pass"), ErrInvalidResetCode)
-	assert.ErrorIs(t, e.svc.ResetPassword(ctx, "ana@example.com", "000001", "brand-new-pass"), ErrInvalidResetCode)
-	assert.ErrorIs(t, e.svc.ResetPassword(ctx, "ana@example.com", "000002", "brand-new-pass"), ErrTooManyAttempts)
+	assert.ErrorIs(t, e.reset.ResetPassword(ctx, "ana@example.com", "000000", "brand-new-pass"), ErrInvalidCode)
+	assert.ErrorIs(t, e.reset.ResetPassword(ctx, "ana@example.com", "000001", "brand-new-pass"), ErrInvalidCode)
+	assert.ErrorIs(t, e.reset.ResetPassword(ctx, "ana@example.com", "000002", "brand-new-pass"), ErrTooManyAttempts)
 	// The right code no longer works after the third failure.
-	assert.ErrorIs(t, e.svc.ResetPassword(ctx, "ana@example.com", "123456", "brand-new-pass"), ErrInvalidResetCode)
+	assert.ErrorIs(t, e.reset.ResetPassword(ctx, "ana@example.com", testCode, "brand-new-pass"), ErrInvalidCode)
 	assert.Equal(t, "hash:s3cretpass", e.repo.accounts[e.user.ID].PasswordHash, "password untouched")
 	assert.Empty(t, e.revoker.revoked)
 }
@@ -159,25 +120,33 @@ func TestResetPasswordWrongCodeThenTooManyAttempts(t *testing.T) {
 func TestResetPasswordWeakPasswordDoesNotBurnAnAttempt(t *testing.T) {
 	e := newResetEnv(t)
 	e.forgot(t)
-	assert.ErrorIs(t, e.svc.ResetPassword(context.Background(), "ana@example.com", "123456", "short"), ErrWeakPassword)
-	assert.Zero(t, e.store.attempts)
-	assert.NoError(t, e.svc.ResetPassword(context.Background(), "ana@example.com", "123456", "long-enough-pass"))
+	assert.ErrorIs(t, e.reset.ResetPassword(ctx, "ana@example.com", testCode, "short"), ErrWeakPassword)
+	assert.Zero(t, e.store.entries[storeKey(PurposeReset, "ana@example.com")].attempts)
+	assert.NoError(t, e.reset.ResetPassword(ctx, "ana@example.com", testCode, "long-enough-pass"))
 }
 
 func TestResetPasswordCodeIsBoundToTheEmail(t *testing.T) {
 	e := newResetEnv(t)
 	e.forgot(t)
-	// Same code, other email: the HMAC differs.
-	err := e.svc.ResetPassword(context.Background(), "other@example.com", "123456", "brand-new-pass")
-	assert.ErrorIs(t, err, ErrInvalidResetCode)
+	err := e.reset.ResetPassword(ctx, "other@example.com", testCode, "brand-new-pass")
+	assert.ErrorIs(t, err, ErrInvalidCode)
 	assert.Empty(t, e.revoker.revoked)
+}
+
+func TestASignupCodeCannotResetAPassword(t *testing.T) {
+	e := newResetEnv(t)
+	e.store.cooldown = map[string]bool{} // signUp already used the signup cooldown
+	_, err := e.otp.issue(ctx, PurposeSignup, "ana@example.com", "{}")
+	require.NoError(t, err)
+	err = e.reset.ResetPassword(ctx, "ana@example.com", testCode, "brand-new-pass")
+	assert.ErrorIs(t, err, ErrInvalidCode)
 }
 
 func TestResetPasswordRevokesBeforeChangingThePassword(t *testing.T) {
 	e := newResetEnv(t)
 	e.forgot(t)
 	e.revoker.err = errors.New("db down")
-	err := e.svc.ResetPassword(context.Background(), "ana@example.com", "123456", "brand-new-pass")
+	err := e.reset.ResetPassword(ctx, "ana@example.com", testCode, "brand-new-pass")
 	assert.ErrorIs(t, err, e.revoker.err)
 	assert.Equal(t, "hash:s3cretpass", e.repo.accounts[e.user.ID].PasswordHash, "password unchanged if sessions could not be revoked")
 }

@@ -9,6 +9,7 @@ const (
 	TemplateLogin         = "LOGIN"
 	TemplateInvitation    = "INVITATION"
 	TemplatePasswordReset = "PASSWORD_RESET"
+	TemplateVerifyEmail   = "VERIFY_EMAIL"
 )
 
 // Template is a row of email_templates. Subject, BodyHTML and BodyText are Go templates.

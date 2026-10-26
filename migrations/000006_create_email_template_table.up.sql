@@ -2,7 +2,7 @@
 -- body_text are Go templates; {{.AppURL}} is always available, the rest depends on the code.
 CREATE TABLE IF NOT EXISTS email_templates (
     id INTEGER PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE CHECK (code IN ('WELCOME', 'LOGIN', 'INVITATION', 'PASSWORD_RESET')),
+    code TEXT NOT NULL UNIQUE CHECK (code IN ('WELCOME', 'LOGIN', 'INVITATION', 'PASSWORD_RESET', 'VERIFY_EMAIL')),
     subject TEXT NOT NULL,
     body_html TEXT NOT NULL,
     body_text TEXT NOT NULL,
@@ -34,4 +34,10 @@ INSERT OR IGNORE INTO email_templates (code, subject, body_html, body_text) VALU
     'Your useshortly password reset code',
     '<p>Hi {{.FirstName}},</p><p>Your password reset code is:</p><p style="font-size:24px;letter-spacing:4px"><strong>{{.Code}}</strong></p><p>It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If you did not ask for it, ignore this email.</p>',
     'Hi {{.FirstName}}, your password reset code is {{.Code}}. It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If you did not ask for it, ignore this email.'
+),
+(
+    'VERIFY_EMAIL',
+    'Confirm your email for useshortly',
+    '<p>Hi {{.FirstName}},</p><p>Someone used this address to create a useshortly account. Your confirmation code is:</p><p style="font-size:24px;letter-spacing:4px"><strong>{{.Code}}</strong></p><p>It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If this was not you, ignore this email and no account will be created.</p>',
+    'Hi {{.FirstName}}, someone used this address to create a useshortly account. Your confirmation code is {{.Code}}. It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If this was not you, ignore this email and no account will be created.'
 );

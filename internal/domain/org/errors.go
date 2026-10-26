@@ -13,5 +13,6 @@ var (
 	ErrInvitationNotFound   = errors.New("org: invitation not found")
 	ErrInvitationExists     = errors.New("org: a pending invitation already exists for this email")
 	ErrInvitationExpired    = errors.New("org: invitation expired")
+	ErrEmailNotVerified     = errors.New("org: the email must be verified")
 	ErrInvitationNotPending = errors.New("org: invitation is not pending")
 )

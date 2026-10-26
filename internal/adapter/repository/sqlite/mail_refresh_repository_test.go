@@ -93,7 +93,7 @@ func TestRefreshTokensDieWithTheirOrganization(t *testing.T) {
 func TestEmailTemplateRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEmailTemplateRepository(newDB(t))
-	for _, code := range []string{mailing.TemplateWelcome, mailing.TemplateLogin, mailing.TemplateInvitation, mailing.TemplatePasswordReset} {
+	for _, code := range []string{mailing.TemplateWelcome, mailing.TemplateLogin, mailing.TemplateInvitation, mailing.TemplatePasswordReset, mailing.TemplateVerifyEmail} {
 		tpl, err := repo.FindByCode(ctx, code)
 		require.NoError(t, err, code)
 		assert.Equal(t, code, tpl.Code)
@@ -121,13 +121,14 @@ func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 	cases := map[string]map[string]string{
 		mailing.TemplateWelcome:       {"FirstName": "Ana", "LastName": "Lopez"},
 		mailing.TemplateLogin:         {"FirstName": "Ana", "Time": "Mon, 26 Oct 2026 10:00:00 UTC"},
+		mailing.TemplateVerifyEmail:   {"FirstName": "Ana", "Code": "123456", "ExpiresInMinutes": "10", "MaxAttempts": "3"},
 		mailing.TemplatePasswordReset: {"FirstName": "Ana", "Code": "123456", "ExpiresInMinutes": "10", "MaxAttempts": "3"},
 		mailing.TemplateInvitation:    {"InviterName": "Owner", "OrganizationName": "Acme", "InvitationID": "7", "ExpiresAt": "2026-11-02"},
 	}
 	for code, data := range cases {
 		require.NoError(t, svc.Send(ctx, code, "ana@example.com", data), code)
 	}
-	require.Len(t, sender.sent, 4)
+	require.Len(t, sender.sent, 5)
 	for _, m := range sender.sent {
 		assert.NotEmpty(t, m.Subject)
 		assert.NotContains(t, m.HTML+m.Text+m.Subject, "<no value>")

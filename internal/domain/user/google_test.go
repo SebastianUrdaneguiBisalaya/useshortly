@@ -59,11 +59,9 @@ func TestGoogleLoginSecondTimeSignsInTheSameUser(t *testing.T) {
 
 func TestGoogleLoginRefusesEmailRegisteredWithPassword(t *testing.T) {
 	svc, repo, mailer := newGoogle(ana, nil)
-	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
-	_, err := users.Register(context.Background(), valid) // ana@example.com with a password
-	require.NoError(t, err)
+	newEnvWithRepo(repo).signUp(t, valid) // ana@example.com with a password
 
-	_, err = svc.Login(context.Background(), "idtoken")
+	_, err := svc.Login(context.Background(), "idtoken")
 	assert.ErrorIs(t, err, ErrProviderMismatch)
 	assert.Len(t, repo.users, 1, "no second user, no merged account")
 	assert.Equal(t, ProviderDefault, repo.accounts[1].Provider)
@@ -75,8 +73,7 @@ func TestPasswordSignupRefusesEmailRegisteredWithGoogle(t *testing.T) {
 	_, err := svc.Login(context.Background(), "idtoken")
 	require.NoError(t, err)
 
-	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
-	_, err = users.Register(context.Background(), valid)
+	err = newEnvWithRepo(repo).svc.Register(context.Background(), valid)
 	assert.ErrorIs(t, err, ErrEmailTaken)
 }
 
@@ -85,8 +82,7 @@ func TestGooglePasswordLoginIsNotPossible(t *testing.T) {
 	_, err := svc.Login(context.Background(), "idtoken")
 	require.NoError(t, err)
 
-	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
-	_, err = users.Login(context.Background(), "ana@example.com", "anything-at-all")
+	_, err = newEnvWithRepo(repo).svc.Login(context.Background(), "ana@example.com", "anything-at-all")
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 

@@ -41,3 +41,26 @@ INSERT OR IGNORE INTO email_templates (code, subject, body_html, body_text) VALU
     '<p>Hi {{.FirstName}},</p><p>Someone used this address to create a useshortly account. Your confirmation code is:</p><p style="font-size:24px;letter-spacing:4px"><strong>{{.Code}}</strong></p><p>It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If this was not you, ignore this email and no account will be created.</p>',
     'Hi {{.FirstName}}, someone used this address to create a useshortly account. Your confirmation code is {{.Code}}. It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If this was not you, ignore this email and no account will be created.'
 );
+
+-- One row per delivery attempt, success or failure. Recipients are plain emails (not user
+-- ids): invitation and signup emails go to people who are not users yet, and logs must
+-- outlive users and templates. cc and bcc are JSON arrays of emails.
+CREATE TABLE IF NOT EXISTS email_logs (
+    id INTEGER PRIMARY KEY,
+    template_id INTEGER NOT NULL,
+    to_email TEXT NOT NULL,
+    cc TEXT,
+    bcc TEXT,
+    status TEXT NOT NULL CHECK (status IN ('SENT', 'FAILED')),
+    email_provider TEXT NOT NULL,
+    email_provider_id TEXT, -- the unique id the provider returns when it accepts the email
+    error_metadata TEXT,    -- the provider error when it does not
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    FOREIGN KEY (template_id) REFERENCES email_templates(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_created
+    ON email_logs (template_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_email_logs_to_email
+    ON email_logs (to_email);

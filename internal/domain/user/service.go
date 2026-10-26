@@ -24,7 +24,7 @@ const (
 // Mailer sends a template by code. Failures must not matter to the caller, so every use
 // ignores the result: wire an asynchronous, best-effort implementation (mailing.Async).
 type Mailer interface {
-	Send(ctx context.Context, code, to string, data map[string]string) error
+	Send(ctx context.Context, req mailing.Request) error
 }
 
 type Service struct {
@@ -107,7 +107,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) error {
 	}
 	// Best effort like every email: if it is lost the user registers again after the
 	// cooldown and gets a new code.
-	_ = s.mailer.Send(ctx, mailing.TemplateVerifyEmail, email, codeData(first, code))
+	_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateVerifyEmail, To: email, Data: codeData(first, code)})
 	return nil
 }
 
@@ -140,10 +140,10 @@ func (s *Service) VerifyRegistration(ctx context.Context, email, code string) (S
 		return Session{}, err
 	}
 	// Best effort: a welcome email must never fail or delay the signup.
-	_ = s.mailer.Send(ctx, mailing.TemplateWelcome, u.Email, map[string]string{
+	_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: u.Email, Data: map[string]string{
 		"FirstName": u.FirstName,
 		"LastName":  u.LastName,
-	})
+	}})
 	return Session{User: u, Token: tok}, nil
 }
 
@@ -182,10 +182,10 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 		return Session{}, err
 	}
 	// Best effort: a sign-in alert must never fail or delay the login itself.
-	_ = s.mailer.Send(ctx, mailing.TemplateLogin, u.Email, map[string]string{
+	_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateLogin, To: u.Email, Data: map[string]string{
 		"FirstName": u.FirstName,
 		"Time":      s.now().Format(time.RFC1123),
-	})
+	}})
 	return Session{User: u, Token: tok}, nil
 }
 

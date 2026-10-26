@@ -3,6 +3,7 @@ package org
 import (
 	"context"
 	"errors"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,6 +23,7 @@ type fakeRepo struct {
 
 type sentMail struct {
 	code, to string
+	cc, bcc  []string
 	data     map[string]string
 }
 
@@ -30,8 +32,8 @@ type fakeMailer struct {
 	err  error
 }
 
-func (m *fakeMailer) Send(_ context.Context, code, to string, data map[string]string) error {
-	m.sent = append(m.sent, sentMail{code, to, data})
+func (m *fakeMailer) Send(_ context.Context, req mailing.Request) error {
+	m.sent = append(m.sent, sentMail{req.Code, req.To, req.CC, req.BCC, req.Data})
 	return m.err
 }
 
@@ -222,7 +224,7 @@ func TestReadsRequireMembership(t *testing.T) {
 
 func TestInvite(t *testing.T) {
 	svc, _, o := setup(t)
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", " Bob@X.com ")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", " Bob@X.com ", InviteOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, "bob@x.com", inv.Email)
 	assert.Equal(t, RoleAdmin, inv.Role)
@@ -230,13 +232,13 @@ func TestInvite(t *testing.T) {
 	require.NotNil(t, inv.ExpiresAt)
 	assert.True(t, inv.ExpiresAt.After(inv.CreatedAt))
 
-	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	assert.ErrorIs(t, err, ErrInvitationExists)
-	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "owner@x.com")
+	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "owner@x.com", InviteOptions{})
 	assert.ErrorIs(t, err, ErrAlreadyMember)
-	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "nope")
+	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "nope", InviteOptions{})
 	assert.ErrorIs(t, err, ErrInvalidEmail)
-	_, err = svc.Invite(ctx, 99, o.ID, "Eve", "z@x.com")
+	_, err = svc.Invite(ctx, 99, o.ID, "Eve", "z@x.com", InviteOptions{})
 	assert.ErrorIs(t, err, ErrNotMember)
 
 	pending, err := svc.ListPendingInvitations(ctx, 10, o.ID)
@@ -248,7 +250,7 @@ func TestInviteSendsEmailAndSurvivesMailFailure(t *testing.T) {
 	svc, _, o, mailer, _ := setupAll(t)
 	mailer.err = errors.New("provider down")
 
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err, "a failing mailer must not fail the invitation")
 	require.Len(t, mailer.sent, 1)
 	got := mailer.sent[0]
@@ -262,25 +264,25 @@ func TestInviteSendsEmailAndSurvivesMailFailure(t *testing.T) {
 
 func TestRejectedInviteSendsNoEmail(t *testing.T) {
 	svc, _, o, mailer, _ := setupAll(t)
-	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "nope")
+	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "nope", InviteOptions{})
 	assert.ErrorIs(t, err, ErrInvalidEmail)
-	_, err = svc.Invite(ctx, 99, o.ID, "Eve", "bob@x.com")
+	_, err = svc.Invite(ctx, 99, o.ID, "Eve", "bob@x.com", InviteOptions{})
 	assert.ErrorIs(t, err, ErrNotMember)
 	assert.Empty(t, mailer.sent)
 }
 
 func TestInviteAgainAfterExpiry(t *testing.T) {
 	svc, _, o := setup(t)
-	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err)
 	svc.now = func() time.Time { return time.Now().Add(8 * 24 * time.Hour) }
-	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	assert.NoError(t, err)
 }
 
 func TestAcceptInvitation(t *testing.T) {
 	svc, repo, o := setup(t)
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err)
 
 	_, err = svc.AcceptInvitation(ctx, 20, "mallory@x.com", true, inv.ID)
@@ -300,7 +302,7 @@ func TestAcceptInvitation(t *testing.T) {
 
 func TestAcceptExpiredInvitation(t *testing.T) {
 	svc, _, o := setup(t)
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err)
 	svc.now = func() time.Time { return time.Now().Add(8 * 24 * time.Hour) }
 	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
@@ -309,7 +311,7 @@ func TestAcceptExpiredInvitation(t *testing.T) {
 
 func TestRejectInvitation(t *testing.T) {
 	svc, repo, o := setup(t)
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err)
 
 	assert.ErrorIs(t, svc.RejectInvitation(ctx, "mallory@x.com", inv.ID), ErrInvitationNotFound)
@@ -320,7 +322,7 @@ func TestRejectInvitation(t *testing.T) {
 
 func TestRemoveMember(t *testing.T) {
 	svc, repo, o, _, revoker := setupAll(t)
-	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	require.NoError(t, err)
 
@@ -336,7 +338,7 @@ func TestRemoveMember(t *testing.T) {
 
 func TestRemoveMemberKeepsMemberIfRevokeFails(t *testing.T) {
 	svc, repo, o, _, revoker := setupAll(t)
-	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	require.NoError(t, err)
 
@@ -355,7 +357,7 @@ func TestRemoveRejectedMembersDoNotRevoke(t *testing.T) {
 
 func TestAcceptInvitationRequiresVerifiedEmail(t *testing.T) {
 	svc, repo, o := setup(t)
-	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com")
+	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	require.NoError(t, err)
 
 	_, err = svc.AcceptInvitation(ctx, 20, "bob@x.com", false, inv.ID)
@@ -363,4 +365,27 @@ func TestAcceptInvitationRequiresVerifiedEmail(t *testing.T) {
 	_, err = repo.FindMember(ctx, o.ID, 20)
 	assert.ErrorIs(t, err, ErrNotMember)
 	assert.Equal(t, InvitationPending, repo.invs[inv.ID].Status, "the invitation stays usable")
+}
+
+func TestInviteCopies(t *testing.T) {
+	svc, _, o, mailer, _ := setupAll(t)
+	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{
+		CC:  []string{" Boss@X.com ", "bob@x.com", "boss@x.com"},
+		BCC: []string{"audit@x.com", "BOSS@x.com", "audit@x.com"},
+	})
+	require.NoError(t, err)
+	require.Len(t, mailer.sent, 1)
+	assert.Equal(t, "bob@x.com", mailer.sent[0].to)
+	assert.Equal(t, []string{"boss@x.com"}, mailer.sent[0].cc, "normalized, deduplicated, recipient dropped")
+	assert.Equal(t, []string{"audit@x.com"}, mailer.sent[0].bcc, "a hidden copy is never also a visible one")
+}
+
+func TestInviteRejectsInvalidCopiesBeforeCreatingAnything(t *testing.T) {
+	svc, repo, o, mailer, _ := setupAll(t)
+	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{CC: []string{"nope"}})
+	assert.ErrorIs(t, err, ErrInvalidEmail)
+	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{BCC: []string{"Eve <eve@x.com>"}})
+	assert.ErrorIs(t, err, ErrInvalidEmail)
+	assert.Empty(t, repo.invs)
+	assert.Empty(t, mailer.sent)
 }

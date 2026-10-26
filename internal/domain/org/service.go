@@ -19,7 +19,7 @@ const (
 // Mailer sends a template by code. Invite ignores the result, so wire an asynchronous,
 // best-effort implementation (mailing.Async).
 type Mailer interface {
-	Send(ctx context.Context, code, to string, data map[string]string) error
+	Send(ctx context.Context, req mailing.Request) error
 }
 
 // TokenRevoker invalidates the refresh tokens of a user inside one tenant.
@@ -86,13 +86,27 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, tenantID, targetID 
 	return s.repo.DeleteMember(ctx, tenantID, targetID)
 }
 
-// Invite creates a pending ADMIN invitation for email and mails it. inviterName is shown
-// in the email. A mail failure never fails the invitation.
-func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, inviterName, email string) (Invitation, error) {
+// InviteOptions are the optional extra recipients of the invitation email.
+type InviteOptions struct {
+	CC  []string // visible copies
+	BCC []string // hidden copies
+}
+
+// Invite creates a pending ADMIN invitation for email and mails it, with the copies in
+// opts if any. inviterName is shown in the email. A mail failure never fails the invitation.
+func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, inviterName, email string, opts InviteOptions) (Invitation, error) {
 	if _, err := s.repo.FindMember(ctx, tenantID, actorID); err != nil {
 		return Invitation{}, err
 	}
 	email, err := normalizeEmail(email)
+	if err != nil {
+		return Invitation{}, err
+	}
+	cc, err := normalizeEmails(opts.CC, email)
+	if err != nil {
+		return Invitation{}, err
+	}
+	bcc, err := normalizeEmails(opts.BCC, email, cc...)
 	if err != nil {
 		return Invitation{}, err
 	}
@@ -121,12 +135,12 @@ func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, inviterNa
 	if err != nil {
 		return Invitation{}, err
 	}
-	_ = s.mailer.Send(ctx, mailing.TemplateInvitation, inv.Email, map[string]string{
+	_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateInvitation, To: inv.Email, CC: cc, BCC: bcc, Data: map[string]string{
 		"InviterName":      inviterName,
 		"OrganizationName": o.Name,
 		"InvitationID":     strconv.FormatInt(inv.ID, 10),
 		"ExpiresAt":        expires.Format("2006-01-02"),
-	})
+	}})
 	return inv, nil
 }
 
@@ -176,6 +190,27 @@ func (s *Service) ownInvitation(ctx context.Context, userEmail string, id int64)
 		return Invitation{}, ErrInvitationExpired
 	}
 	return inv, nil
+}
+
+// normalizeEmails lowercases and validates the addresses, dropping duplicates and any
+// already listed in exclude (the recipient, or the visible copies for the hidden ones).
+func normalizeEmails(emails []string, exclude string, alsoExclude ...string) ([]string, error) {
+	seen := map[string]bool{exclude: true}
+	for _, e := range alsoExclude {
+		seen[e] = true
+	}
+	var out []string
+	for _, raw := range emails {
+		e, err := normalizeEmail(raw)
+		if err != nil {
+			return nil, err
+		}
+		if !seen[e] {
+			seen[e] = true
+			out = append(out, e)
+		}
+	}
+	return out, nil
 }
 
 func normalizeEmail(raw string) (string, error) {

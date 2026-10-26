@@ -1,17 +1,71 @@
+// Package router is the only place that knows gorilla/mux and the URL layout.
 package router
 
 import (
 	"net/http"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/gorilla/mux"
 )
 
-func NewRouter() http.Handler {
+type Handlers struct {
+	Auth     *middlewares.Auth   // who is calling
+	Tenant   *middlewares.Tenant // which organization they act on
+	Accounts *handler.AuthHandler
+	Orgs     *handler.OrgHandler
+	APIKeys  *handler.APIKeyHandler
+	Links    *handler.LinkHandler
+}
+
+func NewRouter(h Handlers) http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
 	}).Methods(http.MethodGet)
-	r.PathPrefix("/api/v1").Subrouter()
+
+	api := r.PathPrefix("/api/v1").Subrouter()
+
+	// Public: signup, sign-in and password reset.
+	api.HandleFunc("/auth/register", h.Accounts.Register).Methods(http.MethodPost)
+	api.HandleFunc("/auth/register/verify", h.Accounts.VerifyRegistration).Methods(http.MethodPost)
+	api.HandleFunc("/auth/login", h.Accounts.Login).Methods(http.MethodPost)
+	if h.Accounts.HasGoogle() {
+		api.HandleFunc("/auth/google", h.Accounts.Google).Methods(http.MethodPost)
+	}
+	api.HandleFunc("/auth/forgot-password", h.Accounts.ForgotPassword).Methods(http.MethodPost)
+	api.HandleFunc("/auth/reset-password", h.Accounts.ResetPassword).Methods(http.MethodPost)
+
+	// Signed-in users only (JWT). These routes involve no tenant yet.
+	user := api.NewRoute().Subrouter()
+	user.Use(h.Auth.User)
+	user.HandleFunc("/me", h.Accounts.Me).Methods(http.MethodGet)
+	user.HandleFunc("/orgs", h.Orgs.Create).Methods(http.MethodPost)
+	user.HandleFunc("/orgs", h.Orgs.ListMine).Methods(http.MethodGet)
+	user.HandleFunc("/invitations/{invitationID}/accept", h.Orgs.AcceptInvitation).Methods(http.MethodPost)
+	user.HandleFunc("/invitations/{invitationID}/reject", h.Orgs.RejectInvitation).Methods(http.MethodPost)
+
+	// Signed-in users acting on one organization: Tenant checks {orgID} once for all of them.
+	userOrg := user.PathPrefix("/orgs/{orgID}").Subrouter()
+	userOrg.Use(h.Tenant.Require)
+	userOrg.HandleFunc("", h.Orgs.Get).Methods(http.MethodGet)
+	userOrg.HandleFunc("/members", h.Orgs.ListMembers).Methods(http.MethodGet)
+	userOrg.HandleFunc("/members/{userID}", h.Orgs.RemoveMember).Methods(http.MethodDelete)
+	userOrg.HandleFunc("/invitations", h.Orgs.Invite).Methods(http.MethodPost)
+	userOrg.HandleFunc("/invitations", h.Orgs.ListInvitations).Methods(http.MethodGet)
+	userOrg.HandleFunc("/api-keys", h.APIKeys.Create).Methods(http.MethodPost)
+	userOrg.HandleFunc("/api-keys", h.APIKeys.List).Methods(http.MethodGet)
+	userOrg.HandleFunc("/api-keys/{keyID}", h.APIKeys.Delete).Methods(http.MethodDelete)
+
+	// JWT or API key, also bound to one organization.
+	either := api.NewRoute().Subrouter()
+	either.Use(h.Auth.UserOrKey)
+	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
+	eitherOrg.Use(h.Tenant.Require)
+	eitherOrg.HandleFunc("/links", h.Links.Create).Methods(http.MethodPost)
+
+	// Public redirect. Registered last so it never shadows /health or /api.
+	r.HandleFunc("/{code:[0-9A-Za-z]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)
 	return r
 }

@@ -49,6 +49,13 @@ func NewSQLite(ctx context.Context, cfg SQLiteConfig) (*SQLite, error) {
 		}
 		s.DB = db
 	}
+	// SQLite has a single writer, and foreign_keys is a per-connection pragma that is off
+	// by default (ON DELETE CASCADE would silently do nothing), so keep one connection.
+	s.DB.SetMaxOpenConns(1)
+	if _, err := s.DB.ExecContext(ctx, `PRAGMA foreign_keys = ON`); err != nil {
+		s.DB.Close()
+		return nil, fmt.Errorf("Database enable foreign keys: %w", err)
+	}
 	if err := s.DB.PingContext(ctx); err != nil {
 		s.DB.Close()
 		return nil, fmt.Errorf("Database ping: %w", err)

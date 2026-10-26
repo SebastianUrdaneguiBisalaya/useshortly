@@ -2,13 +2,17 @@ package link
 
 import "time"
 
+// Link maps to the links table. TenantID is the organization that owns it.
 type Link struct {
-	ID        string
+	ID        int64
 	Code      string
 	OriginURL string
-	CreatedAt time.Time
-	UpdatedAt time.Time
 	ExpiresAt *time.Time
+	TenantID  int64
+	CreatedBy int64
+	UpdatedBy *int64
+	CreatedAt time.Time
+	UpdatedAt *time.Time
 }
 
 func (l Link) IsExpired(now time.Time) bool {

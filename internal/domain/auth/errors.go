@@ -2,6 +2,8 @@ package auth
 
 import "errors"
 
-var ErrInvalidCredentials = errors.New("auth: invalid credentials")
-
-var ErrGenerateToken = errors.New("auth: error generating a token")
+var (
+	ErrInvalidCredentials = errors.New("auth: invalid credentials")
+	ErrTokenExpired       = errors.New("auth: token expired")
+	ErrGenerateToken      = errors.New("auth: error generating a token")
+)

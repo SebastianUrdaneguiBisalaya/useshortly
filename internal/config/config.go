@@ -16,6 +16,8 @@ type Config struct {
 	TursoAuthToken   string
 	SyncInterval     time.Duration
 	RedisUrl         string
+	JWTSecret        string
+	JWTTTL           time.Duration
 }
 
 func Load() (*Config, error) {
@@ -27,12 +29,18 @@ func Load() (*Config, error) {
 		TursoDatabaseUrl: getEnv("TURSO_DATABASE_URL", ""),
 		TursoAuthToken:   getEnv("TURSO_AUTH_TOKEN", ""),
 		RedisUrl:         getEnv("REDIS_URL", ""),
+		JWTSecret:        getEnv("JWT_SECRET", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {
 		return nil, fmt.Errorf("SYNC_INTERVAL must be a positive duration like 30s")
 	}
 	cfg.SyncInterval = interval
+	ttl, err := time.ParseDuration(getEnv("JWT_TTL", "24h"))
+	if err != nil || ttl <= 0 {
+		return nil, fmt.Errorf("JWT_TTL must be a positive duration like 24h")
+	}
+	cfg.JWTTTL = ttl
 	if cfg.Env == "" {
 		return nil, fmt.Errorf("ENVIRONMENT is not set")
 	}
@@ -47,6 +55,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.RedisUrl == "" {
 		return nil, fmt.Errorf("REDIS_URL is not set")
+	}
+	if len(cfg.JWTSecret) < 32 {
+		return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters")
 	}
 	return cfg, nil
 }

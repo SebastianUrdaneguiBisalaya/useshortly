@@ -26,6 +26,7 @@ type Config struct {
 	GoogleSecret     string
 	GoogleRedirect   string
 	RefreshTTL       time.Duration
+	LinkCacheTTL     time.Duration
 }
 
 func Load() (*Config, error) {
@@ -61,6 +62,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("REFRESH_TTL must be a positive duration like 720h")
 	}
 	cfg.RefreshTTL = refreshTTL
+	linkCacheTTL, err := time.ParseDuration(getEnv("LINK_CACHE_TTL", "5m"))
+	if err != nil || linkCacheTTL <= 0 {
+		return nil, fmt.Errorf("LINK_CACHE_TTL must be a positive duration like 5m")
+	}
+	cfg.LinkCacheTTL = linkCacheTTL
 	if cfg.Env == "" {
 		return nil, fmt.Errorf("ENVIRONMENT is not set")
 	}

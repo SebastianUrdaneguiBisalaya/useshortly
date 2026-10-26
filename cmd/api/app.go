@@ -10,6 +10,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/router"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
@@ -26,6 +27,8 @@ type adapters struct {
 	codes  user.CodeStore
 	sender mailing.Sender
 	google user.GoogleAuth // nil disables Google sign-in
+	// linkCache sits in front of the redirect lookup; nil serves every redirect from the database.
+	linkCache cached.Store
 }
 
 type app struct {
@@ -41,7 +44,10 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	userRepo := sqlite.NewUserRepository(db)
 	orgRepo := sqlite.NewOrgRepository(db)
 	keyRepo := sqlite.NewAPIKeyRepository(db)
-	linkRepo := sqlite.NewLinkRepository(db)
+	var linkRepo link.Repository = sqlite.NewLinkRepository(db)
+	if a.linkCache != nil {
+		linkRepo = cached.NewLinkRepository(linkRepo, a.linkCache, cfg.LinkCacheTTL)
+	}
 	refreshRepo := sqlite.NewRefreshTokenRepository(db)
 	templateRepo := sqlite.NewEmailTemplateRepository(db)
 	logRepo := sqlite.NewEmailLogRepository(db)

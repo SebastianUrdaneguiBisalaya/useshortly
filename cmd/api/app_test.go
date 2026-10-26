@@ -367,8 +367,17 @@ func TestOrganizationsLinksAndRedirect(t *testing.T) {
 	assert.Equal(t, "invalid_url", res.errCode())
 
 	res = e.do("POST", "/api/v1/orgs/"+orgID+"/links", token, map[string]any{"url": "https://example.com/old", "expires_at": "2020-01-01T00:00:00Z"})
+	assert.Equal(t, http.StatusBadRequest, res.status)
+	assert.Equal(t, "invalid_expiry", res.errCode(), "an expiration must be in the future")
+
+	res = e.do("POST", "/api/v1/orgs/"+orgID+"/links", token, map[string]any{"url": "https://example.com/once", "max_clicks": 0})
+	assert.Equal(t, "invalid_max_clicks", res.errCode())
+
+	res = e.do("POST", "/api/v1/orgs/"+orgID+"/links", token, map[string]any{"url": "https://example.com/once", "max_clicks": 1})
 	require.Equal(t, http.StatusCreated, res.status, res.raw)
-	assert.Equal(t, http.StatusGone, e.do("GET", "/"+res.str("code"), "", nil).status, "expired links answer 410")
+	once := res.str("code")
+	assert.Equal(t, http.StatusFound, e.do("GET", "/"+once, "", nil).status)
+	assert.Equal(t, http.StatusGone, e.do("GET", "/"+once, "", nil).status, "a link out of clicks answers 410")
 }
 
 func TestTenantsAreIsolated(t *testing.T) {

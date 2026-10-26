@@ -31,3 +31,7 @@ build-errors.log
 *.log
 
 /scripts/create-issues.sh
+# SQLite data
+*.db
+*.db-*
+/data/

@@ -21,10 +21,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Config: %v", err)
 	}
-	pool, err := database.NewPostgresPool(ctx, cgf.DatabaseUrl)
+	db, err := database.NewSQLite(ctx, database.SQLiteConfig{
+		Path:      cgf.DatabasePath,
+		RemoteURL: cgf.TursoDatabaseUrl,
+		AuthToken: cgf.TursoAuthToken,
+	})
 	if err != nil {
 		log.Fatalf("Database: %v", err)
 	}
-	defer pool.Close()
+	defer db.Close()
+	syncDone := make(chan struct{})
+	go func() {
+		defer close(syncDone)
+		db.RunSync(ctx, cgf.SyncInterval)
+	}()
+	defer func() {
+		stop()
+		<-syncDone
+	}()
 
 }

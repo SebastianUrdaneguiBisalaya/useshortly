@@ -10,7 +10,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 )
 
-// GoogleIdentity is what a verified Google ID token says about its owner.
+// GoogleIdentity is what Google says about the user who signed in.
 type GoogleIdentity struct {
 	Subject       string // Google's stable user id
 	Email         string
@@ -18,33 +18,42 @@ type GoogleIdentity struct {
 	FirstName     string
 	LastName      string
 	PictureURL    string
+	// Scope is what the user granted the app (space separated), from the token response.
+	Scope string
 }
 
-// GoogleVerifier validates an ID token (signature, audience, expiry) with Google.
-// Returns auth.ErrInvalidCredentials for a token that is not valid.
-type GoogleVerifier interface {
-	Verify(ctx context.Context, idToken string) (GoogleIdentity, error)
+// GoogleAuth exchanges the authorization code the client got from Google for the verified
+// identity of the user. It needs the client secret, which never leaves the server.
+// Returns auth.ErrInvalidCredentials for a code that is not valid.
+type GoogleAuth interface {
+	Exchange(ctx context.Context, code string) (GoogleIdentity, error)
 }
 
 type GoogleService struct {
 	repo     Repository
-	verifier GoogleVerifier
-	tokens   auth.TokenService
+	google   GoogleAuth
+	sessions sessions
 	mailer   Mailer
 	now      func() time.Time
 }
 
-func NewGoogleService(repo Repository, verifier GoogleVerifier, tokens auth.TokenService, mailer Mailer) *GoogleService {
-	return &GoogleService{repo: repo, verifier: verifier, tokens: tokens, mailer: mailer, now: time.Now().UTC}
+func NewGoogleService(repo Repository, google GoogleAuth, tokens auth.TokenService, refresh RefreshTokens, mailer Mailer) *GoogleService {
+	return &GoogleService{
+		repo: repo, google: google, sessions: sessions{tokens: tokens, refresh: refresh}, mailer: mailer,
+		now: func() time.Time { return time.Now().UTC() },
+	}
 }
 
-// Login signs in with a Google ID token, creating the user on first use. An email
+// Login signs in with a Google authorization code, creating the user on first use. An email
 // belongs to exactly one sign-in method: if it is already registered with a password
 // (or with another Google account) the login is refused with ErrProviderMismatch instead
 // of merging the two, which is what stops someone from taking over an address by
 // registering it first. An unverified Google email is refused too.
-func (s *GoogleService) Login(ctx context.Context, idToken string) (Session, error) {
-	id, err := s.verifier.Verify(ctx, idToken)
+//
+// The scope Google reports is saved on the Google account and refreshed on every login,
+// since the user can grant more or less access over time.
+func (s *GoogleService) Login(ctx context.Context, code string) (Session, error) {
+	id, err := s.google.Exchange(ctx, code)
 	if err != nil {
 		return Session{}, err
 	}
@@ -59,7 +68,7 @@ func (s *GoogleService) Login(ctx context.Context, idToken string) (Session, err
 	if err != nil {
 		return Session{}, err
 	}
-	tok, err := s.tokens.Generate(ctx, itoa(u.ID))
+	session, err := s.sessions.open(ctx, u)
 	if err != nil {
 		return Session{}, err
 	}
@@ -73,12 +82,17 @@ func (s *GoogleService) Login(ctx context.Context, idToken string) (Session, err
 			"FirstName": u.FirstName, "Time": s.now().Format(time.RFC1123),
 		}})
 	}
-	return Session{User: u, Token: tok}, nil
+	return session, nil
 }
 
 func (s *GoogleService) findOrCreate(ctx context.Context, id GoogleIdentity, email string) (u User, created bool, err error) {
 	acc, err := s.repo.FindAccountByProvider(ctx, ProviderGoogle, id.Subject)
 	if err == nil {
+		if acc.Scope != id.Scope {
+			if err := s.repo.UpdateAccountScope(ctx, acc.ID, id.Scope, s.now()); err != nil {
+				return User{}, false, err
+			}
+		}
 		u, err = s.repo.FindByID(ctx, acc.UserID)
 		return u, false, err
 	}
@@ -97,7 +111,7 @@ func (s *GoogleService) findOrCreate(ctx context.Context, id GoogleIdentity, ema
 	now := s.now()
 	u, err = s.repo.Create(ctx,
 		User{Email: email, EmailVerified: true, FirstName: first, LastName: id.LastName, ImageURL: id.PictureURL, CreatedAt: now},
-		Account{AccountID: id.Subject, Provider: ProviderGoogle, CreatedAt: now},
+		Account{AccountID: id.Subject, Provider: ProviderGoogle, Scope: id.Scope, CreatedAt: now},
 	)
 	if errors.Is(err, ErrEmailTaken) { // a concurrent sign-in or signup took the email first
 		return User{}, false, ErrProviderMismatch

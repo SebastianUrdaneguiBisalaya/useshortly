@@ -48,32 +48,61 @@ func TestRefreshTokenRepository(t *testing.T) {
 	_, err = repo.FindByHash(ctx, "nope")
 	assert.ErrorIs(t, err, auth.ErrRefreshTokenNotFound)
 
-	// Revoke one token, twice: idempotent, keeps the first time.
-	require.NoError(t, repo.Revoke(ctx, a1.ID))
+	// Revoke one token: only the first call wins, and it keeps its time.
+	at := now.Add(5 * time.Minute)
+	won, err := repo.Revoke(ctx, a1.ID, at)
+	require.NoError(t, err)
+	assert.True(t, won)
 	first, _ := repo.FindByHash(ctx, "h-a1")
 	require.NotNil(t, first.RevokedAt)
-	require.NoError(t, repo.Revoke(ctx, a1.ID))
+	assert.True(t, first.RevokedAt.Equal(at))
+	won, err = repo.Revoke(ctx, a1.ID, at.Add(time.Hour))
+	require.NoError(t, err)
+	assert.False(t, won, "already revoked")
 	again, _ := repo.FindByHash(ctx, "h-a1")
 	assert.True(t, first.RevokedAt.Equal(*again.RevokedAt))
-	assert.ErrorIs(t, repo.Revoke(ctx, 999), auth.ErrRefreshTokenNotFound)
+	_, err = repo.Revoke(ctx, 999, at)
+	assert.ErrorIs(t, err, auth.ErrRefreshTokenNotFound)
 
 	// Revoking a member in one tenant touches only that user in that tenant.
-	require.NoError(t, repo.RevokeForMember(ctx, ana.ID, o2.ID))
+	require.NoError(t, repo.RevokeForMember(ctx, ana.ID, o2.ID, now))
 	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": false, "h-b1": false} {
 		tok, err := repo.FindByHash(ctx, hash)
 		require.NoError(t, err)
 		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
 	}
-	assert.NoError(t, repo.RevokeForMember(ctx, 999, 999), "no tokens is not an error")
+	assert.NoError(t, repo.RevokeForMember(ctx, 999, 999, now), "no tokens is not an error")
 
 	// Revoking a user touches every tenant, and only that user.
-	require.NoError(t, repo.RevokeForUser(ctx, ana.ID))
+	require.NoError(t, repo.RevokeForUser(ctx, ana.ID, now))
 	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": true, "h-b1": false} {
 		tok, err := repo.FindByHash(ctx, hash)
 		require.NoError(t, err)
 		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
 	}
-	assert.NoError(t, repo.RevokeForUser(ctx, 999))
+	assert.NoError(t, repo.RevokeForUser(ctx, 999, now))
+}
+
+func TestRefreshTokensWithoutTenant(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewRefreshTokenRepository(db)
+	ana := newUser(t, NewUserRepository(db), "ana@example.com")
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	_, err := repo.Create(ctx, auth.RefreshToken{UserID: ana.ID, TokenHash: "h-login", ExpiresAt: now.Add(time.Hour), CreatedAt: now})
+	require.NoError(t, err, "a login token belongs to the user, not to an organization")
+	got, err := repo.FindByHash(ctx, "h-login")
+	require.NoError(t, err)
+	assert.Zero(t, got.TenantID)
+
+	var tenant sql.NullInt64
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT tenant_id FROM refresh_tokens WHERE token_hash = 'h-login'`).Scan(&tenant))
+	assert.False(t, tenant.Valid, "stored as NULL, not 0")
+
+	require.NoError(t, repo.RevokeForUser(ctx, ana.ID, now))
+	got, _ = repo.FindByHash(ctx, "h-login")
+	assert.NotNil(t, got.RevokedAt)
 }
 
 func TestRefreshTokensDieWithTheirOrganization(t *testing.T) {
@@ -188,19 +217,19 @@ func TestUserRepositoryUpdatePassword(t *testing.T) {
 	repo := NewUserRepository(newDB(t))
 	u := newUser(t, repo, "ana@example.com")
 
-	require.NoError(t, repo.UpdatePassword(ctx, u.ID, "new-hash"))
+	require.NoError(t, repo.UpdatePassword(ctx, u.ID, "new-hash", time.Now().UTC()))
 	acc, err := repo.FindAccount(ctx, u.ID, user.ProviderDefault)
 	require.NoError(t, err)
 	assert.Equal(t, "new-hash", acc.PasswordHash)
 
-	assert.ErrorIs(t, repo.UpdatePassword(ctx, 999, "x"), user.ErrNotFound)
+	assert.ErrorIs(t, repo.UpdatePassword(ctx, 999, "x", time.Now().UTC()), user.ErrNotFound)
 
 	// A Google-only user has no password account to update.
 	g, err := repo.Create(ctx,
 		user.User{Email: "g@example.com", FirstName: "G", LastName: "U", CreatedAt: time.Now().UTC()},
 		user.Account{AccountID: "g-9", Provider: user.ProviderGoogle, CreatedAt: time.Now().UTC()})
 	require.NoError(t, err)
-	assert.ErrorIs(t, repo.UpdatePassword(ctx, g.ID, "x"), user.ErrNotFound)
+	assert.ErrorIs(t, repo.UpdatePassword(ctx, g.ID, "x", time.Now().UTC()), user.ErrNotFound)
 }
 
 type logRow struct {
@@ -298,4 +327,54 @@ func TestEmailLogsSurviveDeletingTheUser(t *testing.T) {
 	_, err := db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, u.ID)
 	require.NoError(t, err)
 	assert.Len(t, readLogs(t, db), 1)
+}
+
+func TestUserRepositoryGoogleScopeAndUpdates(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository(newDB(t))
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	_, err := repo.Create(ctx,
+		user.User{Email: "g@example.com", EmailVerified: true, FirstName: "G", LastName: "U", CreatedAt: now},
+		user.Account{AccountID: "g-1", Provider: user.ProviderGoogle, Scope: "openid email", CreatedAt: now})
+	require.NoError(t, err)
+
+	acc, err := repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
+	require.NoError(t, err)
+	assert.Equal(t, "openid email", acc.Scope)
+	assert.Nil(t, acc.UpdatedAt)
+
+	later := now.Add(time.Hour)
+	require.NoError(t, repo.UpdateAccountScope(ctx, acc.ID, "openid email profile", later))
+	acc, err = repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
+	require.NoError(t, err)
+	assert.Equal(t, "openid email profile", acc.Scope)
+	require.NotNil(t, acc.UpdatedAt)
+	assert.True(t, acc.UpdatedAt.Equal(later))
+	assert.ErrorIs(t, repo.UpdateAccountScope(ctx, 999, "x", later), user.ErrNotFound)
+}
+
+// Every instant is stored as UTC text ending in Z, whatever zone it comes in.
+func TestTimesAreStoredInUTC(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewUserRepository(db)
+	plus5 := time.FixedZone("UTC+5", 5*60*60)
+	local := time.Date(2026, 3, 4, 10, 0, 0, 0, plus5) // 05:00 UTC
+
+	u, err := repo.Create(ctx,
+		user.User{Email: "ana@example.com", FirstName: "A", LastName: "B", CreatedAt: local},
+		user.Account{AccountID: "ana@example.com", Provider: user.ProviderDefault, PasswordHash: "h", CreatedAt: local})
+	require.NoError(t, err)
+	require.NoError(t, repo.UpdatePassword(ctx, u.ID, "h2", local.Add(time.Hour)))
+
+	var created, accCreated, accUpdated string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT created_at FROM users WHERE id = ?`, u.ID).Scan(&created))
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT created_at, updated_at FROM accounts WHERE user_id = ?`, u.ID).Scan(&accCreated, &accUpdated))
+	assert.Equal(t, "2026-03-04T05:00:00.000Z", created)
+	assert.Equal(t, "2026-03-04T05:00:00.000Z", accCreated)
+	assert.Equal(t, "2026-03-04T06:00:00.000Z", accUpdated)
+
+	got, err := repo.FindByID(ctx, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, time.UTC, got.CreatedAt.Location(), "read back in UTC")
 }

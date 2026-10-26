@@ -23,6 +23,9 @@ type Config struct {
 	MailFrom         string
 	OTPSecret        string
 	GoogleClientID   string
+	GoogleSecret     string
+	GoogleRedirect   string
+	RefreshTTL       time.Duration
 }
 
 func Load() (*Config, error) {
@@ -40,6 +43,8 @@ func Load() (*Config, error) {
 		MailFrom:         getEnv("MAIL_FROM", ""),
 		OTPSecret:        getEnv("OTP_SECRET", ""),
 		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleSecret:     getEnv("GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirect:   getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {
@@ -51,6 +56,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("JWT_TTL must be a positive duration like 24h")
 	}
 	cfg.JWTTTL = ttl
+	refreshTTL, err := time.ParseDuration(getEnv("REFRESH_TTL", "720h"))
+	if err != nil || refreshTTL <= 0 {
+		return nil, fmt.Errorf("REFRESH_TTL must be a positive duration like 720h")
+	}
+	cfg.RefreshTTL = refreshTTL
 	if cfg.Env == "" {
 		return nil, fmt.Errorf("ENVIRONMENT is not set")
 	}
@@ -71,6 +81,9 @@ func Load() (*Config, error) {
 	}
 	if len(cfg.OTPSecret) < 32 {
 		return nil, fmt.Errorf("OTP_SECRET must be at least 32 characters")
+	}
+	if (cfg.GoogleClientID == "") != (cfg.GoogleSecret == "") {
+		return nil, fmt.Errorf("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together")
 	}
 	if cfg.Env == "production" && cfg.ResendAPIKey == "" {
 		return nil, fmt.Errorf("RESEND_API_KEY is required when ENVIRONMENT is production")

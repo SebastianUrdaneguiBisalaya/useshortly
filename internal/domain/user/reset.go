@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 	"unicode/utf8"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
@@ -21,10 +22,11 @@ type PasswordResetService struct {
 	otp     *OTP
 	mailer  Mailer
 	revoker SessionRevoker
+	now     func() time.Time
 }
 
 func NewPasswordResetService(repo Repository, hasher PasswordHasher, otp *OTP, mailer Mailer, revoker SessionRevoker) *PasswordResetService {
-	return &PasswordResetService{repo: repo, hasher: hasher, otp: otp, mailer: mailer, revoker: revoker}
+	return &PasswordResetService{repo: repo, hasher: hasher, otp: otp, mailer: mailer, revoker: revoker, now: func() time.Time { return time.Now().UTC() }}
 }
 
 // ForgotPassword emails a one-time code if the email belongs to a user with a password.
@@ -87,7 +89,7 @@ func (s *PasswordResetService) ResetPassword(ctx context.Context, email, code, n
 	if err := s.revoker.RevokeForUser(ctx, u.ID); err != nil {
 		return fmt.Errorf("user: revoke sessions: %w", err)
 	}
-	return s.repo.UpdatePassword(ctx, u.ID, hash)
+	return s.repo.UpdatePassword(ctx, u.ID, hash, s.now())
 }
 
 // codeData is what the PASSWORD_RESET and VERIFY_EMAIL templates need.

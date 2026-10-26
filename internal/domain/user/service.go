@@ -28,26 +28,26 @@ type Mailer interface {
 }
 
 type Service struct {
-	repo   Repository
-	hasher PasswordHasher
-	tokens auth.TokenService
-	mailer Mailer
-	otp    *OTP
-	now    func() time.Time
+	repo     Repository
+	hasher   PasswordHasher
+	sessions sessions
+	mailer   Mailer
+	otp      *OTP
+	now      func() time.Time
 	// dummyHash is verified when the email is unknown so Login takes the same time
 	// either way and does not reveal which emails are registered.
 	dummyHash string
 }
 
-func NewService(repo Repository, hasher PasswordHasher, tokens auth.TokenService, mailer Mailer, otp *OTP) *Service {
+func NewService(repo Repository, hasher PasswordHasher, tokens auth.TokenService, refresh RefreshTokens, mailer Mailer, otp *OTP) *Service {
 	dummy, _ := hasher.Hash("useshortly-dummy-password")
 	return &Service{
 		repo:      repo,
 		hasher:    hasher,
-		tokens:    tokens,
+		sessions:  sessions{tokens: tokens, refresh: refresh},
 		mailer:    mailer,
 		otp:       otp,
-		now:       time.Now().UTC,
+		now:       func() time.Time { return time.Now().UTC() },
 		dummyHash: dummy,
 	}
 }
@@ -57,12 +57,6 @@ type RegisterInput struct {
 	Password  string
 	FirstName string
 	LastName  string
-}
-
-// Session is what a successful Login returns.
-type Session struct {
-	User  User
-	Token auth.Token
 }
 
 // pendingSignup is what waits in the code store until the email is confirmed. Nothing
@@ -135,7 +129,7 @@ func (s *Service) VerifyRegistration(ctx context.Context, email, code string) (S
 	if err != nil {
 		return Session{}, err
 	}
-	tok, err := s.tokens.Generate(ctx, itoa(u.ID))
+	session, err := s.sessions.open(ctx, u)
 	if err != nil {
 		return Session{}, err
 	}
@@ -144,7 +138,7 @@ func (s *Service) VerifyRegistration(ctx context.Context, email, code string) (S
 		"FirstName": u.FirstName,
 		"LastName":  u.LastName,
 	}})
-	return Session{User: u, Token: tok}, nil
+	return session, nil
 }
 
 // Login checks the credentials and issues a token. Every failure caused by bad
@@ -177,7 +171,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 	if !ok {
 		return Session{}, auth.ErrInvalidCredentials
 	}
-	tok, err := s.tokens.Generate(ctx, itoa(u.ID))
+	session, err := s.sessions.open(ctx, u)
 	if err != nil {
 		return Session{}, err
 	}
@@ -186,12 +180,34 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 		"FirstName": u.FirstName,
 		"Time":      s.now().Format(time.RFC1123),
 	}})
-	return Session{User: u, Token: tok}, nil
+	return session, nil
+}
+
+// Refresh exchanges a refresh token for a new access token and a new refresh token (each
+// refresh token works once). Every bad token is auth.ErrInvalidCredentials.
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (Session, error) {
+	userID, grant, err := s.sessions.refresh.Rotate(ctx, refreshToken)
+	if err != nil {
+		return Session{}, err
+	}
+	u, err := s.repo.FindByID(ctx, userID)
+	if errors.Is(err, ErrNotFound) {
+		return Session{}, auth.ErrInvalidCredentials
+	}
+	if err != nil {
+		return Session{}, err
+	}
+	return s.sessions.withGrant(ctx, u, grant)
+}
+
+// Logout ends the session of one refresh token. Unknown tokens are not an error.
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	return s.sessions.refresh.Revoke(ctx, refreshToken)
 }
 
 // Authenticate resolves a token to its user.
 func (s *Service) Authenticate(ctx context.Context, token string) (User, error) {
-	sub, err := s.tokens.Validate(ctx, token)
+	sub, err := s.sessions.tokens.Validate(ctx, token)
 	if err != nil {
 		return User{}, err
 	}

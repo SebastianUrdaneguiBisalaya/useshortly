@@ -28,5 +28,8 @@ type Account struct {
 	AccountID    string
 	Provider     Provider
 	PasswordHash string
-	CreatedAt    time.Time
+	// Scope is what the user granted Google (space separated); only for ProviderGoogle.
+	Scope     string
+	CreatedAt time.Time
+	UpdatedAt *time.Time
 }

@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 const maxBodyBytes = 1 << 20
@@ -23,6 +25,14 @@ const maxBodyBytes = 1 << 20
 
 type dataBody struct {
 	Data any `json:"data"`
+	Meta any `json:"meta,omitempty"`
+}
+
+// pageMeta tells a client which window of a list it got and how big the whole list is.
+type pageMeta struct {
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+	Total  int `json:"total"`
 }
 
 // FieldError points at one invalid field of the request.
@@ -58,6 +68,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // writeData answers a success with the payload under "data".
 func writeData(w http.ResponseWriter, status int, v any) {
 	writeJSON(w, status, dataBody{Data: v})
+}
+
+// writePage answers a list under "data" with the window and the total under "meta".
+func writePage(w http.ResponseWriter, items any, p page.Params, total int) {
+	writeJSON(w, http.StatusOK, dataBody{Data: items, Meta: pageMeta{Limit: p.Limit, Offset: p.Offset, Total: total}})
 }
 
 func WriteAPIError(w http.ResponseWriter, status int, code, message string) {
@@ -123,6 +138,31 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 		}
 		WriteAPIError(w, http.StatusBadRequest, "invalid_body", "the request body is not valid for this endpoint")
 	}
+}
+
+// pageParams reads ?limit= and ?offset=. Absent ones take the defaults and a limit above the max
+// is capped; anything that is not a non-negative integer (or a limit below 1) is a 400.
+func pageParams(w http.ResponseWriter, r *http.Request) (page.Params, bool) {
+	var p page.Params
+	q := r.URL.Query()
+	for _, f := range []struct {
+		name string
+		dst  *int
+		min  int
+	}{{"limit", &p.Limit, 1}, {"offset", &p.Offset, 0}} {
+		raw := q.Get(f.name)
+		if raw == "" {
+			continue
+		}
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < f.min {
+			WriteAPIErrorDetails(w, http.StatusBadRequest, "invalid_pagination", "limit and offset must be integers, limit at least 1 and offset at least 0",
+				[]FieldError{{Field: f.name, Message: "invalid value"}})
+			return page.Params{}, false
+		}
+		*f.dst = n
+	}
+	return p.Normalize(), true
 }
 
 // idParam reads a positive integer path variable; a bad one is a 404, like any unknown resource.

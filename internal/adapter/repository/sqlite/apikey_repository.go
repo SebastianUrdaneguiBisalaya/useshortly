@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 type APIKeyRepository struct {
@@ -34,22 +35,27 @@ func (r *APIKeyRepository) Create(ctx context.Context, k apikey.APIKey) (apikey.
 	return k, nil
 }
 
-func (r *APIKeyRepository) ListByTenant(ctx context.Context, tenantID int64) ([]apikey.APIKey, error) {
+func (r *APIKeyRepository) ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]apikey.APIKey, int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM api_keys WHERE tenant_id = ?`, tenantID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("apikey repo: count: %w", err)
+	}
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+apiKeyColumns+` FROM api_keys WHERE tenant_id = ? ORDER BY id DESC`, tenantID)
+		`SELECT `+apiKeyColumns+` FROM api_keys WHERE tenant_id = ? ORDER BY id DESC LIMIT ? OFFSET ?`,
+		tenantID, p.Limit, p.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("apikey repo: list: %w", err)
+		return nil, 0, fmt.Errorf("apikey repo: list: %w", err)
 	}
 	defer rows.Close()
 	var out []apikey.APIKey
 	for rows.Next() {
 		k, err := scanAPIKey(rows)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, k)
 	}
-	return out, rows.Err()
+	return out, total, rows.Err()
 }
 
 func (r *APIKeyRepository) Delete(ctx context.Context, tenantID, id int64) error {

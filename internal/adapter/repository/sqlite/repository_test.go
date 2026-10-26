@@ -11,6 +11,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -128,12 +129,14 @@ func TestAPIKeyRepository(t *testing.T) {
 	_, err = repo.FindByHash(ctx, "nope")
 	assert.ErrorIs(t, err, apikey.ErrNotFound)
 
-	list, err := repo.ListByTenant(ctx, 1)
+	list, total, err := repo.ListByTenant(ctx, 1, page.Params{}.Normalize())
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
-	list, err = repo.ListByTenant(ctx, 2)
+	assert.Equal(t, 1, total)
+	list, total, err = repo.ListByTenant(ctx, 2, page.Params{}.Normalize())
 	require.NoError(t, err)
 	assert.Empty(t, list)
+	assert.Zero(t, total)
 
 	assert.ErrorIs(t, repo.Delete(ctx, 2, k.ID), apikey.ErrNotFound)
 	require.NoError(t, repo.Delete(ctx, 1, k.ID))
@@ -225,6 +228,57 @@ func TestLinkRepositoryMaxClicks(t *testing.T) {
 
 	_, err = db.ExecContext(ctx, `UPDATE links SET max_clicks = 0 WHERE code = 'free000'`)
 	assert.Error(t, err, "the database rejects max_clicks below 1")
+}
+
+func TestLinkRepositoryListAndDelete(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	for _, name := range []string{"acme", "other"} {
+		_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES (?)`, name)
+		require.NoError(t, err)
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	two := int64(2)
+	var ids []int64
+	for i, code := range []string{"aaaaaaa", "bbbbbbb", "ccccccc"} {
+		l := link.Link{Code: code, OriginURL: "https://example.com/" + code, TenantID: 1, CreatedBy: u.ID, CreatedAt: now}
+		if i == 0 {
+			l.MaxClicks = &two
+		}
+		created, err := repo.Create(ctx, l)
+		require.NoError(t, err)
+		ids = append(ids, created.ID)
+	}
+	_, err := repo.Create(ctx, link.Link{Code: "zzzzzzz", OriginURL: "https://example.com/z", TenantID: 2, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	list, total, err := repo.ListByTenant(ctx, 1, page.Params{Limit: 2})
+	require.NoError(t, err)
+	assert.Equal(t, 3, total, "total ignores the window and the other tenant")
+	require.Len(t, list, 2)
+	assert.Equal(t, "ccccccc", list[0].Code, "newest first")
+	assert.Equal(t, "bbbbbbb", list[1].Code)
+
+	list, _, err = repo.ListByTenant(ctx, 1, page.Params{Limit: 2, Offset: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, "aaaaaaa", list[0].Code)
+	assert.Equal(t, &two, list[0].MaxClicks, "list rows carry every column")
+
+	list, total, err = repo.ListByTenant(ctx, 3, page.Params{Limit: 10})
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	assert.Zero(t, total)
+
+	assert.ErrorIs(t, repo.Delete(ctx, 2, ids[0]), link.ErrNotFound, "another tenant's link is not found")
+	_, err = repo.FindByCode(ctx, "aaaaaaa")
+	require.NoError(t, err)
+	require.NoError(t, repo.Delete(ctx, 1, ids[0]))
+	_, err = repo.FindByCode(ctx, "aaaaaaa")
+	assert.ErrorIs(t, err, link.ErrNotFound)
+	assert.ErrorIs(t, repo.Delete(ctx, 1, ids[0]), link.ErrNotFound)
 }
 
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {

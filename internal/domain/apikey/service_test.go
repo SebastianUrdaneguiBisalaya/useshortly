@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 type fakeRepo struct {
@@ -27,14 +29,16 @@ func (r *fakeRepo) Create(_ context.Context, k APIKey) (APIKey, error) {
 	return k, nil
 }
 
-func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64) ([]APIKey, error) {
-	var out []APIKey
-	for _, k := range r.keys {
-		if k.TenantID == tenantID {
-			out = append(out, k)
+func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]APIKey, int, error) {
+	var all []APIKey
+	for id := r.nextID; id >= 1; id-- {
+		if k, ok := r.keys[id]; ok && k.TenantID == tenantID {
+			all = append(all, k)
 		}
 	}
-	return out, nil
+	lo := min(p.Offset, len(all))
+	hi := min(lo+p.Limit, len(all))
+	return all[lo:hi], len(all), nil
 }
 
 func (r *fakeRepo) Delete(_ context.Context, tenantID, id int64) error {
@@ -126,9 +130,38 @@ func TestDeleteIsScopedToTenant(t *testing.T) {
 	require.NoError(t, err)
 	assert.ErrorIs(t, svc.Delete(context.Background(), 2, k.ID), ErrNotFound)
 	require.NoError(t, svc.Delete(context.Background(), 1, k.ID))
-	list, err := svc.List(context.Background(), 1)
+	list, total, err := svc.List(context.Background(), 1, page.Params{})
 	require.NoError(t, err)
 	assert.Empty(t, list)
+	assert.Zero(t, total)
+}
+
+func TestListPaginatesNewestFirst(t *testing.T) {
+	ctx := context.Background()
+	svc := NewService(newFakeRepo())
+	for _, name := range []string{"a", "b", "c"} {
+		_, _, err := svc.Create(ctx, 1, 1, name, ScopeRead, nil)
+		require.NoError(t, err)
+	}
+	_, _, err := svc.Create(ctx, 2, 1, "other", ScopeRead, nil)
+	require.NoError(t, err)
+
+	list, total, err := svc.List(ctx, 1, page.Params{Limit: 2})
+	require.NoError(t, err)
+	assert.Equal(t, 3, total, "total counts only the tenant's keys")
+	require.Len(t, list, 2)
+	assert.Equal(t, "c", list[0].Name)
+	assert.Equal(t, "b", list[1].Name)
+
+	list, _, err = svc.List(ctx, 1, page.Params{Limit: 2, Offset: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, "a", list[0].Name)
+
+	list, total, err = svc.List(ctx, 1, page.Params{Limit: 2, Offset: 10})
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	assert.Equal(t, 3, total)
 }
 
 // Regression: `now: time.Now().UTC` froze the clock at construction time.

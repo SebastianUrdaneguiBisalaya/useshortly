@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 type LinkRepository struct {
@@ -34,7 +35,10 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 	return l, nil
 }
 
-func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link, error) {
+const linkColumns = `id, code, origin_url, expires_at, max_clicks, click_count, tenant_id, created_by, updated_by, created_at, updated_at`
+
+// scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
+func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 	var (
 		l                link.Link
 		expires, updated sql.NullString
@@ -42,15 +46,9 @@ func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link
 		maxClicks        sql.NullInt64
 		createdAt        string
 	)
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, code, origin_url, expires_at, max_clicks, click_count, tenant_id, created_by, updated_by, created_at, updated_at
-		 FROM links WHERE code = ?`, code).
-		Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &l.TenantID, &l.CreatedBy, &updatedBy, &createdAt, &updated)
-	if errors.Is(err, sql.ErrNoRows) {
-		return link.Link{}, link.ErrNotFound
-	}
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &l.TenantID, &l.CreatedBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
-		return link.Link{}, fmt.Errorf("link repo: find: %w", err)
+		return link.Link{}, err
 	}
 	if maxClicks.Valid {
 		l.MaxClicks = &maxClicks.Int64
@@ -68,6 +66,56 @@ func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link
 		return link.Link{}, fmt.Errorf("link repo: created_at: %w", err)
 	}
 	return l, nil
+}
+
+func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link, error) {
+	l, err := scanLink(r.db.QueryRowContext(ctx, `SELECT `+linkColumns+` FROM links WHERE code = ?`, code))
+	if errors.Is(err, sql.ErrNoRows) {
+		return link.Link{}, link.ErrNotFound
+	}
+	if err != nil {
+		return link.Link{}, fmt.Errorf("link repo: find: %w", err)
+	}
+	return l, nil
+}
+
+func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM links WHERE tenant_id = ?`, tenantID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("link repo: count: %w", err)
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+linkColumns+` FROM links WHERE tenant_id = ? ORDER BY id DESC LIMIT ? OFFSET ?`,
+		tenantID, p.Limit, p.Offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("link repo: list: %w", err)
+	}
+	defer rows.Close()
+	var out []link.Link
+	for rows.Next() {
+		l, err := scanLink(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("link repo: list: %w", err)
+		}
+		out = append(out, l)
+	}
+	return out, total, rows.Err()
+}
+
+// Delete only matches the tenant's own links, so another tenant's id looks like any unknown id.
+func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM links WHERE id = ? AND tenant_id = ?`, id, tenantID)
+	if err != nil {
+		return fmt.Errorf("link repo: delete: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("link repo: delete: %w", err)
+	}
+	if n == 0 {
+		return link.ErrNotFound
+	}
+	return nil
 }
 
 // ConsumeClick increments click_count only while the link is under its limit. One statement

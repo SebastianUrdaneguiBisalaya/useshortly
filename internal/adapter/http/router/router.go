@@ -66,8 +66,10 @@ func NewRouter(h Handlers) http.Handler {
 	either.Use(h.Auth.UserOrKey)
 	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
 	eitherOrg.Use(h.Tenant.Require)
-	// Creating needs the write scope; routes that only read will ask for apikey.ScopeRead.
+	// Creating and deleting need the write scope; listing only the read scope.
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
+	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
 
 	// Public redirect. Registered last so it never shadows /health or /api.
 	r.HandleFunc("/{code:[0-9A-Za-z]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)

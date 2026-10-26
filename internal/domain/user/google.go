@@ -65,13 +65,13 @@ func (s *GoogleService) Login(ctx context.Context, idToken string) (Session, err
 	}
 	// Best effort: emails must never fail or delay the sign-in.
 	if created {
-		_ = s.mailer.Send(ctx, mailing.TemplateWelcome, u.Email, map[string]string{
+		_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: u.Email, Data: map[string]string{
 			"FirstName": u.FirstName, "LastName": u.LastName,
-		})
+		}})
 	} else {
-		_ = s.mailer.Send(ctx, mailing.TemplateLogin, u.Email, map[string]string{
+		_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplateLogin, To: u.Email, Data: map[string]string{
 			"FirstName": u.FirstName, "Time": s.now().Format(time.RFC1123),
-		})
+		}})
 	}
 	return Session{User: u, Token: tok}, nil
 }

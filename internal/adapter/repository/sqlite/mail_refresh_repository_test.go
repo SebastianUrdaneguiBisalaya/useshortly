@@ -2,6 +2,8 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -105,18 +107,25 @@ func TestEmailTemplateRepository(t *testing.T) {
 	assert.ErrorIs(t, err, mailing.ErrTemplateNotFound)
 }
 
-type captureSender struct{ sent []mailing.Message }
+type captureSender struct {
+	sent []mailing.Message
+	err  error
+}
 
-func (c *captureSender) Send(_ context.Context, m mailing.Message) error {
+func (c *captureSender) Send(_ context.Context, m mailing.Message) (mailing.Receipt, error) {
+	if c.err != nil {
+		return mailing.Receipt{Provider: "FAKE"}, c.err
+	}
 	c.sent = append(c.sent, m)
-	return nil
+	return mailing.Receipt{Provider: "FAKE", ProviderID: "prov-" + m.To}, nil
 }
 
 // The seeded templates must render with exactly the data the services send.
 func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 	ctx := context.Background()
 	sender := &captureSender{}
-	svc := mailing.NewService(NewEmailTemplateRepository(newDB(t)), sender, "https://app.example.com")
+	db := newDB(t)
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
 
 	cases := map[string]map[string]string{
 		mailing.TemplateWelcome:       {"FirstName": "Ana", "LastName": "Lopez"},
@@ -126,7 +135,7 @@ func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 		mailing.TemplateInvitation:    {"InviterName": "Owner", "OrganizationName": "Acme", "InvitationID": "7", "ExpiresAt": "2026-11-02"},
 	}
 	for code, data := range cases {
-		require.NoError(t, svc.Send(ctx, code, "ana@example.com", data), code)
+		require.NoError(t, svc.Send(ctx, mailing.Request{Code: code, To: "ana@example.com", Data: data}), code)
 	}
 	require.Len(t, sender.sent, 5)
 	for _, m := range sender.sent {
@@ -192,4 +201,101 @@ func TestUserRepositoryUpdatePassword(t *testing.T) {
 		user.Account{AccountID: "g-9", Provider: user.ProviderGoogle, CreatedAt: time.Now().UTC()})
 	require.NoError(t, err)
 	assert.ErrorIs(t, repo.UpdatePassword(ctx, g.ID, "x"), user.ErrNotFound)
+}
+
+type logRow struct {
+	template, to                  string
+	cc, bcc, providerID, errorMsg sql.NullString
+	status, provider              string
+}
+
+func readLogs(t *testing.T, db *sql.DB) []logRow {
+	t.Helper()
+	rows, err := db.QueryContext(context.Background(),
+		`SELECT t.code, l.to_email, l.cc, l.bcc, l.status, l.email_provider, l.email_provider_id, l.error_metadata
+		 FROM email_logs l JOIN email_templates t ON t.id = l.template_id ORDER BY l.id`)
+	require.NoError(t, err)
+	defer rows.Close()
+	var out []logRow
+	for rows.Next() {
+		var r logRow
+		require.NoError(t, rows.Scan(&r.template, &r.to, &r.cc, &r.bcc, &r.status, &r.provider, &r.providerID, &r.errorMsg))
+		out = append(out, r)
+	}
+	require.NoError(t, rows.Err())
+	return out
+}
+
+func TestEmailLogsRecordSuccessWithTheProviderID(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	sender := &captureSender{}
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
+
+	require.NoError(t, svc.Send(ctx, mailing.Request{
+		Code: mailing.TemplateInvitation, To: "bob@example.com",
+		CC: []string{"boss@example.com"}, BCC: []string{"audit@example.com", "ceo@example.com"},
+		Data: map[string]string{"InviterName": "Owner", "OrganizationName": "Acme", "InvitationID": "7", "ExpiresAt": "2026-11-02"},
+	}))
+	require.NoError(t, svc.Send(ctx, mailing.Request{
+		Code: mailing.TemplateLogin, To: "ana@example.com", Data: map[string]string{"FirstName": "Ana", "Time": "now"},
+	}))
+
+	logs := readLogs(t, db)
+	require.Len(t, logs, 2)
+	assert.Equal(t, "INVITATION", logs[0].template)
+	assert.Equal(t, "bob@example.com", logs[0].to)
+	assert.Equal(t, `["boss@example.com"]`, logs[0].cc.String)
+	assert.Equal(t, `["audit@example.com","ceo@example.com"]`, logs[0].bcc.String)
+	assert.Equal(t, "SENT", logs[0].status)
+	assert.Equal(t, "FAKE", logs[0].provider)
+	assert.Equal(t, "prov-bob@example.com", logs[0].providerID.String)
+	assert.False(t, logs[0].errorMsg.Valid)
+
+	assert.False(t, logs[1].cc.Valid, "no copies is NULL, not []")
+	assert.False(t, logs[1].bcc.Valid)
+}
+
+func TestEmailLogsRecordFailuresWithTheProviderError(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	sender := &captureSender{err: &mailing.ProviderError{
+		Type: mailing.ErrorTypeValidation, Code: "validation_error", Message: "The from address is invalid",
+	}}
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
+
+	err := svc.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: "ana@example.com", Data: map[string]string{"FirstName": "Ana", "LastName": "L"}})
+	require.ErrorIs(t, err, sender.err)
+
+	logs := readLogs(t, db)
+	require.Len(t, logs, 1)
+	assert.Equal(t, "FAILED", logs[0].status)
+	assert.Equal(t, "FAKE", logs[0].provider)
+	assert.False(t, logs[0].providerID.Valid)
+	assert.JSONEq(t, `{"type":"validation","code":"validation_error","message":"The from address is invalid"}`, logs[0].errorMsg.String)
+}
+
+func TestEmailLogsStoreAPlainErrorAsUnknown(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	sender := &captureSender{err: errors.New("boom")}
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), sender, "https://app.example.com")
+	require.Error(t, svc.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: "ana@example.com", Data: map[string]string{"FirstName": "Ana", "LastName": "L"}}))
+
+	logs := readLogs(t, db)
+	require.Len(t, logs, 1)
+	assert.JSONEq(t, `{"type":"unknown","message":"boom"}`, logs[0].errorMsg.String, "no code key when there is none")
+}
+
+func TestEmailLogsSurviveDeletingTheUser(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	users := NewUserRepository(db)
+	u := newUser(t, users, "ana@example.com")
+	svc := mailing.NewService(NewEmailTemplateRepository(db), NewEmailLogRepository(db), &captureSender{}, "https://app.example.com")
+	require.NoError(t, svc.Send(ctx, mailing.Request{Code: mailing.TemplateWelcome, To: u.Email, Data: map[string]string{"FirstName": "Ana", "LastName": "L"}}))
+
+	_, err := db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, u.ID)
+	require.NoError(t, err)
+	assert.Len(t, readLogs(t, db), 1)
 }

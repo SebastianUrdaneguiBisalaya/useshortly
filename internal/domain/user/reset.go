@@ -55,7 +55,7 @@ func (s *PasswordResetService) ForgotPassword(ctx context.Context, email string)
 		return err
 	}
 	// Best effort: a failed email just means the user asks for a new code later.
-	_ = s.mailer.Send(ctx, mailing.TemplatePasswordReset, u.Email, codeData(u.FirstName, code))
+	_ = s.mailer.Send(ctx, mailing.Request{Code: mailing.TemplatePasswordReset, To: u.Email, Data: codeData(u.FirstName, code)})
 	return nil
 }
 

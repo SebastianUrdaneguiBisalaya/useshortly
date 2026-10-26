@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"strings"
 	"testing"
 	"time"
@@ -98,6 +99,7 @@ func (fakeTokens) Validate(_ context.Context, t string) (string, error) {
 
 type sentMail struct {
 	code, to string
+	cc, bcc  []string
 	data     map[string]string
 }
 
@@ -106,8 +108,8 @@ type fakeMailer struct {
 	err  error
 }
 
-func (m *fakeMailer) Send(_ context.Context, code, to string, data map[string]string) error {
-	m.sent = append(m.sent, sentMail{code, to, data})
+func (m *fakeMailer) Send(_ context.Context, req mailing.Request) error {
+	m.sent = append(m.sent, sentMail{req.Code, req.To, req.CC, req.BCC, req.Data})
 	return m.err
 }
 

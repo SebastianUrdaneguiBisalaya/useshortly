@@ -27,25 +27,37 @@ func NewService(repo Repository, gen CodeGenerator) *Service {
 }
 
 // Shorten creates a link owned by tenantID on behalf of userID.
-func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL string, expiresAt *time.Time) (Link, error) {
+func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL string, alias string, expiresAt *time.Time) (Link, error) {
 	u, err := url.ParseRequestURI(rawURL)
 	if len(rawURL) > maxURLLen || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Link{}, ErrInvalidURL
 	}
 	expiresAt = utc(expiresAt)
+	link := Link{
+		OriginURL: rawURL,
+		ExpiresAt: expiresAt,
+		TenantID:  tenantID,
+		CreatedBy: userID,
+		CreatedAt: s.now(),
+	}
+	if alias != "" {
+		if err := validateAlias(alias); err != nil {
+			return Link{}, err
+		}
+		link.Code = alias
+		l, err := s.repo.Create(ctx, link)
+		if errors.Is(err, ErrCodeTaken) {
+			return Link{}, ErrAliasTaken
+		}
+		return l, err
+	}
 	for range maxRetries {
 		code, err := s.gen.Generate()
 		if err != nil {
 			return Link{}, err
 		}
-		l, err := s.repo.Create(ctx, Link{
-			Code:      code,
-			OriginURL: rawURL,
-			ExpiresAt: expiresAt,
-			TenantID:  tenantID,
-			CreatedBy: userID,
-			CreatedAt: s.now(),
-		})
+		link.Code = code
+		l, err := s.repo.Create(ctx, link)
 		if errors.Is(err, ErrCodeTaken) {
 			continue
 		}

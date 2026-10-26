@@ -37,11 +37,12 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		URL       string     `json:"url"`
 		ExpiresAt *time.Time `json:"expires_at"`
+		Alias     string     `json:"alias"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	l, err := h.links.Shorten(r.Context(), tenant.ID, PrincipalFrom(r).UserID, in.URL, in.ExpiresAt)
+	l, err := h.links.Shorten(r.Context(), tenant.ID, PrincipalFrom(r).UserID, in.URL, in.Alias, in.ExpiresAt)
 	if err != nil {
 		WriteError(w, r, err)
 		return

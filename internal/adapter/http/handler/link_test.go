@@ -41,6 +41,7 @@ func (unusedGen) Generate() (string, error) { return "abc1234", nil }
 func createLink(t *testing.T, h *LinkHandler, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(WithTenant(req.Context(), Tenant{ID: 1}))
 	rec := httptest.NewRecorder()
 	h.Create(rec, req)

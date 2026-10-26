@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,40 +18,111 @@ import (
 
 const maxBodyBytes = 1 << 20
 
+// Every JSON answer is an envelope: {"data": ...} on success, {"error": {...}} on failure.
+// The status code travels only in the HTTP status line.
+
+type dataBody struct {
+	Data any `json:"data"`
+}
+
+// FieldError points at one invalid field of the request.
+type FieldError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
 type errorBody struct {
 	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Code    string       `json:"code"`
+		Message string       `json:"message"`
+		Details []FieldError `json:"details,omitempty"`
 	} `json:"error"`
 }
 
+// writeJSON encodes before writing anything, so an encoding failure can still become a clean 500
+// instead of a truncated body under an already-sent status.
 func writeJSON(w http.ResponseWriter, status int, v any) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		slog.Error("encode response", "error", err)
+		status = http.StatusInternalServerError
+		b = []byte(`{"error":{"code":"internal_error","message":"something went wrong"}}`)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if v != nil {
-		_ = json.NewEncoder(w).Encode(v)
+	if _, err := w.Write(append(b, '\n')); err != nil {
+		slog.Error("write response", "error", err)
 	}
+}
+
+// writeData answers a success with the payload under "data".
+func writeData(w http.ResponseWriter, status int, v any) {
+	writeJSON(w, status, dataBody{Data: v})
 }
 
 func WriteAPIError(w http.ResponseWriter, status int, code, message string) {
+	WriteAPIErrorDetails(w, status, code, message, nil)
+}
+
+// WriteAPIErrorDetails is WriteAPIError plus per-field details, for validation failures.
+func WriteAPIErrorDetails(w http.ResponseWriter, status int, code, message string, details []FieldError) {
 	var b errorBody
-	b.Error.Code, b.Error.Message = code, message
+	b.Error.Code, b.Error.Message, b.Error.Details = code, message, details
 	writeJSON(w, status, b)
 }
 
-// decode reads a JSON body strictly: bounded size, no unknown fields, a single value.
+// decode reads a JSON body strictly: application/json only, bounded size, no unknown fields, a
+// single value. On failure it has already answered and returns false.
 func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
+	if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
+		WriteAPIError(w, http.StatusUnsupportedMediaType, "unsupported_media_type", "the Content-Type must be application/json")
+		return false
+	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
-		WriteAPIError(w, http.StatusBadRequest, "invalid_body", "the request body is not valid JSON for this endpoint")
+		writeDecodeError(w, err)
 		return false
 	}
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeDecodeError(w, err)
+			return false
+		}
 		WriteAPIError(w, http.StatusBadRequest, "invalid_body", "the request body must hold a single JSON value")
 		return false
 	}
 	return true
+}
+
+// writeDecodeError tells apart the ways a body can be wrong, so clients can react to each.
+func writeDecodeError(w http.ResponseWriter, err error) {
+	var (
+		tooBig  *http.MaxBytesError
+		syntax  *json.SyntaxError
+		typeErr *json.UnmarshalTypeError
+	)
+	switch {
+	case errors.As(err, &tooBig):
+		WriteAPIError(w, http.StatusRequestEntityTooLarge, "body_too_large",
+			"the request body must be at most "+strconv.FormatInt(tooBig.Limit, 10)+" bytes")
+	case errors.Is(err, io.EOF):
+		WriteAPIError(w, http.StatusBadRequest, "empty_body", "the request body is empty")
+	case errors.As(err, &syntax), errors.Is(err, io.ErrUnexpectedEOF):
+		WriteAPIError(w, http.StatusBadRequest, "malformed_json", "the request body is not valid JSON")
+	case errors.As(err, &typeErr):
+		WriteAPIErrorDetails(w, http.StatusBadRequest, "invalid_field_type", "a field has the wrong type",
+			[]FieldError{{Field: typeErr.Field, Message: "expected " + typeErr.Type.String()}})
+	default:
+		if name, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
+			name = strings.Trim(name, `"`)
+			WriteAPIErrorDetails(w, http.StatusBadRequest, "unknown_field", "the body has a field this endpoint does not accept",
+				[]FieldError{{Field: name, Message: "unknown field"}})
+			return
+		}
+		WriteAPIError(w, http.StatusBadRequest, "invalid_body", "the request body is not valid for this endpoint")
+	}
 }
 
 // idParam reads a positive integer path variable; a bad one is a 404, like any unknown resource.

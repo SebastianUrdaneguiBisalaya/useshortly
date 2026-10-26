@@ -83,13 +83,18 @@ func (o *outbox) Send(_ context.Context, m mailing.Message) (mailing.Receipt, er
 	return mailing.Receipt{Provider: "TEST", ProviderID: "id-" + strconv.Itoa(len(o.sent))}, nil
 }
 
-type fakeGoogle struct{ id user.GoogleIdentity }
+type fakeGoogle struct{ id *user.GoogleIdentity }
 
-func (f fakeGoogle) Verify(_ context.Context, token string) (user.GoogleIdentity, error) {
-	if token != "good-token" {
+func (f fakeGoogle) Exchange(_ context.Context, code string) (user.GoogleIdentity, error) {
+	if code != "good-code" {
 		return user.GoogleIdentity{}, auth.ErrInvalidCredentials
 	}
-	return f.id, nil
+	return *f.id, nil
+}
+
+var googleIdentity = user.GoogleIdentity{
+	Subject: "g-1", Email: "gina@example.com", EmailVerified: true, FirstName: "Gina", LastName: "Google",
+	Scope: "openid email profile",
 }
 
 type env struct {
@@ -124,15 +129,14 @@ func newEnv(t *testing.T, withGoogle bool) *env {
 		sender: box,
 	}
 	if withGoogle {
-		a.google = fakeGoogle{user.GoogleIdentity{
-			Subject: "g-1", Email: "gina@example.com", EmailVerified: true, FirstName: "Gina", LastName: "Google",
-		}}
+		a.google = fakeGoogle{&googleIdentity}
 	}
 	cfg := &config.Config{
-		AppURL:    "http://short.test",
-		JWTSecret: "0123456789abcdef0123456789abcdef",
-		JWTTTL:    time.Hour,
-		OTPSecret: "fedcba9876543210fedcba9876543210",
+		AppURL:     "http://short.test",
+		JWTSecret:  "0123456789abcdef0123456789abcdef",
+		JWTTTL:     time.Hour,
+		OTPSecret:  "fedcba9876543210fedcba9876543210",
+		RefreshTTL: 24 * time.Hour,
 	}
 	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB}
 	t.Cleanup(e.app.mail.Wait)
@@ -484,15 +488,33 @@ func TestPasswordReset(t *testing.T) {
 
 func TestGoogleSignIn(t *testing.T) {
 	e := newEnv(t, true)
-	res := e.do("POST", "/api/v1/auth/google", "", map[string]string{"id_token": "bad"})
+	res := e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "bad"})
 	assert.Equal(t, http.StatusUnauthorized, res.status)
 
-	res = e.do("POST", "/api/v1/auth/google", "", map[string]string{"id_token": "good-token"})
+	res = e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"})
 	require.Equal(t, http.StatusOK, res.status, res.raw)
 	token := res.str("token")
+	assert.NotEmpty(t, res.str("refresh_token"))
 	assert.Equal(t, "gina@example.com", e.do("GET", "/api/v1/me", token, nil).str("email"))
-	again := e.do("POST", "/api/v1/auth/google", "", map[string]string{"id_token": "good-token"})
-	assert.Equal(t, http.StatusOK, again.status)
+	assert.Equal(t, http.StatusOK, e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"}).status)
+
+	// The scope Google reported is saved on the account and follows later sign-ins.
+	scope := func() (string, bool) {
+		var s string
+		var updated sql.NullString
+		require.NoError(t, e.sql.QueryRowContext(context.Background(),
+			`SELECT scope, updated_at FROM accounts WHERE provider_id = 'GOOGLE'`).Scan(&s, &updated))
+		return s, updated.Valid
+	}
+	s, touched := scope()
+	assert.Equal(t, "openid email profile", s)
+	assert.False(t, touched)
+	googleIdentity.Scope = "openid email profile https://www.googleapis.com/auth/calendar.readonly"
+	t.Cleanup(func() { googleIdentity.Scope = "openid email profile" })
+	require.Equal(t, http.StatusOK, e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"}).status)
+	s, touched = scope()
+	assert.Contains(t, s, "calendar.readonly")
+	assert.True(t, touched, "updated_at is stamped when the scope changes")
 
 	// The address now belongs to the Google account only.
 	res = e.do("POST", "/api/v1/auth/register", "", map[string]string{"email": "gina@example.com", "password": "s3cretpass", "first_name": "G", "last_name": "G"})
@@ -504,14 +526,14 @@ func TestGoogleSignIn(t *testing.T) {
 func TestGoogleSignInMismatchWithPasswordAccount(t *testing.T) {
 	e := newEnv(t, true)
 	e.signUp("gina@example.com", "Gina")
-	res := e.do("POST", "/api/v1/auth/google", "", map[string]string{"id_token": "good-token"})
+	res := e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"})
 	assert.Equal(t, http.StatusConflict, res.status)
 	assert.Equal(t, "provider_mismatch", res.errCode())
 }
 
 func TestGoogleRouteIsAbsentWhenNotConfigured(t *testing.T) {
 	e := newEnv(t, false)
-	assert.Equal(t, http.StatusNotFound, e.do("POST", "/api/v1/auth/google", "", map[string]string{"id_token": "x"}).status)
+	assert.Equal(t, http.StatusNotFound, e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "x"}).status)
 }
 
 func TestEveryEmailIsLoggedWithTheProviderID(t *testing.T) {
@@ -537,4 +559,97 @@ func TestEveryEmailIsLoggedWithTheProviderID(t *testing.T) {
 	require.NoError(t, rows.Err())
 	assert.ElementsMatch(t, []string{"VERIFY_EMAIL", "WELCOME"}, codes)
 	assert.Len(t, codes, len(sent))
+}
+
+func TestRefreshTokens(t *testing.T) {
+	e := newEnv(t, false)
+	e.signUp("ana@example.com", "Ana")
+
+	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
+	require.Equal(t, http.StatusOK, login.status)
+	assert.Equal(t, "no-store", login.header.Get("Cache-Control"))
+	refresh := login.str("refresh_token")
+	assert.True(t, strings.HasPrefix(refresh, "rft_"))
+	assert.True(t, strings.HasSuffix(login.str("refresh_expires_at"), "Z"), "times are UTC")
+	assert.True(t, strings.HasSuffix(login.str("expires_at"), "Z"))
+
+	// A refresh returns a working access token and a replacement refresh token.
+	res := e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	require.Equal(t, http.StatusOK, res.status, res.raw)
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/me", res.str("token"), nil).status)
+	next := res.str("refresh_token")
+	assert.NotEqual(t, refresh, next)
+
+	// Replaying the old one is theft: it fails and every session of the user dies.
+	res = e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	assert.Equal(t, http.StatusUnauthorized, res.status)
+	assert.Equal(t, "invalid_credentials", res.errCode())
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": next}).status)
+
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": "rft_nope"}).status)
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": ""}).status)
+}
+
+func TestLogoutRevokesTheRefreshToken(t *testing.T) {
+	e := newEnv(t, false)
+	e.signUp("ana@example.com", "Ana")
+	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
+	refresh := login.str("refresh_token")
+
+	assert.Equal(t, http.StatusNoContent, e.do("POST", "/api/v1/auth/logout", "", map[string]string{"refresh_token": refresh}).status)
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh}).status)
+	assert.Equal(t, http.StatusNoContent, e.do("POST", "/api/v1/auth/logout", "", map[string]string{"refresh_token": "rft_unknown"}).status)
+}
+
+func TestSignupAndPasswordResetEndSessions(t *testing.T) {
+	e := newEnv(t, false)
+	signup := e.do("POST", "/api/v1/auth/register", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass", "first_name": "A", "last_name": "B"})
+	require.Equal(t, http.StatusAccepted, signup.status)
+	verified := e.do("POST", "/api/v1/auth/register/verify", "", map[string]string{"email": "ana@example.com", "code": e.lastCode("ana@example.com")})
+	require.Equal(t, http.StatusCreated, verified.status)
+	stolen := verified.str("refresh_token")
+	assert.NotEmpty(t, stolen, "signup opens a full session")
+
+	require.Equal(t, http.StatusAccepted, e.do("POST", "/api/v1/auth/forgot-password", "", map[string]string{"email": "ana@example.com"}).status)
+	res := e.do("POST", "/api/v1/auth/reset-password", "", map[string]string{"email": "ana@example.com", "code": e.lastCode("ana@example.com"), "new_password": "brand-new-pass"})
+	require.Equal(t, http.StatusNoContent, res.status, res.raw)
+
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": stolen}).status,
+		"resetting the password kills the sessions a thief may hold")
+}
+
+func TestRemovedMembersLoseAccessEvenWithValidTokens(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	inv := e.do("POST", "/api/v1/orgs/"+acme+"/invitations", ana, map[string]string{"email": "bob@example.com"})
+	require.Equal(t, http.StatusCreated, inv.status)
+	require.Equal(t, http.StatusOK, e.do("POST", "/api/v1/invitations/"+inv.id()+"/accept", bob, nil).status)
+
+	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "bob@example.com", "password": "s3cretpass"})
+	refresh := login.str("refresh_token")
+	bobMe := e.do("GET", "/api/v1/me", bob, nil)
+	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme+"/members/"+bobMe.id(), ana, nil).status)
+
+	// A fresh access token from the refresh token still cannot enter the organization.
+	res := e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	require.Equal(t, http.StatusOK, res.status)
+	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme, res.str("token"), nil).status)
+}
+
+func TestTimesInResponsesAreUTC(t *testing.T) {
+	e := newEnv(t, false)
+	token := e.signUp("ana@example.com", "Ana")
+	org := e.createOrg(token, "Acme")
+
+	// An expiration sent with an offset comes back, and is stored, in UTC.
+	res := e.do("POST", "/api/v1/orgs/"+org+"/links", token, map[string]any{"url": "https://example.com", "expires_at": "2099-03-04T10:00:00+05:00"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	assert.Equal(t, "2099-03-04T05:00:00Z", res.str("expires_at"))
+	assert.True(t, strings.HasSuffix(res.str("created_at"), "Z"))
+
+	var stored string
+	require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT expires_at FROM links`).Scan(&stored))
+	assert.Equal(t, "2099-03-04T05:00:00.000Z", stored)
 }

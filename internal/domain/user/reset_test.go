@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,8 +97,13 @@ func TestResetPassword(t *testing.T) {
 	e := newResetEnv(t)
 	e.forgot(t)
 
+	fixed := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	e.reset.now = func() time.Time { return fixed }
+
 	require.NoError(t, e.reset.ResetPassword(ctx, " ANA@example.com ", testCode, "brand-new-pass"))
 	assert.Equal(t, "hash:brand-new-pass", e.repo.accounts[e.user.ID].PasswordHash)
+	require.NotNil(t, e.repo.accounts[e.user.ID].UpdatedAt)
+	assert.Equal(t, fixed, *e.repo.accounts[e.user.ID].UpdatedAt, "updated_at comes from the service clock, in UTC")
 	assert.Equal(t, []int64{e.user.ID}, e.revoker.revoked, "all sessions revoked")
 
 	err := e.reset.ResetPassword(ctx, "ana@example.com", testCode, "another-pass-1")

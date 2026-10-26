@@ -35,7 +35,7 @@ type Service struct {
 }
 
 func NewService(repo Repository, mailer Mailer, revoker TokenRevoker) *Service {
-	return &Service{repo: repo, mailer: mailer, revoker: revoker, now: time.Now().UTC}
+	return &Service{repo: repo, mailer: mailer, revoker: revoker, now: func() time.Time { return time.Now().UTC() }}
 }
 
 // CreateOrganization creates a tenant owned by ownerID.

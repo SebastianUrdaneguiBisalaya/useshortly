@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func (r *fakeRepo) Create(_ context.Context, u User, a Account) (User, error) {
 		}
 	}
 	r.nextID++
-	u.ID, a.UserID = r.nextID, r.nextID
+	u.ID, a.UserID, a.ID = r.nextID, r.nextID, r.nextID
 	r.users[u.ID], r.accounts[u.ID] = u, a
 	return u, nil
 }
@@ -45,14 +46,25 @@ func (r *fakeRepo) FindAccountByProvider(_ context.Context, p Provider, accountI
 	return Account{}, ErrNotFound
 }
 
-func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string) error {
+func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string, at time.Time) error {
 	a, ok := r.accounts[userID]
 	if !ok || a.Provider != ProviderDefault {
 		return ErrNotFound
 	}
-	a.PasswordHash = hash
+	a.PasswordHash, a.UpdatedAt = hash, &at
 	r.accounts[userID] = a
 	return nil
+}
+
+func (r *fakeRepo) UpdateAccountScope(_ context.Context, accountID int64, scope string, at time.Time) error {
+	for uid, a := range r.accounts {
+		if a.ID == accountID {
+			a.Scope, a.UpdatedAt = scope, &at
+			r.accounts[uid] = a
+			return nil
+		}
+	}
+	return ErrNotFound
 }
 
 func (r *fakeRepo) FindByEmail(_ context.Context, email string) (User, error) {
@@ -163,22 +175,56 @@ func (f *fakeStore) Check(_ context.Context, p Purpose, email, codeHash string, 
 	return "", ErrInvalidCode
 }
 
+// fakeRefresh issues "rft_<n>" tokens; each one rotates once, like the real service.
+type fakeRefresh struct {
+	owner   map[string]int64
+	revoked map[string]bool
+	next    int
+}
+
+func newFakeRefresh() *fakeRefresh {
+	return &fakeRefresh{owner: map[string]int64{}, revoked: map[string]bool{}}
+}
+
+func (f *fakeRefresh) Issue(_ context.Context, userID int64) (auth.RefreshGrant, error) {
+	f.next++
+	tok := "rft_" + strconv.Itoa(f.next)
+	f.owner[tok] = userID
+	return auth.RefreshGrant{Token: tok, ExpiresAt: time.Unix(5000, 0)}, nil
+}
+
+func (f *fakeRefresh) Rotate(ctx context.Context, secret string) (int64, auth.RefreshGrant, error) {
+	id, ok := f.owner[secret]
+	if !ok || f.revoked[secret] {
+		return 0, auth.RefreshGrant{}, auth.ErrInvalidCredentials
+	}
+	f.revoked[secret] = true
+	g, _ := f.Issue(ctx, id)
+	return id, g, nil
+}
+
+func (f *fakeRefresh) Revoke(_ context.Context, secret string) error {
+	f.revoked[secret] = true
+	return nil
+}
+
 // env wires a Service with fakes. Codes are always 123456.
 type env struct {
-	svc    *Service
-	repo   *fakeRepo
-	mailer *fakeMailer
-	store  *fakeStore
-	otp    *OTP
+	svc     *Service
+	repo    *fakeRepo
+	mailer  *fakeMailer
+	store   *fakeStore
+	otp     *OTP
+	refresh *fakeRefresh
 }
 
 const testCode = "123456"
 
 func newEnvWithRepo(repo *fakeRepo) *env {
-	e := &env{repo: repo, mailer: &fakeMailer{}, store: newFakeStore()}
+	e := &env{repo: repo, mailer: &fakeMailer{}, store: newFakeStore(), refresh: newFakeRefresh()}
 	e.otp = NewOTP(e.store, "test-key-test-key-test-key-test-key")
 	e.otp.newCode = func() (string, error) { return testCode, nil }
-	e.svc = NewService(repo, fakeHasher{}, fakeTokens{}, e.mailer, e.otp)
+	e.svc = NewService(repo, fakeHasher{}, fakeTokens{}, e.refresh, e.mailer, e.otp)
 	return e
 }
 
@@ -244,6 +290,7 @@ func TestVerifyRegistrationCreatesAVerifiedUserAndSignsThemIn(t *testing.T) {
 	assert.True(t, s.User.EmailVerified)
 	assert.NotZero(t, s.User.ID)
 	assert.Equal(t, "tok:1", s.Token.Value)
+	assert.Equal(t, "rft_1", s.Refresh.Token, "signup opens a full session")
 
 	acc := e.repo.accounts[s.User.ID]
 	assert.Equal(t, ProviderDefault, acc.Provider)
@@ -308,8 +355,8 @@ func TestNobodyCanSquatAnAddressTheyDoNotOwn(t *testing.T) {
 	assert.Empty(t, e.repo.users, "nothing reserved the address")
 
 	// The real owner can still use it, with Google as well.
-	g := NewGoogleService(e.repo, fakeVerifier{ana, nil}, fakeTokens{}, e.mailer)
-	s, err := g.Login(ctx, "idtoken")
+	g := NewGoogleService(e.repo, &fakeGoogleAuth{id: ana}, fakeTokens{}, newFakeRefresh(), e.mailer)
+	s, err := g.Login(ctx, "code")
 	require.NoError(t, err)
 	assert.Equal(t, "ana@example.com", s.User.Email)
 
@@ -381,6 +428,49 @@ func TestLogin(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, u.ID, s.User.ID)
 	assert.Equal(t, "tok:1", s.Token.Value)
+	assert.NotEmpty(t, s.Refresh.Token, "login hands out a refresh token too")
+	assert.False(t, s.Refresh.ExpiresAt.IsZero())
+}
+
+func TestRefreshRotatesTheTokenAndIssuesANewAccessToken(t *testing.T) {
+	e := newEnv()
+	u := e.signUp(t, valid)
+	login, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
+	require.NoError(t, err)
+
+	s, err := e.svc.Refresh(ctx, login.Refresh.Token)
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, s.User.ID)
+	assert.Equal(t, "tok:1", s.Token.Value)
+	assert.NotEqual(t, login.Refresh.Token, s.Refresh.Token, "the refresh token is replaced")
+
+	_, err = e.svc.Refresh(ctx, login.Refresh.Token)
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials, "each refresh token works once")
+	_, err = e.svc.Refresh(ctx, s.Refresh.Token)
+	assert.NoError(t, err, "the new one works")
+	_, err = e.svc.Refresh(ctx, "rft_nope")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+func TestRefreshForADeletedUser(t *testing.T) {
+	e := newEnv()
+	u := e.signUp(t, valid)
+	login, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
+	require.NoError(t, err)
+	delete(e.repo.users, u.ID)
+	_, err = e.svc.Refresh(ctx, login.Refresh.Token)
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+func TestLogoutRevokesTheRefreshToken(t *testing.T) {
+	e := newEnv()
+	e.signUp(t, valid)
+	login, err := e.svc.Login(ctx, "ana@example.com", "s3cretpass")
+	require.NoError(t, err)
+	require.NoError(t, e.svc.Logout(ctx, login.Refresh.Token))
+	_, err = e.svc.Refresh(ctx, login.Refresh.Token)
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	assert.NoError(t, e.svc.Logout(ctx, "rft_unknown"))
 }
 
 func TestLoginFailuresAreIndistinguishable(t *testing.T) {
@@ -445,4 +535,14 @@ func TestAuthenticate(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	_, err = e.svc.Authenticate(ctx, "bad")
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+// Regression: `now: time.Now().UTC` froze the clock at construction time.
+func TestClockAdvancesAndIsUTC(t *testing.T) {
+	s := NewService(newFakeRepo(), fakeHasher{}, fakeTokens{}, newFakeRefresh(), &fakeMailer{}, nil)
+	a := s.now()
+	time.Sleep(5 * time.Millisecond)
+	b := s.now()
+	assert.True(t, b.After(a), "the clock must keep moving")
+	assert.Equal(t, time.UTC, a.Location())
 }

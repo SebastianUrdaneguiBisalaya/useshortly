@@ -65,16 +65,16 @@ func run() error {
 		log.Println("RESEND_API_KEY is not set: emails are only logged, not sent")
 	}
 
-	var verifier user.GoogleVerifier
+	var googleAuth user.GoogleAuth
 	if cfg.GoogleClientID != "" {
-		if verifier, err = google.NewVerifier(ctx, cfg.GoogleClientID); err != nil {
+		if googleAuth, err = google.New(ctx, cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect); err != nil {
 			return err
 		}
 	} else {
 		log.Println("GOOGLE_CLIENT_ID is not set: Google sign-in is disabled")
 	}
 
-	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: verifier})
+	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth})
 	// Let emails still in flight finish before the database and Redis close.
 	defer a.mail.Wait()
 

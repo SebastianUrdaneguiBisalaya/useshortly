@@ -23,7 +23,7 @@ type Service struct {
 // NewService renders templates, hands them to sender and records every attempt in logs.
 // appURL is exposed to every template as {{.AppURL}}.
 func NewService(repo TemplateRepository, logs LogRepository, sender Sender, appURL string) *Service {
-	return &Service{repo: repo, logs: logs, sender: sender, appURL: strings.TrimRight(appURL, "/"), now: time.Now().UTC}
+	return &Service{repo: repo, logs: logs, sender: sender, appURL: strings.TrimRight(appURL, "/"), now: func() time.Time { return time.Now().UTC() }}
 }
 
 // Send renders the template identified by req.Code with req.Data and sends it. A template

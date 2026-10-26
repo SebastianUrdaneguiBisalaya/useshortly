@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 )
@@ -17,12 +18,14 @@ func NewRefreshTokenRepository(db *sql.DB) *RefreshTokenRepository {
 	return &RefreshTokenRepository{db: db}
 }
 
-const nowSQL = `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
-
 func (r *RefreshTokenRepository) Create(ctx context.Context, t auth.RefreshToken) (auth.RefreshToken, error) {
+	var tenant any // zero means "no tenant": stored as NULL
+	if t.TenantID != 0 {
+		tenant = t.TenantID
+	}
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO refresh_tokens (user_id, tenant_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
-		t.UserID, t.TenantID, t.TokenHash, formatTime(t.ExpiresAt), formatTime(t.CreatedAt))
+		t.UserID, tenant, t.TokenHash, formatTime(t.ExpiresAt), formatTime(t.CreatedAt))
 	if err != nil {
 		return auth.RefreshToken{}, fmt.Errorf("refresh repo: insert: %w", err)
 	}
@@ -35,19 +38,21 @@ func (r *RefreshTokenRepository) Create(ctx context.Context, t auth.RefreshToken
 func (r *RefreshTokenRepository) FindByHash(ctx context.Context, hash string) (auth.RefreshToken, error) {
 	var (
 		t                    auth.RefreshToken
+		tenant               sql.NullInt64
 		expiresAt, createdAt string
 		revokedAt            sql.NullString
 	)
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, user_id, tenant_id, token_hash, expires_at, revoked_at, created_at
 		 FROM refresh_tokens WHERE token_hash = ?`, hash).
-		Scan(&t.ID, &t.UserID, &t.TenantID, &t.TokenHash, &expiresAt, &revokedAt, &createdAt)
+		Scan(&t.ID, &t.UserID, &tenant, &t.TokenHash, &expiresAt, &revokedAt, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return auth.RefreshToken{}, auth.ErrRefreshTokenNotFound
 	}
 	if err != nil {
 		return auth.RefreshToken{}, fmt.Errorf("refresh repo: find: %w", err)
 	}
+	t.TenantID = tenant.Int64
 	if t.ExpiresAt, err = parseTime(expiresAt); err != nil {
 		return auth.RefreshToken{}, fmt.Errorf("refresh repo: expires_at: %w", err)
 	}
@@ -60,36 +65,44 @@ func (r *RefreshTokenRepository) FindByHash(ctx context.Context, hash string) (a
 	return t, nil
 }
 
-// Revoke is idempotent: revoking an already revoked token keeps its first revocation time.
-func (r *RefreshTokenRepository) Revoke(ctx context.Context, id int64) error {
+// Revoke only touches a live token, so of two concurrent calls exactly one gets true.
+func (r *RefreshTokenRepository) Revoke(ctx context.Context, id int64, at time.Time) (bool, error) {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = COALESCE(revoked_at, `+nowSQL+`) WHERE id = ?`, id)
+		`UPDATE refresh_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, formatTime(at), id)
 	if err != nil {
-		return fmt.Errorf("refresh repo: revoke: %w", err)
+		return false, fmt.Errorf("refresh repo: revoke: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("refresh repo: revoke: %w", err)
+		return false, fmt.Errorf("refresh repo: revoke: %w", err)
 	}
-	if n == 0 {
-		return auth.ErrRefreshTokenNotFound
+	if n > 0 {
+		return true, nil
 	}
-	return nil
+	var one int
+	err = r.db.QueryRowContext(ctx, `SELECT 1 FROM refresh_tokens WHERE id = ?`, id).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, auth.ErrRefreshTokenNotFound
+	}
+	if err != nil {
+		return false, fmt.Errorf("refresh repo: revoke: %w", err)
+	}
+	return false, nil // it was already revoked
 }
 
-func (r *RefreshTokenRepository) RevokeForMember(ctx context.Context, userID, tenantID int64) error {
+func (r *RefreshTokenRepository) RevokeForMember(ctx context.Context, userID, tenantID int64, at time.Time) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = `+nowSQL+`
-		 WHERE user_id = ? AND tenant_id = ? AND revoked_at IS NULL`, userID, tenantID)
+		`UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND tenant_id = ? AND revoked_at IS NULL`,
+		formatTime(at), userID, tenantID)
 	if err != nil {
 		return fmt.Errorf("refresh repo: revoke for member: %w", err)
 	}
 	return nil
 }
 
-func (r *RefreshTokenRepository) RevokeForUser(ctx context.Context, userID int64) error {
+func (r *RefreshTokenRepository) RevokeForUser(ctx context.Context, userID int64, at time.Time) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = `+nowSQL+` WHERE user_id = ? AND revoked_at IS NULL`, userID)
+		`UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, formatTime(at), userID)
 	if err != nil {
 		return fmt.Errorf("refresh repo: revoke for user: %w", err)
 	}

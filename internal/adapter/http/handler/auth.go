@@ -38,13 +38,20 @@ func newUserBody(u user.User) userBody {
 }
 
 type sessionBody struct {
-	User      userBody `json:"user"`
-	Token     string   `json:"token"`
-	ExpiresAt string   `json:"expires_at"`
+	User             userBody `json:"user"`
+	Token            string   `json:"token"`
+	ExpiresAt        string   `json:"expires_at"`
+	RefreshToken     string   `json:"refresh_token"`
+	RefreshExpiresAt string   `json:"refresh_expires_at"`
 }
 
 func writeSession(w http.ResponseWriter, status int, s user.Session) {
-	writeJSON(w, status, sessionBody{User: newUserBody(s.User), Token: s.Token.Value, ExpiresAt: formatTime(s.Token.ExpiresAt)})
+	// A session carries secrets: never let a proxy or the browser cache it.
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, status, sessionBody{
+		User: newUserBody(s.User), Token: s.Token.Value, ExpiresAt: formatTime(s.Token.ExpiresAt),
+		RefreshToken: s.Refresh.Token, RefreshExpiresAt: formatTime(s.Refresh.ExpiresAt),
+	})
 }
 
 // Register starts a signup: a code is emailed and the account only exists once it is verified.
@@ -101,20 +108,52 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	writeSession(w, http.StatusOK, s)
 }
 
-// Google signs in with a Google ID token, creating the account on first use.
+// Google signs in with the authorization code Google gave the client, creating the account
+// on first use.
 func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		IDToken string `json:"id_token"`
+		Code string `json:"code"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	s, err := h.google.Login(r.Context(), in.IDToken)
+	s, err := h.google.Login(r.Context(), in.Code)
 	if err != nil {
 		WriteError(w, r, err)
 		return
 	}
 	writeSession(w, http.StatusOK, s)
+}
+
+// Refresh trades a refresh token for a new access token and a new refresh token.
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	s, err := h.users.Refresh(r.Context(), in.RefreshToken)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeSession(w, http.StatusOK, s)
+}
+
+// Logout revokes a refresh token. It answers 204 even for unknown tokens.
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	if err := h.users.Logout(r.Context(), in.RefreshToken); err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ForgotPassword always answers 202, whether or not the email has an account.

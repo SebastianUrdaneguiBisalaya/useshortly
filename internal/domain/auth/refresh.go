@@ -26,4 +26,6 @@ type RefreshTokenRepository interface {
 	// RevokeForMember revokes every live token of the user in that tenant. It is a no-op
 	// when there are none.
 	RevokeForMember(ctx context.Context, userID, tenantID int64) error
+	// RevokeForUser revokes every live token of the user in all tenants.
+	RevokeForUser(ctx context.Context, userID int64) error
 }

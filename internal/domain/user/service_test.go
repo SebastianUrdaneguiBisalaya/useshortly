@@ -34,6 +34,25 @@ func (r *fakeRepo) Create(_ context.Context, u User, a Account) (User, error) {
 	return u, nil
 }
 
+func (r *fakeRepo) FindAccountByProvider(_ context.Context, p Provider, accountID string) (Account, error) {
+	for _, a := range r.accounts {
+		if a.Provider == p && a.AccountID == accountID {
+			return a, nil
+		}
+	}
+	return Account{}, ErrNotFound
+}
+
+func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string) error {
+	a, ok := r.accounts[userID]
+	if !ok || a.Provider != ProviderDefault {
+		return ErrNotFound
+	}
+	a.PasswordHash = hash
+	r.accounts[userID] = a
+	return nil
+}
+
 func (r *fakeRepo) FindByEmail(_ context.Context, email string) (User, error) {
 	for _, u := range r.users {
 		if u.Email == email {

@@ -123,7 +123,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 	if !ok {
 		return Session{}, auth.ErrInvalidCredentials
 	}
-	tok, err := s.tokens.Generate(ctx, strconv.FormatInt(u.ID, 10))
+	tok, err := s.tokens.Generate(ctx, itoa(u.ID))
 	if err != nil {
 		return Session{}, err
 	}
@@ -164,3 +164,5 @@ func normalizeEmail(raw string) (string, error) {
 func validName(n string) bool {
 	return n != "" && utf8.RuneCountInString(n) <= maxFieldLen
 }
+
+func itoa(id int64) string { return strconv.FormatInt(id, 10) }

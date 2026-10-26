@@ -13,6 +13,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
@@ -20,6 +21,9 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
+
+// clickBuffer is how many clicks can wait for the database before new ones are dropped.
+const clickBuffer = 1024
 
 // adapters are the pieces main builds from the environment (Redis, the email provider,
 // Google). They are parameters so the wiring below can be tested with fakes.
@@ -35,6 +39,8 @@ type app struct {
 	handler http.Handler
 	// mail sends in the background; call Wait on shutdown so pending emails finish.
 	mail *mailing.Async
+	// clicks writes the click log in the background; Close it on shutdown to flush what is queued.
+	clicks *analytics.Recorder
 }
 
 // newApp is the composition root: it builds the repositories on db, injects every port into
@@ -72,16 +78,18 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
 	links := link.NewService(linkRepo, codegen.NewBase62())
+	clicks := analytics.NewRecorder(sqlite.NewClickRepository(db), clickBuffer)
 
 	return &app{
-		mail: mail,
+		mail:   mail,
+		clicks: clicks,
 		handler: router.NewRouter(router.Handlers{
 			Auth:     middlewares.NewAuth(users, keys),
 			Tenant:   middlewares.NewTenant(orgs),
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, cfg.AppURL),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL),
 		}),
 	}
 }

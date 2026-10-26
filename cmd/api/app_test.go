@@ -150,6 +150,8 @@ func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env
 	}
 	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB}
 	t.Cleanup(e.app.mail.Wait)
+	// Registered after the database cleanup, so queued clicks are written before it closes.
+	t.Cleanup(func() { _ = e.app.clicks.Close(context.Background()) })
 	return e
 }
 
@@ -517,6 +519,62 @@ func TestCachedLinksStillStopAtMaxClicks(t *testing.T) {
 	assert.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
 	assert.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
 	assert.Equal(t, http.StatusGone, e.do("GET", "/"+code, "", nil).status, "the database counter ends it, the cached copy is not trusted for that")
+}
+
+func TestRedirectsAreRecordedAsClicks(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	links := "/api/v1/orgs/" + acme + "/links"
+	res := e.do("POST", links, ana, map[string]string{"url": "https://example.com/c", "alias": "tracked-1"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	linkID := res.id()
+
+	visit := func(code, referer, ua string) int {
+		req := httptest.NewRequest(http.MethodGet, "/"+code, nil)
+		req.Header.Set("Referer", referer)
+		req.Header.Set("User-Agent", ua)
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	require.Equal(t, http.StatusFound, visit("tracked-1", "https://news.example/a", "Mozilla/5.0"))
+	require.Equal(t, http.StatusFound, visit("tracked-1", "", "curl/8"))
+	require.Equal(t, http.StatusNotFound, visit("missing", "", "curl/8"))
+
+	// Close waits for the background writer, so the log is complete after it.
+	require.NoError(t, e.app.clicks.Close(context.Background()))
+	rows, err := e.sql.QueryContext(context.Background(), `SELECT link_id, referrer, user_agent, clicked_at FROM clicks ORDER BY id`)
+	require.NoError(t, err)
+	defer rows.Close()
+	type click struct{ link, referrer, ua, at string }
+	var got []click
+	for rows.Next() {
+		var c click
+		require.NoError(t, rows.Scan(&c.link, &c.referrer, &c.ua, &c.at))
+		got = append(got, c)
+	}
+	require.Len(t, got, 2, "only the two redirects that worked")
+	assert.Equal(t, linkID, got[0].link)
+	assert.Equal(t, "https://news.example/a", got[0].referrer)
+	assert.Equal(t, "Mozilla/5.0", got[0].ua)
+	assert.True(t, strings.HasSuffix(got[0].at, "Z"), "stored in UTC")
+	assert.Equal(t, "curl/8", got[1].ua)
+
+	// Deleting the link removes its clicks.
+	e2 := newEnv(t, false)
+	ana2 := e2.signUp("ana@example.com", "Ana")
+	org2 := e2.createOrg(ana2, "Acme")
+	l2 := e2.do("POST", "/api/v1/orgs/"+org2+"/links", ana2, map[string]string{"url": "https://example.com/d", "alias": "gone-soon"})
+	require.Equal(t, http.StatusCreated, l2.status)
+	require.Equal(t, http.StatusFound, e2.do("GET", "/gone-soon", "", nil).status)
+	require.NoError(t, e2.app.clicks.Close(context.Background()))
+	var n int
+	require.NoError(t, e2.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM clicks`).Scan(&n))
+	require.Equal(t, 1, n)
+	require.Equal(t, http.StatusNoContent, e2.do("DELETE", "/api/v1/orgs/"+org2+"/links/"+l2.id(), ana2, nil).status)
+	require.NoError(t, e2.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM clicks`).Scan(&n))
+	assert.Zero(t, n, "clicks are deleted with their link")
 }
 
 func TestListAndDeleteLinks(t *testing.T) {

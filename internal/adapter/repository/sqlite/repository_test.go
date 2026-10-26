@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
@@ -279,6 +280,41 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	_, err = repo.FindByCode(ctx, "aaaaaaa")
 	assert.ErrorIs(t, err, link.ErrNotFound)
 	assert.ErrorIs(t, repo.Delete(ctx, 1, ids[0]), link.ErrNotFound)
+}
+
+func TestClickRepository(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	links := NewLinkRepository(db)
+	clicks := NewClickRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	l, err := links.Create(ctx, link.Link{Code: "abc1234", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	c, err := clicks.Create(ctx, analytics.Click{LinkID: l.ID, At: now, Referrer: "https://news.example", UserAgent: "Mozilla/5.0", Country: "PE", Device: "mobile"})
+	require.NoError(t, err)
+	assert.NotZero(t, c.ID)
+	_, err = clicks.Create(ctx, analytics.Click{LinkID: l.ID, At: now})
+	require.NoError(t, err, "referrer, user agent, country and device are optional")
+
+	var referrer, ua, country, device, at string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT referrer, user_agent, country, device, clicked_at FROM clicks WHERE id = ?`, c.ID).
+		Scan(&referrer, &ua, &country, &device, &at))
+	assert.Equal(t, []string{"https://news.example", "Mozilla/5.0", "PE", "mobile"}, []string{referrer, ua, country, device})
+	assert.Equal(t, formatTime(now), at)
+
+	_, err = clicks.Create(ctx, analytics.Click{LinkID: 9999, At: now})
+	assert.Error(t, err, "a click needs an existing link")
+
+	// Deleting a link takes its clicks with it.
+	require.NoError(t, links.Delete(ctx, 1, l.ID))
+	var n int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT count(*) FROM clicks`).Scan(&n))
+	assert.Zero(t, n)
 }
 
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {

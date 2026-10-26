@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 const (
@@ -67,8 +69,9 @@ func (s *Service) Create(ctx context.Context, tenantID, userID int64, name strin
 	return k, secret, nil
 }
 
-func (s *Service) List(ctx context.Context, tenantID int64) ([]APIKey, error) {
-	return s.repo.ListByTenant(ctx, tenantID)
+// List returns one page of the tenant's keys, newest first, and how many it has in total.
+func (s *Service) List(ctx context.Context, tenantID int64, p page.Params) ([]APIKey, int, error) {
+	return s.repo.ListByTenant(ctx, tenantID, p.Normalize())
 }
 
 func (s *Service) Delete(ctx context.Context, tenantID, id int64) error {

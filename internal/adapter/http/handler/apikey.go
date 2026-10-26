@@ -64,7 +64,11 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	list, err := h.keys.List(r.Context(), tenant.ID)
+	p, ok := pageParams(w, r)
+	if !ok {
+		return
+	}
+	list, total, err := h.keys.List(r.Context(), tenant.ID, p)
 	if err != nil {
 		WriteError(w, r, err)
 		return
@@ -73,7 +77,7 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	for _, k := range list {
 		out = append(out, newAPIKeyBody(k))
 	}
-	writeData(w, http.StatusOK, out)
+	writePage(w, out, p, total)
 }
 
 func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {

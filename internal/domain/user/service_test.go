@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -75,9 +76,29 @@ func (fakeTokens) Validate(_ context.Context, t string) (string, error) {
 	return "", auth.ErrInvalidCredentials
 }
 
+type sentMail struct {
+	code, to string
+	data     map[string]string
+}
+
+type fakeMailer struct {
+	sent []sentMail
+	err  error
+}
+
+func (m *fakeMailer) Send(_ context.Context, code, to string, data map[string]string) error {
+	m.sent = append(m.sent, sentMail{code, to, data})
+	return m.err
+}
+
 func newService() (*Service, *fakeRepo) {
-	repo := newFakeRepo()
-	return NewService(repo, fakeHasher{}, fakeTokens{}), repo
+	svc, repo, _ := newServiceWithMailer()
+	return svc, repo
+}
+
+func newServiceWithMailer() (*Service, *fakeRepo, *fakeMailer) {
+	repo, mailer := newFakeRepo(), &fakeMailer{}
+	return NewService(repo, fakeHasher{}, fakeTokens{}, mailer), repo, mailer
 }
 
 var valid = RegisterInput{Email: "  Ana@Example.com ", Password: "s3cretpass", FirstName: "Ana", LastName: "Lopez"}
@@ -178,4 +199,52 @@ func TestAuthenticate(t *testing.T) {
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	_, err = svc.Authenticate(context.Background(), "bad")
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+func TestRegisterAndLoginSendEmailsAndSurviveMailFailure(t *testing.T) {
+	svc, _, mailer := newServiceWithMailer()
+	_, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
+	require.Len(t, mailer.sent, 1)
+	assert.Equal(t, "WELCOME", mailer.sent[0].code)
+	assert.Equal(t, "ana@example.com", mailer.sent[0].to)
+	assert.Equal(t, "Ana", mailer.sent[0].data["FirstName"])
+	mailer.sent = nil
+
+	mailer.err = errors.New("provider down")
+	s, err := svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+	require.NoError(t, err, "a failing mailer must not fail the login")
+	assert.NotEmpty(t, s.Token.Value)
+	require.Len(t, mailer.sent, 1)
+	assert.Equal(t, "LOGIN", mailer.sent[0].code)
+	assert.Equal(t, "ana@example.com", mailer.sent[0].to)
+	assert.Equal(t, "Ana", mailer.sent[0].data["FirstName"])
+	assert.NotEmpty(t, mailer.sent[0].data["Time"])
+}
+
+func TestFailedLoginSendsNoMail(t *testing.T) {
+	svc, _, mailer := newServiceWithMailer()
+	_, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
+	mailer.sent = nil // ignore the welcome email
+	_, err = svc.Login(context.Background(), "ana@example.com", "wrongpass1")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	assert.Empty(t, mailer.sent)
+}
+
+func TestRegisterSurvivesMailFailure(t *testing.T) {
+	svc, repo, mailer := newServiceWithMailer()
+	mailer.err = errors.New("provider down")
+	u, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err, "a failing mailer must not block the account creation")
+	assert.Contains(t, repo.users, u.ID)
+}
+
+func TestFailedRegisterSendsNoMail(t *testing.T) {
+	svc, _, mailer := newServiceWithMailer()
+	in := valid
+	in.Email = "nope"
+	_, err := svc.Register(context.Background(), in)
+	assert.ErrorIs(t, err, ErrInvalidEmail)
+	assert.Empty(t, mailer.sent)
 }

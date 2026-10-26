@@ -3,9 +3,12 @@ package org
 import (
 	"context"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 )
 
 const (
@@ -13,13 +16,26 @@ const (
 	invitationTTL = 7 * 24 * time.Hour
 )
 
-type Service struct {
-	repo Repository
-	now  func() time.Time
+// Mailer sends a template by code. Invite ignores the result, so wire an asynchronous,
+// best-effort implementation (mailing.Async).
+type Mailer interface {
+	Send(ctx context.Context, code, to string, data map[string]string) error
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo, now: time.Now().UTC}
+// TokenRevoker invalidates the refresh tokens of a user inside one tenant.
+type TokenRevoker interface {
+	RevokeForMember(ctx context.Context, userID, tenantID int64) error
+}
+
+type Service struct {
+	repo    Repository
+	mailer  Mailer
+	revoker TokenRevoker
+	now     func() time.Time
+}
+
+func NewService(repo Repository, mailer Mailer, revoker TokenRevoker) *Service {
+	return &Service{repo: repo, mailer: mailer, revoker: revoker, now: time.Now().UTC}
 }
 
 // CreateOrganization creates a tenant owned by ownerID.
@@ -50,7 +66,9 @@ func (s *Service) ListMembers(ctx context.Context, actorID, tenantID int64) ([]M
 	return s.repo.ListMembers(ctx, tenantID)
 }
 
-// RemoveMember lets any member remove another. The OWNER can never be removed.
+// RemoveMember lets any member remove another. The OWNER can never be removed. The
+// removed member's refresh tokens are revoked first, so if that fails nothing changes and
+// the call can be retried; once they are gone the member can no longer renew a session.
 func (s *Service) RemoveMember(ctx context.Context, actorID, tenantID, targetID int64) error {
 	if _, err := s.repo.FindMember(ctx, tenantID, actorID); err != nil {
 		return err
@@ -62,11 +80,15 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, tenantID, targetID 
 	if target.Role == RoleOwner {
 		return ErrCannotRemoveOwner
 	}
+	if err := s.revoker.RevokeForMember(ctx, targetID, tenantID); err != nil {
+		return err
+	}
 	return s.repo.DeleteMember(ctx, tenantID, targetID)
 }
 
-// Invite creates a pending ADMIN invitation for email.
-func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, email string) (Invitation, error) {
+// Invite creates a pending ADMIN invitation for email and mails it. inviterName is shown
+// in the email. A mail failure never fails the invitation.
+func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, inviterName, email string) (Invitation, error) {
 	if _, err := s.repo.FindMember(ctx, tenantID, actorID); err != nil {
 		return Invitation{}, err
 	}
@@ -81,9 +103,13 @@ func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, email str
 	if isMember {
 		return Invitation{}, ErrAlreadyMember
 	}
+	o, err := s.repo.FindByID(ctx, tenantID)
+	if err != nil {
+		return Invitation{}, err
+	}
 	now := s.now()
 	expires := now.Add(invitationTTL)
-	return s.repo.CreateInvitation(ctx, Invitation{
+	inv, err := s.repo.CreateInvitation(ctx, Invitation{
 		Email:     email,
 		TenantID:  tenantID,
 		InviterID: actorID,
@@ -92,6 +118,16 @@ func (s *Service) Invite(ctx context.Context, actorID, tenantID int64, email str
 		CreatedAt: now,
 		ExpiresAt: &expires,
 	}, now)
+	if err != nil {
+		return Invitation{}, err
+	}
+	_ = s.mailer.Send(ctx, mailing.TemplateInvitation, inv.Email, map[string]string{
+		"InviterName":      inviterName,
+		"OrganizationName": o.Name,
+		"InvitationID":     strconv.FormatInt(inv.ID, 10),
+		"ExpiresAt":        expires.Format("2006-01-02"),
+	})
+	return inv, nil
 }
 
 func (s *Service) ListPendingInvitations(ctx context.Context, actorID, tenantID int64) ([]Invitation, error) {

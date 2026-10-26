@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 )
 
 const (
@@ -18,22 +19,30 @@ const (
 	maxFieldLen    = 255
 )
 
+// Mailer sends a template by code. Failures must not matter to the caller: Register and
+// Login ignore the result, so wire an asynchronous, best-effort implementation (mailing.Async).
+type Mailer interface {
+	Send(ctx context.Context, code, to string, data map[string]string) error
+}
+
 type Service struct {
 	repo   Repository
 	hasher PasswordHasher
 	tokens auth.TokenService
+	mailer Mailer
 	now    func() time.Time
 	// dummyHash is verified when the email is unknown so Login takes the same time
 	// either way and does not reveal which emails are registered.
 	dummyHash string
 }
 
-func NewService(repo Repository, hasher PasswordHasher, tokens auth.TokenService) *Service {
+func NewService(repo Repository, hasher PasswordHasher, tokens auth.TokenService, mailer Mailer) *Service {
 	dummy, _ := hasher.Hash("useshortly-dummy-password")
 	return &Service{
 		repo:      repo,
 		hasher:    hasher,
 		tokens:    tokens,
+		mailer:    mailer,
 		now:       time.Now().UTC,
 		dummyHash: dummy,
 	}
@@ -69,10 +78,19 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (User, error) 
 		return User{}, err
 	}
 	now := s.now()
-	return s.repo.Create(ctx,
+	u, err := s.repo.Create(ctx,
 		User{Email: email, FirstName: first, LastName: last, CreatedAt: now},
 		Account{AccountID: email, Provider: ProviderDefault, PasswordHash: hash, CreatedAt: now},
 	)
+	if err != nil {
+		return User{}, err
+	}
+	// Best effort: a welcome email must never fail or delay the signup.
+	_ = s.mailer.Send(ctx, mailing.TemplateWelcome, u.Email, map[string]string{
+		"FirstName": u.FirstName,
+		"LastName":  u.LastName,
+	})
+	return u, nil
 }
 
 // Login checks the credentials and issues a token. Every failure caused by bad
@@ -109,6 +127,11 @@ func (s *Service) Login(ctx context.Context, email, password string) (Session, e
 	if err != nil {
 		return Session{}, err
 	}
+	// Best effort: a sign-in alert must never fail or delay the login itself.
+	_ = s.mailer.Send(ctx, mailing.TemplateLogin, u.Email, map[string]string{
+		"FirstName": u.FirstName,
+		"Time":      s.now().Format(time.RFC1123),
+	})
 	return Session{User: u, Token: tok}, nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
@@ -24,7 +25,7 @@ import (
 type adapters struct {
 	codes  user.CodeStore
 	sender mailing.Sender
-	google user.GoogleVerifier // nil disables Google sign-in
+	google user.GoogleAuth // nil disables Google sign-in
 }
 
 type app struct {
@@ -53,13 +54,16 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	passwords := hasher.NewArgon2id()
 	otp := user.NewOTP(a.codes, cfg.OTPSecret)
 
-	users := user.NewService(userRepo, passwords, tokens, mail, otp)
-	reset := user.NewPasswordResetService(userRepo, passwords, otp, mail, refreshRepo)
+	// Refresh tokens also serve as the session revoker of the services that must end sessions.
+	refresh := auth.NewRefreshService(refreshRepo, cfg.RefreshTTL)
+
+	users := user.NewService(userRepo, passwords, tokens, refresh, mail, otp)
+	reset := user.NewPasswordResetService(userRepo, passwords, otp, mail, refresh)
 	var google *user.GoogleService
 	if a.google != nil {
-		google = user.NewGoogleService(userRepo, a.google, tokens, mail)
+		google = user.NewGoogleService(userRepo, a.google, tokens, refresh, mail)
 	}
-	orgs := org.NewService(orgRepo, mail, refreshRepo)
+	orgs := org.NewService(orgRepo, mail, refresh)
 	keys := apikey.NewService(keyRepo)
 	links := link.NewService(linkRepo, codegen.NewBase62())
 

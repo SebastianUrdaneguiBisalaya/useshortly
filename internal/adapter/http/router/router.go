@@ -31,6 +31,8 @@ func NewRouter(h Handlers) http.Handler {
 	api.HandleFunc("/auth/register", h.Accounts.Register).Methods(http.MethodPost)
 	api.HandleFunc("/auth/register/verify", h.Accounts.VerifyRegistration).Methods(http.MethodPost)
 	api.HandleFunc("/auth/login", h.Accounts.Login).Methods(http.MethodPost)
+	api.HandleFunc("/auth/refresh", h.Accounts.Refresh).Methods(http.MethodPost)
+	api.HandleFunc("/auth/logout", h.Accounts.Logout).Methods(http.MethodPost)
 	if h.Accounts.HasGoogle() {
 		api.HandleFunc("/auth/google", h.Accounts.Google).Methods(http.MethodPost)
 	}

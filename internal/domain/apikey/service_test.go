@@ -2,10 +2,12 @@ package apikey
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeRepo struct {
@@ -58,58 +60,53 @@ func (r *fakeRepo) TouchLastUsed(_ context.Context, id int64, at time.Time) erro
 }
 
 func TestCreateStoresOnlyHash(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc := NewService(newFakeRepo())
 	k, secret, err := svc.Create(context.Background(), 1, 7, " ci ", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(secret, "usl_") || k.Name != "ci" || k.TenantID != 1 || k.CreatedBy != 7 {
-		t.Fatalf("key = %+v secret = %q", k, secret)
-	}
-	if k.KeyHash == secret || strings.Contains(k.KeyHash, secret) || k.Prefix != secret[:12] {
-		t.Fatalf("stored key leaks the secret: %+v", k)
-	}
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(secret, "usl_"))
+	assert.Equal(t, "ci", k.Name)
+	assert.EqualValues(t, 1, k.TenantID)
+	assert.EqualValues(t, 7, k.CreatedBy)
+	assert.Equal(t, secret[:12], k.Prefix)
+	assert.NotContains(t, k.KeyHash, secret)
+	assert.Len(t, k.KeyHash, 64)
 }
 
 func TestCreateValidation(t *testing.T) {
 	svc := NewService(newFakeRepo())
 	past := time.Now().Add(-time.Hour)
-	if _, _, err := svc.Create(context.Background(), 1, 1, "  ", nil); !errors.Is(err, ErrInvalidName) {
-		t.Fatalf("empty name err = %v", err)
-	}
-	if _, _, err := svc.Create(context.Background(), 1, 1, strings.Repeat("a", 101), nil); !errors.Is(err, ErrInvalidName) {
-		t.Fatalf("long name err = %v", err)
-	}
-	if _, _, err := svc.Create(context.Background(), 1, 1, "x", &past); !errors.Is(err, ErrInvalidExpiry) {
-		t.Fatalf("past expiry err = %v", err)
-	}
+	_, _, err := svc.Create(context.Background(), 1, 1, "  ", nil)
+	assert.ErrorIs(t, err, ErrInvalidName)
+	_, _, err = svc.Create(context.Background(), 1, 1, strings.Repeat("a", 101), nil)
+	assert.ErrorIs(t, err, ErrInvalidName)
+	_, _, err = svc.Create(context.Background(), 1, 1, "x", &past)
+	assert.ErrorIs(t, err, ErrInvalidExpiry)
 }
 
 func TestSecretsAreUnique(t *testing.T) {
 	svc := NewService(newFakeRepo())
-	_, a, _ := svc.Create(context.Background(), 1, 1, "a", nil)
-	_, b, _ := svc.Create(context.Background(), 1, 1, "b", nil)
-	if a == b {
-		t.Fatal("two keys got the same secret")
-	}
+	_, a, err := svc.Create(context.Background(), 1, 1, "a", nil)
+	require.NoError(t, err)
+	_, b, err := svc.Create(context.Background(), 1, 1, "b", nil)
+	require.NoError(t, err)
+	assert.NotEqual(t, a, b)
 }
 
 func TestAuthenticate(t *testing.T) {
 	repo := newFakeRepo()
 	svc := NewService(repo)
-	k, secret, _ := svc.Create(context.Background(), 1, 7, "ci", nil)
+	k, secret, err := svc.Create(context.Background(), 1, 7, "ci", nil)
+	require.NoError(t, err)
+
 	got, err := svc.Authenticate(context.Background(), secret)
-	if err != nil || got.ID != k.ID || got.TenantID != 1 {
-		t.Fatalf("Authenticate = %+v, %v", got, err)
-	}
-	if repo.touched[k.ID].IsZero() {
-		t.Fatal("last used not recorded")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, k.ID, got.ID)
+	assert.EqualValues(t, 1, got.TenantID)
+	assert.False(t, repo.touched[k.ID].IsZero(), "last used not recorded")
+
 	for _, bad := range []string{"", "usl_wrong", "other_" + secret[4:]} {
-		if _, err := svc.Authenticate(context.Background(), bad); !errors.Is(err, ErrNotFound) {
-			t.Fatalf("Authenticate(%q) err = %v, want ErrNotFound", bad, err)
-		}
+		_, err := svc.Authenticate(context.Background(), bad)
+		assert.ErrorIs(t, err, ErrNotFound, bad)
 	}
 }
 
@@ -117,25 +114,19 @@ func TestAuthenticateExpired(t *testing.T) {
 	svc := NewService(newFakeRepo())
 	soon := time.Now().Add(time.Minute)
 	_, secret, err := svc.Create(context.Background(), 1, 1, "tmp", &soon)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	svc.now = func() time.Time { return time.Now().Add(time.Hour) }
-	if _, err := svc.Authenticate(context.Background(), secret); !errors.Is(err, ErrExpired) {
-		t.Fatalf("err = %v, want ErrExpired", err)
-	}
+	_, err = svc.Authenticate(context.Background(), secret)
+	assert.ErrorIs(t, err, ErrExpired)
 }
 
 func TestDeleteIsScopedToTenant(t *testing.T) {
 	svc := NewService(newFakeRepo())
-	k, _, _ := svc.Create(context.Background(), 1, 1, "a", nil)
-	if err := svc.Delete(context.Background(), 2, k.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("cross-tenant delete err = %v", err)
-	}
-	if err := svc.Delete(context.Background(), 1, k.ID); err != nil {
-		t.Fatal(err)
-	}
-	if list, _ := svc.List(context.Background(), 1); len(list) != 0 {
-		t.Fatalf("list = %+v", list)
-	}
+	k, _, err := svc.Create(context.Background(), 1, 1, "a", nil)
+	require.NoError(t, err)
+	assert.ErrorIs(t, svc.Delete(context.Background(), 2, k.ID), ErrNotFound)
+	require.NoError(t, svc.Delete(context.Background(), 1, k.ID))
+	list, err := svc.List(context.Background(), 1)
+	require.NoError(t, err)
+	assert.Empty(t, list)
 }

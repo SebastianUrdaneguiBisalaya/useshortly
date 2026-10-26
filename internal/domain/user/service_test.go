@@ -2,12 +2,13 @@ package user
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeRepo struct {
@@ -84,16 +85,12 @@ var valid = RegisterInput{Email: "  Ana@Example.com ", Password: "s3cretpass", F
 func TestRegister(t *testing.T) {
 	svc, repo := newService()
 	u, err := svc.Register(context.Background(), valid)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if u.Email != "ana@example.com" || u.ID == 0 {
-		t.Fatalf("user = %+v", u)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "ana@example.com", u.Email)
+	assert.NotZero(t, u.ID)
 	acc := repo.accounts[u.ID]
-	if acc.Provider != ProviderDefault || acc.PasswordHash != "hash:s3cretpass" {
-		t.Fatalf("account = %+v", acc)
-	}
+	assert.Equal(t, ProviderDefault, acc.Provider)
+	assert.Equal(t, "hash:s3cretpass", acc.PasswordHash)
 }
 
 func TestRegisterValidation(t *testing.T) {
@@ -106,80 +103,79 @@ func TestRegisterValidation(t *testing.T) {
 		"short password": {func(i *RegisterInput) { i.Password = "short" }, ErrWeakPassword},
 		"long password":  {func(i *RegisterInput) { i.Password = strings.Repeat("a", 129) }, ErrWeakPassword},
 		"empty name":     {func(i *RegisterInput) { i.FirstName = " " }, ErrInvalidName},
+		"long last name": {func(i *RegisterInput) { i.LastName = strings.Repeat("a", 256) }, ErrInvalidName},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			svc, _ := newService()
 			in := valid
 			tc.mutate(&in)
-			if _, err := svc.Register(context.Background(), in); !errors.Is(err, tc.want) {
-				t.Fatalf("err = %v, want %v", err, tc.want)
-			}
+			_, err := svc.Register(context.Background(), in)
+			assert.ErrorIs(t, err, tc.want)
 		})
 	}
 }
 
 func TestRegisterEmailTaken(t *testing.T) {
 	svc, _ := newService()
-	if _, err := svc.Register(context.Background(), valid); err != nil {
-		t.Fatal(err)
-	}
+	_, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
 	in := valid
 	in.Email = "ANA@example.com"
-	if _, err := svc.Register(context.Background(), in); !errors.Is(err, ErrEmailTaken) {
-		t.Fatalf("err = %v, want ErrEmailTaken", err)
-	}
+	_, err = svc.Register(context.Background(), in)
+	assert.ErrorIs(t, err, ErrEmailTaken)
 }
 
 func TestLogin(t *testing.T) {
 	svc, _ := newService()
-	u, _ := svc.Register(context.Background(), valid)
+	u, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
 	s, err := svc.Login(context.Background(), "ANA@example.com", "s3cretpass")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if s.User.ID != u.ID || s.Token.Value != "tok:1" {
-		t.Fatalf("session = %+v", s)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, s.User.ID)
+	assert.Equal(t, "tok:1", s.Token.Value)
 }
 
 func TestLoginFailuresAreIndistinguishable(t *testing.T) {
 	svc, _ := newService()
-	svc.Register(context.Background(), valid)
+	_, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
 	for name, c := range map[string][2]string{
 		"wrong password": {"ana@example.com", "wrongpass1"},
 		"unknown email":  {"who@example.com", "s3cretpass"},
 		"invalid email":  {"nope", "s3cretpass"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := svc.Login(context.Background(), c[0], c[1]); !errors.Is(err, auth.ErrInvalidCredentials) {
-				t.Fatalf("err = %v, want ErrInvalidCredentials", err)
-			}
+			_, err := svc.Login(context.Background(), c[0], c[1])
+			assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 		})
 	}
 }
 
 func TestLoginWithoutPasswordAccount(t *testing.T) {
 	svc, repo := newService()
-	u, _ := svc.Register(context.Background(), valid)
+	u, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
 	repo.accounts[u.ID] = Account{UserID: u.ID, Provider: ProviderGoogle}
-	if _, err := svc.Login(context.Background(), "ana@example.com", "s3cretpass"); !errors.Is(err, auth.ErrInvalidCredentials) {
-		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
-	}
+	_, err = svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 
 func TestAuthenticate(t *testing.T) {
 	svc, _ := newService()
-	u, _ := svc.Register(context.Background(), valid)
-	s, _ := svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+	u, err := svc.Register(context.Background(), valid)
+	require.NoError(t, err)
+	s, err := svc.Login(context.Background(), "ana@example.com", "s3cretpass")
+	require.NoError(t, err)
+
 	got, err := svc.Authenticate(context.Background(), s.Token.Value)
-	if err != nil || got.ID != u.ID {
-		t.Fatalf("Authenticate = %+v, %v", got, err)
-	}
-	if _, err := svc.Authenticate(context.Background(), "tok:99"); !errors.Is(err, auth.ErrInvalidCredentials) {
-		t.Fatalf("deleted user err = %v", err)
-	}
-	if _, err := svc.Authenticate(context.Background(), "bad"); !errors.Is(err, auth.ErrInvalidCredentials) {
-		t.Fatalf("bad token err = %v", err)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+
+	_, err = svc.Authenticate(context.Background(), "tok:99") // user no longer exists
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	_, err = svc.Authenticate(context.Background(), "tok:abc") // non numeric subject
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	_, err = svc.Authenticate(context.Background(), "bad")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }

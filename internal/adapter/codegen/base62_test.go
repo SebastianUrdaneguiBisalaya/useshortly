@@ -1,8 +1,10 @@
 package codegen
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBase62Generate(t *testing.T) {
@@ -10,20 +12,12 @@ func TestBase62Generate(t *testing.T) {
 	seen := make(map[string]struct{})
 	for range 1000 {
 		code, err := g.Generate()
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(code) != codeLength {
-			t.Fatalf("code %q: want length %d, got %d", code, codeLength, len(code))
-		}
+		require.NoError(t, err)
+		require.Len(t, code, codeLength)
 		for _, r := range code {
-			if !strings.ContainsRune(alphabet, r) {
-				t.Fatalf("code %q has invalid char %q", code, r)
-			}
+			require.Containsf(t, alphabet, string(r), "code %q", code)
 		}
 		seen[code] = struct{}{}
 	}
-	if len(seen) < 990 {
-		t.Fatalf("too many collisions: %d unique of 1000", len(seen))
-	}
+	assert.GreaterOrEqual(t, len(seen), 990, "too many collisions")
 }

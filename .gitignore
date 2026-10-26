@@ -1,0 +1,31 @@
+# Binaries
+/bin/
+/tmp/
+*.exe
+*.test
+*.out
+
+# Go build/test cache
+/dist/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# air (hot reload)
+build-errors.log
+
+# gRPC generated code (regenerate with `make proto`)
+# Uncomment if you don't want generated stubs committed:
+# gen/
+
+# Logs
+*.log

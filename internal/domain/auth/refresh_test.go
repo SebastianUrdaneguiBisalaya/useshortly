@@ -46,15 +46,6 @@ func (r *fakeRefreshRepo) Revoke(_ context.Context, id int64, at time.Time) (boo
 	return true, nil
 }
 
-func (r *fakeRefreshRepo) RevokeForMember(_ context.Context, userID, tenantID int64, at time.Time) error {
-	for _, t := range r.tokens {
-		if t.UserID == userID && t.TenantID == tenantID && t.RevokedAt == nil {
-			t.RevokedAt = &at
-		}
-	}
-	return nil
-}
-
 func (r *fakeRefreshRepo) RevokeForUser(_ context.Context, userID int64, at time.Time) error {
 	for _, t := range r.tokens {
 		if t.UserID == userID && t.RevokedAt == nil {
@@ -86,7 +77,6 @@ func TestIssueStoresOnlyTheHash(t *testing.T) {
 	require.Len(t, repo.tokens, 1)
 	stored := repo.tokens[1]
 	assert.EqualValues(t, 7, stored.UserID)
-	assert.Zero(t, stored.TenantID)
 	assert.Equal(t, fixedNow, stored.CreatedAt)
 	assert.NotContains(t, stored.TokenHash, g.Token)
 	assert.Len(t, stored.TokenHash, 64)
@@ -154,15 +144,6 @@ func TestReusingARotatedTokenRevokesEverySessionOfTheUser(t *testing.T) {
 	}
 }
 
-func TestRotateKeepsTheTenantOfTheToken(t *testing.T) {
-	s, repo := newRefresh()
-	_, err := repo.Create(ctx, RefreshToken{UserID: 7, TenantID: 3, TokenHash: hashRefresh("rft_x"), ExpiresAt: fixedNow.Add(time.Hour), CreatedAt: fixedNow})
-	require.NoError(t, err)
-	_, _, err = s.Rotate(ctx, "rft_x")
-	require.NoError(t, err)
-	assert.EqualValues(t, 3, repo.tokens[2].TenantID)
-}
-
 func TestRevoke(t *testing.T) {
 	s, repo := newRefresh()
 	g, _ := s.Issue(ctx, 7)
@@ -175,19 +156,15 @@ func TestRevoke(t *testing.T) {
 	assert.NoError(t, s.Revoke(ctx, "rft_unknown"), "unknown tokens are not an error")
 }
 
-func TestRevokeForMemberAndUser(t *testing.T) {
+func TestRevokeForUserUsesTheServiceClock(t *testing.T) {
 	s, repo := newRefresh()
 	_, _ = s.Issue(ctx, 7)
-	_, err := repo.Create(ctx, RefreshToken{UserID: 7, TenantID: 3, TokenHash: "h3", ExpiresAt: fixedNow.Add(time.Hour), CreatedAt: fixedNow})
-	require.NoError(t, err)
-
-	require.NoError(t, s.RevokeForMember(ctx, 7, 3))
-	assert.Nil(t, repo.tokens[1].RevokedAt)
-	assert.NotNil(t, repo.tokens[2].RevokedAt)
+	_, _ = s.Issue(ctx, 8)
 
 	require.NoError(t, s.RevokeForUser(ctx, 7))
-	assert.NotNil(t, repo.tokens[1].RevokedAt)
-	assert.Equal(t, fixedNow, *repo.tokens[1].RevokedAt, "revocation uses the service clock")
+	require.NotNil(t, repo.tokens[1].RevokedAt)
+	assert.Equal(t, fixedNow, *repo.tokens[1].RevokedAt)
+	assert.Nil(t, repo.tokens[2].RevokedAt, "other users are untouched")
 }
 
 func TestRefreshClockAdvancesAndIsUTC(t *testing.T) {

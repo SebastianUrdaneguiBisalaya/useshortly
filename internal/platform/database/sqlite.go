@@ -63,11 +63,6 @@ func NewSQLite(ctx context.Context, cfg SQLiteConfig) (*SQLite, error) {
 	return s, nil
 }
 
-// Syncs reports whether the database is synchronized with Turso Cloud.
-func (s *SQLite) Syncs() bool {
-	return s.sync != nil
-}
-
 // Push sends local writes to Turso Cloud. No-op when running local-only.
 func (s *SQLite) Push(ctx context.Context) error {
 	if s.sync == nil {

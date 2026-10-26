@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -21,8 +20,7 @@ func (p Principal) ViaAPIKey() bool { return p.KeyTenantID != 0 }
 
 // Tenant is the organization a request acts on, already checked against the Principal.
 type Tenant struct {
-	ID   int64
-	Role org.Role // empty for API keys, which have no membership of their own
+	ID int64
 }
 
 type (

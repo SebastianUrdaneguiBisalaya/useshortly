@@ -37,16 +37,6 @@ func (m *fakeMailer) Send(_ context.Context, req mailing.Request) error {
 	return m.err
 }
 
-type fakeRevoker struct {
-	calls [][2]int64
-	err   error
-}
-
-func (r *fakeRevoker) RevokeForMember(_ context.Context, userID, tenantID int64) error {
-	r.calls = append(r.calls, [2]int64{userID, tenantID})
-	return r.err
-}
-
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{orgs: map[int64]Organization{}, invs: map[int64]Invitation{}, emails: map[int64]string{}}
 }
@@ -174,18 +164,18 @@ var ctx = context.Background()
 
 // setup returns a service with org 1 owned by user 10 (owner@x.com).
 func setup(t *testing.T) (*Service, *fakeRepo, Organization) {
-	svc, repo, o, _, _ := setupAll(t)
+	svc, repo, o, _ := setupAll(t)
 	return svc, repo, o
 }
 
-func setupAll(t *testing.T) (*Service, *fakeRepo, Organization, *fakeMailer, *fakeRevoker) {
+func setupAll(t *testing.T) (*Service, *fakeRepo, Organization, *fakeMailer) {
 	t.Helper()
-	repo, mailer, revoker := newFakeRepo(), &fakeMailer{}, &fakeRevoker{}
+	repo, mailer := newFakeRepo(), &fakeMailer{}
 	repo.emails[10] = "owner@x.com"
-	svc := NewService(repo, mailer, revoker)
+	svc := NewService(repo, mailer)
 	o, err := svc.CreateOrganization(ctx, 10, " Acme ", "")
 	require.NoError(t, err)
-	return svc, repo, o, mailer, revoker
+	return svc, repo, o, mailer
 }
 
 func TestCreateOrganization(t *testing.T) {
@@ -247,7 +237,7 @@ func TestInvite(t *testing.T) {
 }
 
 func TestInviteSendsEmailAndSurvivesMailFailure(t *testing.T) {
-	svc, _, o, mailer, _ := setupAll(t)
+	svc, _, o, mailer := setupAll(t)
 	mailer.err = errors.New("provider down")
 
 	inv, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
@@ -263,7 +253,7 @@ func TestInviteSendsEmailAndSurvivesMailFailure(t *testing.T) {
 }
 
 func TestRejectedInviteSendsNoEmail(t *testing.T) {
-	svc, _, o, mailer, _ := setupAll(t)
+	svc, _, o, mailer := setupAll(t)
 	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "nope", InviteOptions{})
 	assert.ErrorIs(t, err, ErrInvalidEmail)
 	_, err = svc.Invite(ctx, 99, o.ID, "Eve", "bob@x.com", InviteOptions{})
@@ -321,7 +311,7 @@ func TestRejectInvitation(t *testing.T) {
 }
 
 func TestRemoveMember(t *testing.T) {
-	svc, repo, o, _, revoker := setupAll(t)
+	svc, repo, o := setup(t)
 	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
 	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
 	require.NoError(t, err)
@@ -333,26 +323,8 @@ func TestRemoveMember(t *testing.T) {
 	require.NoError(t, svc.RemoveMember(ctx, 10, o.ID, 20))
 	_, err = repo.FindMember(ctx, o.ID, 20)
 	assert.ErrorIs(t, err, ErrNotMember)
-	assert.Equal(t, [][2]int64{{20, o.ID}}, revoker.calls, "refresh tokens of the removed member are revoked")
-}
-
-func TestRemoveMemberKeepsMemberIfRevokeFails(t *testing.T) {
-	svc, repo, o, _, revoker := setupAll(t)
-	inv, _ := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{})
-	_, err := svc.AcceptInvitation(ctx, 20, "bob@x.com", true, inv.ID)
-	require.NoError(t, err)
-
-	revoker.err = errors.New("db down")
-	assert.ErrorIs(t, svc.RemoveMember(ctx, 10, o.ID, 20), revoker.err)
-	_, err = repo.FindMember(ctx, o.ID, 20)
-	assert.NoError(t, err, "still a member, so the removal can be retried")
-}
-
-func TestRemoveRejectedMembersDoNotRevoke(t *testing.T) {
-	svc, _, o, _, revoker := setupAll(t)
-	assert.ErrorIs(t, svc.RemoveMember(ctx, 10, o.ID, 10), ErrCannotRemoveOwner)
-	assert.ErrorIs(t, svc.RemoveMember(ctx, 10, o.ID, 99), ErrNotMember)
-	assert.Empty(t, revoker.calls)
+	_, err = svc.RequireMember(ctx, 20, o.ID)
+	assert.ErrorIs(t, err, ErrNotMember, "access ends at once: every request re-checks membership")
 }
 
 func TestAcceptInvitationRequiresVerifiedEmail(t *testing.T) {
@@ -368,7 +340,7 @@ func TestAcceptInvitationRequiresVerifiedEmail(t *testing.T) {
 }
 
 func TestInviteCopies(t *testing.T) {
-	svc, _, o, mailer, _ := setupAll(t)
+	svc, _, o, mailer := setupAll(t)
 	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{
 		CC:  []string{" Boss@X.com ", "bob@x.com", "boss@x.com"},
 		BCC: []string{"audit@x.com", "BOSS@x.com", "audit@x.com"},
@@ -381,7 +353,7 @@ func TestInviteCopies(t *testing.T) {
 }
 
 func TestInviteRejectsInvalidCopiesBeforeCreatingAnything(t *testing.T) {
-	svc, repo, o, mailer, _ := setupAll(t)
+	svc, repo, o, mailer := setupAll(t)
 	_, err := svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{CC: []string{"nope"}})
 	assert.ErrorIs(t, err, ErrInvalidEmail)
 	_, err = svc.Invite(ctx, 10, o.ID, "Owner", "bob@x.com", InviteOptions{BCC: []string{"Eve <eve@x.com>"}})
@@ -403,7 +375,7 @@ func TestRequireMember(t *testing.T) {
 
 // Regression: `now: time.Now().UTC` froze the clock at construction time.
 func TestClockAdvancesAndIsUTC(t *testing.T) {
-	s := NewService(nil, nil, nil)
+	s := NewService(nil, nil)
 	a := s.now()
 	time.Sleep(5 * time.Millisecond)
 	b := s.now()

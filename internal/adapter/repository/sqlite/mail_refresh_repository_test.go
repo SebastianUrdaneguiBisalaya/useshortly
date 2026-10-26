@@ -9,7 +9,6 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
-	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,28 +20,21 @@ func TestRefreshTokenRepository(t *testing.T) {
 	repo := NewRefreshTokenRepository(db)
 	users := NewUserRepository(db)
 	ana, bob := newUser(t, users, "ana@example.com"), newUser(t, users, "bob@example.com")
-	orgs := NewOrgRepository(db)
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	o1, err := orgs.CreateWithOwner(ctx, org.Organization{Name: "One", CreatedAt: now}, ana.ID)
-	require.NoError(t, err)
-	o2, err := orgs.CreateWithOwner(ctx, org.Organization{Name: "Two", CreatedAt: now}, ana.ID)
-	require.NoError(t, err)
 
-	mk := func(userID, tenantID int64, hash string) auth.RefreshToken {
-		tok, err := repo.Create(ctx, auth.RefreshToken{
-			UserID: userID, TenantID: tenantID, TokenHash: hash, ExpiresAt: now.Add(time.Hour), CreatedAt: now,
-		})
+	mk := func(userID int64, hash string) auth.RefreshToken {
+		tok, err := repo.Create(ctx, auth.RefreshToken{UserID: userID, TokenHash: hash, ExpiresAt: now.Add(time.Hour), CreatedAt: now})
 		require.NoError(t, err)
 		return tok
 	}
-	a1 := mk(ana.ID, o1.ID, "h-a1")
-	mk(ana.ID, o2.ID, "h-a2")
-	mk(ana.ID, o1.ID, "h-a3")
-	mk(bob.ID, o1.ID, "h-b1")
+	a1 := mk(ana.ID, "h-a1")
+	mk(ana.ID, "h-a2")
+	mk(bob.ID, "h-b1")
 
 	got, err := repo.FindByHash(ctx, "h-a1")
 	require.NoError(t, err)
 	assert.Equal(t, a1.ID, got.ID)
+	assert.Equal(t, ana.ID, got.UserID)
 	assert.Nil(t, got.RevokedAt)
 	assert.True(t, got.ExpiresAt.Equal(now.Add(time.Hour)))
 	_, err = repo.FindByHash(ctx, "nope")
@@ -64,58 +56,25 @@ func TestRefreshTokenRepository(t *testing.T) {
 	_, err = repo.Revoke(ctx, 999, at)
 	assert.ErrorIs(t, err, auth.ErrRefreshTokenNotFound)
 
-	// Revoking a member in one tenant touches only that user in that tenant.
-	require.NoError(t, repo.RevokeForMember(ctx, ana.ID, o2.ID, now))
-	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": false, "h-b1": false} {
+	// Revoking a user touches all their tokens and only theirs.
+	require.NoError(t, repo.RevokeForUser(ctx, ana.ID, now))
+	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-b1": false} {
 		tok, err := repo.FindByHash(ctx, hash)
 		require.NoError(t, err)
 		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
 	}
-	assert.NoError(t, repo.RevokeForMember(ctx, 999, 999, now), "no tokens is not an error")
-
-	// Revoking a user touches every tenant, and only that user.
-	require.NoError(t, repo.RevokeForUser(ctx, ana.ID, now))
-	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": true, "h-b1": false} {
-		tok, err := repo.FindByHash(ctx, hash)
-		require.NoError(t, err)
-		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
-	}
-	assert.NoError(t, repo.RevokeForUser(ctx, 999, now))
+	assert.NoError(t, repo.RevokeForUser(ctx, 999, now), "no tokens is not an error")
 }
 
-func TestRefreshTokensWithoutTenant(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	repo := NewRefreshTokenRepository(db)
-	ana := newUser(t, NewUserRepository(db), "ana@example.com")
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
-	_, err := repo.Create(ctx, auth.RefreshToken{UserID: ana.ID, TokenHash: "h-login", ExpiresAt: now.Add(time.Hour), CreatedAt: now})
-	require.NoError(t, err, "a login token belongs to the user, not to an organization")
-	got, err := repo.FindByHash(ctx, "h-login")
-	require.NoError(t, err)
-	assert.Zero(t, got.TenantID)
-
-	var tenant sql.NullInt64
-	require.NoError(t, db.QueryRowContext(ctx, `SELECT tenant_id FROM refresh_tokens WHERE token_hash = 'h-login'`).Scan(&tenant))
-	assert.False(t, tenant.Valid, "stored as NULL, not 0")
-
-	require.NoError(t, repo.RevokeForUser(ctx, ana.ID, now))
-	got, _ = repo.FindByHash(ctx, "h-login")
-	assert.NotNil(t, got.RevokedAt)
-}
-
-func TestRefreshTokensDieWithTheirOrganization(t *testing.T) {
+func TestRefreshTokensDieWithTheirUser(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	repo := NewRefreshTokenRepository(db)
 	ana := newUser(t, NewUserRepository(db), "ana@example.com")
 	now := time.Now().UTC()
-	o, err := NewOrgRepository(db).CreateWithOwner(ctx, org.Organization{Name: "One", CreatedAt: now}, ana.ID)
+	_, err := repo.Create(ctx, auth.RefreshToken{UserID: ana.ID, TokenHash: "h", ExpiresAt: now.Add(time.Hour), CreatedAt: now})
 	require.NoError(t, err)
-	_, err = repo.Create(ctx, auth.RefreshToken{UserID: ana.ID, TenantID: o.ID, TokenHash: "h", ExpiresAt: now.Add(time.Hour), CreatedAt: now})
-	require.NoError(t, err)
-	_, err = db.ExecContext(ctx, `DELETE FROM organizations WHERE id = ?`, o.ID)
+	_, err = db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, ana.ID)
 	require.NoError(t, err)
 	_, err = repo.FindByHash(ctx, "h")
 	assert.ErrorIs(t, err, auth.ErrRefreshTokenNotFound)

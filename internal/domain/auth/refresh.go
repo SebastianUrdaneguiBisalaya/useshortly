@@ -18,13 +18,11 @@ const (
 	refreshSecretBytes = 32
 )
 
-// RefreshToken is a long-lived credential. Only the hash of the opaque secret is stored.
-// TenantID is zero for the tokens login issues (they belong to the user, not to one
-// organization: access to an organization is checked on every request).
+// RefreshToken is a long-lived credential of a user. Only the hash of the opaque secret is
+// stored. It says nothing about organizations: access to one is checked on every request.
 type RefreshToken struct {
 	ID        int64
 	UserID    int64
-	TenantID  int64
 	TokenHash string
 	ExpiresAt time.Time
 	RevokedAt *time.Time
@@ -38,8 +36,6 @@ type RefreshTokenRepository interface {
 	// Revoke marks the token revoked at the given instant and reports whether this call did
 	// it: false means it was already revoked. Returns ErrRefreshTokenNotFound.
 	Revoke(ctx context.Context, id int64, at time.Time) (bool, error)
-	// RevokeForMember revokes every live token the user holds for that tenant.
-	RevokeForMember(ctx context.Context, userID, tenantID int64, at time.Time) error
 	// RevokeForUser revokes every live token of the user, in all tenants.
 	RevokeForUser(ctx context.Context, userID int64, at time.Time) error
 }
@@ -63,10 +59,6 @@ func NewRefreshService(repo RefreshTokenRepository, ttl time.Duration) *RefreshS
 
 // Issue creates a refresh token for the user.
 func (s *RefreshService) Issue(ctx context.Context, userID int64) (RefreshGrant, error) {
-	return s.issue(ctx, userID, 0)
-}
-
-func (s *RefreshService) issue(ctx context.Context, userID, tenantID int64) (RefreshGrant, error) {
 	buf := make([]byte, refreshSecretBytes)
 	if _, err := io.ReadFull(s.rand, buf); err != nil {
 		return RefreshGrant{}, fmt.Errorf("auth: refresh token: %w", err)
@@ -75,7 +67,7 @@ func (s *RefreshService) issue(ctx context.Context, userID, tenantID int64) (Ref
 	now := s.now()
 	expires := now.Add(s.ttl)
 	_, err := s.repo.Create(ctx, RefreshToken{
-		UserID: userID, TenantID: tenantID, TokenHash: hashRefresh(secret), ExpiresAt: expires, CreatedAt: now,
+		UserID: userID, TokenHash: hashRefresh(secret), ExpiresAt: expires, CreatedAt: now,
 	})
 	if err != nil {
 		return RefreshGrant{}, err
@@ -112,7 +104,7 @@ func (s *RefreshService) Rotate(ctx context.Context, secret string) (int64, Refr
 	if !won { // a concurrent request used it first
 		return 0, RefreshGrant{}, s.reuse(ctx, t.UserID, now)
 	}
-	grant, err := s.issue(ctx, t.UserID, t.TenantID)
+	grant, err := s.Issue(ctx, t.UserID)
 	if err != nil {
 		return 0, RefreshGrant{}, err
 	}
@@ -140,12 +132,7 @@ func (s *RefreshService) Revoke(ctx context.Context, secret string) error {
 	return err
 }
 
-// RevokeForMember and RevokeForUser let the services that own memberships and passwords
-// end sessions without knowing about clocks or hashes.
-func (s *RefreshService) RevokeForMember(ctx context.Context, userID, tenantID int64) error {
-	return s.repo.RevokeForMember(ctx, userID, tenantID, s.now())
-}
-
+// RevokeForUser lets the password reset end every session without knowing about clocks.
 func (s *RefreshService) RevokeForUser(ctx context.Context, userID int64) error {
 	return s.repo.RevokeForUser(ctx, userID, s.now())
 }

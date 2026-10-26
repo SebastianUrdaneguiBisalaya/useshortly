@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
@@ -106,6 +107,11 @@ type env struct {
 
 func newEnv(t *testing.T, withGoogle bool) *env {
 	t.Helper()
+	return newEnvWithCache(t, withGoogle, nil)
+}
+
+func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env {
+	t.Helper()
 	ctx := context.Background()
 	db, err := database.NewSQLite(ctx, database.SQLiteConfig{Path: filepath.Join(t.TempDir(), "app.db")})
 	if err != nil {
@@ -127,6 +133,8 @@ func newEnv(t *testing.T, withGoogle bool) *env {
 	a := adapters{
 		codes:  &memCodes{entries: map[string]*memCode{}, cooldown: map[string]bool{}},
 		sender: box,
+
+		linkCache: linkCache,
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -137,6 +145,8 @@ func newEnv(t *testing.T, withGoogle bool) *env {
 		JWTTTL:     time.Hour,
 		OTPSecret:  "fedcba9876543210fedcba9876543210",
 		RefreshTTL: 24 * time.Hour,
+
+		LinkCacheTTL: time.Minute,
 	}
 	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB}
 	t.Cleanup(e.app.mail.Wait)
@@ -433,6 +443,80 @@ func TestAPIKeys(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme+"/api-keys/"+keyID, ana, nil).status)
 	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/orgs/"+acme+"/links", secret, map[string]string{"url": "https://example.com"}).status, "deleted keys stop working")
 	assert.Equal(t, http.StatusNotFound, e.do("DELETE", "/api/v1/orgs/"+acme+"/api-keys/"+keyID, ana, nil).status)
+}
+
+// memLinkCache is an in-memory cached.Store.
+type memLinkCache struct {
+	mu   sync.Mutex
+	data map[string][]byte
+}
+
+func (c *memLinkCache) Get(_ context.Context, key string) ([]byte, bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	v, ok := c.data[key]
+	return v, ok, nil
+}
+
+func (c *memLinkCache) Set(_ context.Context, key string, value []byte, _ time.Duration) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[key] = value
+	return nil
+}
+
+func (c *memLinkCache) Del(_ context.Context, keys ...string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, k := range keys {
+		delete(c.data, k)
+	}
+	return nil
+}
+
+func TestRedirectsAreServedFromTheLinkCache(t *testing.T) {
+	cache := &memLinkCache{data: map[string][]byte{}}
+	e := newEnvWithCache(t, false, cache)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	links := "/api/v1/orgs/" + acme + "/links"
+
+	res := e.do("POST", links, ana, map[string]string{"url": "https://example.com/cached"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	code := res.str("code")
+	assert.Empty(t, cache.data, "nothing is cached until the first redirect")
+
+	require.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
+	assert.Contains(t, cache.data, "link:code:"+code)
+
+	// Removing the row behind the app's back proves the second redirect comes from the cache.
+	_, err := e.sql.ExecContext(context.Background(), `DELETE FROM links WHERE code = ?`, code)
+	require.NoError(t, err)
+	cachedRes := e.do("GET", "/"+code, "", nil)
+	assert.Equal(t, http.StatusFound, cachedRes.status)
+	assert.Equal(t, "https://example.com/cached", cachedRes.header.Get("Location"))
+
+	// Deleting through the API drops the entry.
+	res = e.do("POST", links, ana, map[string]string{"url": "https://example.com/two", "alias": "second"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	require.Equal(t, http.StatusFound, e.do("GET", "/second", "", nil).status)
+	require.Contains(t, cache.data, "link:code:second")
+	require.Equal(t, http.StatusNoContent, e.do("DELETE", links+"/"+res.id(), ana, nil).status)
+	assert.NotContains(t, cache.data, "link:code:second")
+	assert.Equal(t, http.StatusNotFound, e.do("GET", "/second", "", nil).status)
+}
+
+func TestCachedLinksStillStopAtMaxClicks(t *testing.T) {
+	e := newEnvWithCache(t, false, &memLinkCache{data: map[string][]byte{}})
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]any{"url": "https://example.com/two", "max_clicks": 2})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	code := res.str("code")
+
+	assert.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
+	assert.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
+	assert.Equal(t, http.StatusGone, e.do("GET", "/"+code, "", nil).status, "the database counter ends it, the cached copy is not trusted for that")
 }
 
 func TestListAndDeleteLinks(t *testing.T) {

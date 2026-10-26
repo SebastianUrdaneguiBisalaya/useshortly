@@ -74,7 +74,7 @@ func run() error {
 		log.Println("GOOGLE_CLIENT_ID is not set: Google sign-in is disabled")
 	}
 
-	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth})
+	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient)})
 	// Let emails still in flight finish before the database and Redis close.
 	defer a.mail.Wait()
 

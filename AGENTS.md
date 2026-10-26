@@ -92,6 +92,7 @@ any that touches more than one layer (domain, adapter, migration).
 | Query building         | Plain SQL + repository pattern   | No ORM; makes migrating to sqlc/sqlx later a pure adapter change. |
 | Auth (JWT)             | `github.com/golang-jwt/jwt/v5`   | Hidden behind a `TokenService` port. |
 | Password hashing       | `golang.org/x/crypto/argon2`     | argon2id behind the `user.PasswordHasher` port. |
+| Email (Resend)         | `github.com/resend/resend-go/v4` | Behind the `mailing.Sender` port; sends are asynchronous and best effort (`mailing.Async`), they never block or fail the main flow. |
 | Config                 | `github.com/joho/godotenv`       | Development only; in production env vars are injected by the platform (container, platform, etc.). |
 | IDs                    | `github.com/google/uuid`         | |
 | Testing                | stdlib `testing` + `github.com/stretchr/testify` | Assertions and table-driven tests. |

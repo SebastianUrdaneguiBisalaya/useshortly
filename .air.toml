@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/api ./cmd/api"
+  bin = "./tmp/api"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "data", "apps", ".git"]
+  delay = 500
+  stop_on_error = true
+  # Poll instead of fs events: bind mounts on macOS/Windows don't deliver them reliably.
+  poll = true
+  poll_interval = 500
+
+[log]
+  time = false

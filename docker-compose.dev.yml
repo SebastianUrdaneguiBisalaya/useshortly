@@ -1,0 +1,14 @@
+# Development: hot reload with air, SQLite file persisted in ./data.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      PORT: "8080"
+      DATABASE_PATH: /app/data/useshortly.db
+    volumes:
+      - .:/app

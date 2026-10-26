@@ -10,7 +10,7 @@ own infrastructure and fully control. Module: `github.com/SebastianUrdaneguiBisa
 
 How it works: `POST /api/links` validates the long URL, generates a unique short code (7 chars
 base62 from `crypto/rand`, retried on collision) and stores `code -> URL`. `GET /{code}` looks the
-code up (Redis cache first, Postgres on miss), records the click asynchronously and answers
+code up (Redis cache first, SQLite on miss), records the click asynchronously and answers
 **302** (not 301, so every click reaches the server and can be measured).
 
 Scope: **backend first.** A web dashboard and a desktop app are planned but out of scope until the
@@ -54,10 +54,10 @@ any that touches more than one layer (domain, adapter, migration).
 
 1. **Hexagonal architecture (ports & adapters).** The domain (`internal/domain`) defines entities
    and contracts (interfaces/"ports"). Adapters (`internal/adapter`) implement those contracts
-   against concrete technology (Postgres, JWT, HTTP). The domain never imports an infrastructure
+   against concrete technology (SQLite/Turso, JWT, HTTP). The domain never imports an infrastructure
    or third-party package.
 2. **Dependency-agnostic, except the router.** ORM/query builder, database driver, auth provider,
-   etc. are always hidden behind an interface defined in `internal/domain`. If pgx is swapped for
+   etc. are always hidden behind an interface defined in `internal/domain`. If tursogo is swapped for
    sqlc tomorrow, or JWT for sessions, only the corresponding adapter is rewritten; business logic
    is untouched. The HTTP router is the only exception: it is wired directly into the HTTP adapter
    layer without an extra intermediate interface.
@@ -76,8 +76,8 @@ any that touches more than one layer (domain, adapter, migration).
 8. **Unit tests for the domain, with hand-written fakes.** No heavy mocking frameworks; a fake
    implementation satisfying the interface is enough. Domain tests must never require a real
    database.
-9. **Versioned migrations in plain SQL** (`migrations/` folder), compatible with tools like
-   `golang-migrate`, to avoid coupling to an ORM.
+9. **Versioned migrations in plain SQL** (`migrations/` folder), applied with the `sqlite3` CLI
+   (`make migrate-up`), to avoid coupling to an ORM.
 10. **12-factor config.** Configuration via environment variables, with `.env` only for local
     development (loaded via `godotenv`). Never commit secrets; `.env.example` documents the
     required variables.
@@ -88,10 +88,10 @@ any that touches more than one layer (domain, adapter, migration).
 |------------------------|-----------------------------------|-------|
 | HTTP router            | `github.com/gorilla/mux`         | The only dependency wired in without an intermediate interface. |
 | gRPC (inter-service)   | `google.golang.org/grpc`         | Runs alongside HTTP for service-to-service calls; contract lives in `api/proto`, stubs generated with `make proto` (buf). |
-| PostgreSQL driver      | `github.com/jackc/pgx/v5`        | Used via `pgxpool`, hidden behind a `Repository` port. |
+| SQLite driver (Turso)  | `turso.tech/database/tursogo`    | `database/sql` driver, no CGO. Local file, optional sync to Turso Cloud; hidden behind a `Repository` port. |
 | Query building         | Plain SQL + repository pattern   | No ORM; makes migrating to sqlc/sqlx later a pure adapter change. |
 | Auth (JWT)             | `github.com/golang-jwt/jwt/v5`   | Hidden behind a `TokenService` port. |
-| Config                 | `github.com/joho/godotenv`       | Development only; in production env vars are injected by the platform (Neon, container, etc.). |
+| Config                 | `github.com/joho/godotenv`       | Development only; in production env vars are injected by the platform (container, platform, etc.). |
 | IDs                    | `github.com/google/uuid`         | |
 | Testing                | stdlib `testing` + `github.com/stretchr/testify` | Assertions and table-driven tests. |
 
@@ -145,14 +145,14 @@ Like the router, gRPC is an adapter: the domain layer stays untouched by this.
 │   │   │   └── dto/
 │   │   │       └── user_dto.go
 │   │   ├── repository/
-│   │   │   └── postgres/
-│   │   │       └── user_repository.go  # Implements domain/user.Repository with pgx
+│   │   │   └── sqlite/
+│   │   │       └── user_repository.go  # Implements domain/user.Repository on database/sql
 │   │   └── auth/
 │   │       └── jwt/
 │   │           └── jwt_service.go       # Implements domain/auth.TokenService
 │   └── platform/
 │       ├── database/
-│       │   └── postgres.go      # pgx connection pool
+│       │   └── sqlite.go        # Local SQLite (tursogo) + optional Turso Cloud sync
 │       └── server/
 │           └── server.go        # http.Server + graceful shutdown
 ├── pkg/
@@ -164,8 +164,8 @@ Like the router, gRPC is an adapter: the domain layer stays untouched by this.
 ├── .env.example
 ├── Dockerfile                    # Multi-stage build for production
 ├── Dockerfile.dev                # Hot-reload (air) image for development
-├── docker-compose.yml            # Production: only the app service (cloud DB, e.g. Neon)
-├── docker-compose.dev.yml        # Development: app + postgres + pgadmin
+├── docker-compose.yml            # Production: app service + data volume (SQLite file)
+├── docker-compose.dev.yml        # Development: app with hot reload (air)
 └── AGENTS.md
 ```
 
@@ -185,8 +185,10 @@ Like the router, gRPC is an adapter: the domain layer stays untouched by this.
 
 ## Environments
 
-- **Development:** local PostgreSQL via `docker-compose.dev.yml`, with pgAdmin for inspection. The
-  app runs with hot reload (`air`) using `Dockerfile.dev`.
-- **Production:** managed PostgreSQL in the cloud (e.g. Neon). `docker-compose.yml` only starts the
-  app service; the connection string (`DATABASE_URL`) points to the cloud provider via an
-  environment variable. A Postgres container is never started in production.
+- **Development:** `docker-compose.dev.yml` runs the app with hot reload (`air`, configured in
+  `.air.toml`, image `Dockerfile.dev`). The SQLite file is persisted in `./data`.
+- **Production:** self-hosted. `docker-compose.yml` runs the app with a `data` volume holding the
+  SQLite file. The user chooses the mode via env vars: **local only** (leave `TURSO_*` empty) or
+  **local + Turso Cloud** (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`; the app pulls/pushes every
+  `SYNC_INTERVAL` and pushes on shutdown). The image is `debian-slim` because `tursogo` loads
+  native libraries at runtime. No database container is ever started.

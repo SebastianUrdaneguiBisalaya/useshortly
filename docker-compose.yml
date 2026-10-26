@@ -1,0 +1,18 @@
+# Production, self-hosted. SQLite lives in the `data` volume (local mode).
+# For Turso Cloud sync, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in .env.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      ENVIRONMENT: production
+      PORT: "8080"
+      DATABASE_PATH: /data/useshortly.db
+    volumes:
+      - data:/data
+
+volumes:
+  data:

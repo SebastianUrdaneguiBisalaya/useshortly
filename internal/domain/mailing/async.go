@@ -11,7 +11,7 @@ const asyncTimeout = 15 * time.Second
 
 // Mailer is what Async wraps: *Service satisfies it.
 type Mailer interface {
-	Send(ctx context.Context, code, to string, data map[string]string) error
+	Send(ctx context.Context, req Request) error
 }
 
 // Async sends in the background so an email can never slow down or fail the request
@@ -26,7 +26,7 @@ func NewAsync(m Mailer) *Async {
 	return &Async{mailer: m}
 }
 
-func (a *Async) Send(ctx context.Context, code, to string, data map[string]string) error {
+func (a *Async) Send(ctx context.Context, req Request) error {
 	// The request context is cancelled as soon as the response is written.
 	ctx = context.WithoutCancel(ctx)
 	a.wg.Add(1)
@@ -34,8 +34,8 @@ func (a *Async) Send(ctx context.Context, code, to string, data map[string]strin
 		defer a.wg.Done()
 		ctx, cancel := context.WithTimeout(ctx, asyncTimeout)
 		defer cancel()
-		if err := a.mailer.Send(ctx, code, to, data); err != nil {
-			slog.Warn("email not sent", "template", code, "error", err)
+		if err := a.mailer.Send(ctx, req); err != nil {
+			slog.Warn("email not sent", "template", req.Code, "error", err)
 		}
 	}()
 	return nil

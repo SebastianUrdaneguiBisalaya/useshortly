@@ -30,7 +30,7 @@ func (s *Service) Shorten(ctx context.Context, rawURL string, expiresAt *time.Ti
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Link{}, ErrInvalidURL
 	}
-	for i := 0; i < maxRetries; i++ {
+	for range maxRetries {
 		code, err := s.gen.Generate()
 		if err != nil {
 			return Link{}, err

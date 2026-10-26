@@ -50,6 +50,7 @@ var httpErrors = []struct {
 	{apikey.ErrNotFound, apiError{http.StatusNotFound, "not_found", "api key not found"}},
 	{apikey.ErrExpired, apiError{http.StatusUnauthorized, "api_key_expired", "the api key expired"}},
 	{apikey.ErrInvalidName, apiError{http.StatusBadRequest, "invalid_name", "the name is empty or too long"}},
+	{apikey.ErrInvalidScope, apiError{http.StatusBadRequest, "invalid_scope", "the scope must be read or write"}},
 	{apikey.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "the expiration must be in the future"}},
 
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},

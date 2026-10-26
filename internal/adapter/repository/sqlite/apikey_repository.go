@@ -18,13 +18,13 @@ func NewAPIKeyRepository(db *sql.DB) *APIKeyRepository {
 	return &APIKeyRepository{db: db}
 }
 
-const apiKeyColumns = `id, tenant_id, created_by, name, prefix, key_hash, last_used_at, expires_at, created_at`
+const apiKeyColumns = `id, tenant_id, created_by, name, prefix, key_hash, scope, last_used_at, expires_at, created_at`
 
 func (r *APIKeyRepository) Create(ctx context.Context, k apikey.APIKey) (apikey.APIKey, error) {
 	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO api_keys (tenant_id, created_by, name, prefix, key_hash, expires_at, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		k.TenantID, k.CreatedBy, k.Name, k.Prefix, k.KeyHash, nullTime(k.ExpiresAt), formatTime(k.CreatedAt))
+		`INSERT INTO api_keys (tenant_id, created_by, name, prefix, key_hash, scope, expires_at, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		k.TenantID, k.CreatedBy, k.Name, k.Prefix, k.KeyHash, string(k.Scope), nullTime(k.ExpiresAt), formatTime(k.CreatedAt))
 	if err != nil {
 		return apikey.APIKey{}, fmt.Errorf("apikey repo: insert: %w", err)
 	}
@@ -91,13 +91,15 @@ func scanAPIKey(s scanner) (apikey.APIKey, error) {
 		lastUsed, expires sql.NullString
 		createdAt         string
 	)
-	err := s.Scan(&k.ID, &k.TenantID, &k.CreatedBy, &k.Name, &k.Prefix, &k.KeyHash, &lastUsed, &expires, &createdAt)
+	var scope string
+	err := s.Scan(&k.ID, &k.TenantID, &k.CreatedBy, &k.Name, &k.Prefix, &k.KeyHash, &scope, &lastUsed, &expires, &createdAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return apikey.APIKey{}, err
 		}
 		return apikey.APIKey{}, fmt.Errorf("apikey repo: scan: %w", err)
 	}
+	k.Scope = apikey.Scope(scope)
 	if k.LastUsedAt, err = parseNullTime(lastUsed); err != nil {
 		return apikey.APIKey{}, fmt.Errorf("apikey repo: last_used_at: %w", err)
 	}

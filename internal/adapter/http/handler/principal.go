@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -14,6 +15,8 @@ type Principal struct {
 	User   user.User // set for JWT callers
 	// KeyTenantID is the tenant an API key is bound to; zero for JWT callers.
 	KeyTenantID int64
+	// KeyScope is what that key may do; empty for JWT callers, who may do everything.
+	KeyScope apikey.Scope
 }
 
 func (p Principal) ViaAPIKey() bool { return p.KeyTenantID != 0 }

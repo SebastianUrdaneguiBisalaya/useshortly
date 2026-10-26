@@ -31,10 +31,13 @@ func NewService(repo Repository) *Service {
 
 // Create returns the stored key and its secret. The secret is never stored and
 // cannot be recovered later: show it to the user once.
-func (s *Service) Create(ctx context.Context, tenantID, userID int64, name string, expiresAt *time.Time) (APIKey, string, error) {
+func (s *Service) Create(ctx context.Context, tenantID, userID int64, name string, scope Scope, expiresAt *time.Time) (APIKey, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || utf8.RuneCountInString(name) > maxNameLen {
 		return APIKey{}, "", ErrInvalidName
+	}
+	if !scope.valid() {
+		return APIKey{}, "", ErrInvalidScope
 	}
 	if expiresAt != nil && !expiresAt.After(s.now()) {
 		return APIKey{}, "", ErrInvalidExpiry
@@ -54,6 +57,7 @@ func (s *Service) Create(ctx context.Context, tenantID, userID int64, name strin
 		Name:      name,
 		Prefix:    secret[:visibleLen],
 		KeyHash:   hashSecret(secret),
+		Scope:     scope,
 		ExpiresAt: expiresAt,
 		CreatedAt: s.now(),
 	})

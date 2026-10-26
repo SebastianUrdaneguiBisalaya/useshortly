@@ -6,6 +6,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/gorilla/mux"
 )
 
@@ -65,7 +66,8 @@ func NewRouter(h Handlers) http.Handler {
 	either.Use(h.Auth.UserOrKey)
 	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
 	eitherOrg.Use(h.Tenant.Require)
-	eitherOrg.HandleFunc("/links", h.Links.Create).Methods(http.MethodPost)
+	// Creating needs the write scope; routes that only read will ask for apikey.ScopeRead.
+	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
 
 	// Public redirect. Registered last so it never shadows /health or /api.
 	r.HandleFunc("/{code:[0-9A-Za-z]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)

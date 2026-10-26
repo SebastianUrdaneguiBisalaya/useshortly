@@ -51,7 +51,7 @@ func (a *Auth) require(next http.Handler, allowKey bool) http.Handler {
 				handler.WriteError(w, r, err)
 				return
 			}
-			p = handler.Principal{UserID: k.CreatedBy, KeyTenantID: k.TenantID}
+			p = handler.Principal{UserID: k.CreatedBy, KeyTenantID: k.TenantID, KeyScope: k.Scope}
 		} else {
 			u, err := a.users.Authenticate(r.Context(), token)
 			if err != nil {

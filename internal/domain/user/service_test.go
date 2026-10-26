@@ -15,6 +15,7 @@ import (
 type fakeRepo struct {
 	users    map[int64]User
 	accounts map[int64]Account
+	extra    []Account // accounts added with CreateAccount
 	nextID   int64
 }
 
@@ -32,6 +33,33 @@ func (r *fakeRepo) Create(_ context.Context, u User, a Account) (User, error) {
 	u.ID, a.UserID = r.nextID, r.nextID
 	r.users[u.ID], r.accounts[u.ID] = u, a
 	return u, nil
+}
+
+func (r *fakeRepo) FindAccountByProvider(_ context.Context, p Provider, accountID string) (Account, error) {
+	for _, a := range r.accounts {
+		if a.Provider == p && a.AccountID == accountID {
+			return a, nil
+		}
+	}
+	return Account{}, ErrNotFound
+}
+
+func (r *fakeRepo) CreateAccount(_ context.Context, a Account) error {
+	r.extra = append(r.extra, a)
+	if _, ok := r.accounts[a.UserID]; !ok {
+		r.accounts[a.UserID] = a
+	}
+	return nil
+}
+
+func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string) error {
+	a, ok := r.accounts[userID]
+	if !ok || a.Provider != ProviderDefault {
+		return ErrNotFound
+	}
+	a.PasswordHash = hash
+	r.accounts[userID] = a
+	return nil
 }
 
 func (r *fakeRepo) FindByEmail(_ context.Context, email string) (User, error) {

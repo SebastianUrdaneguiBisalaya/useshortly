@@ -2,7 +2,7 @@
 -- body_text are Go templates; {{.AppURL}} is always available, the rest depends on the code.
 CREATE TABLE IF NOT EXISTS email_templates (
     id INTEGER PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE CHECK (code IN ('WELCOME', 'LOGIN', 'INVITATION')),
+    code TEXT NOT NULL UNIQUE CHECK (code IN ('WELCOME', 'LOGIN', 'INVITATION', 'PASSWORD_RESET')),
     subject TEXT NOT NULL,
     body_html TEXT NOT NULL,
     body_text TEXT NOT NULL,
@@ -28,4 +28,10 @@ INSERT OR IGNORE INTO email_templates (code, subject, body_html, body_text) VALU
     '{{.InviterName}} invited you to {{.OrganizationName}}',
     '<p>{{.InviterName}} invited you to join <strong>{{.OrganizationName}}</strong> on useshortly.</p><p><a href="{{.AppURL}}/invitations/{{.InvitationID}}">Accept the invitation</a></p><p>It expires on {{.ExpiresAt}}.</p>',
     '{{.InviterName}} invited you to join {{.OrganizationName}} on useshortly. Accept: {{.AppURL}}/invitations/{{.InvitationID}} (expires on {{.ExpiresAt}}).'
+),
+(
+    'PASSWORD_RESET',
+    'Your useshortly password reset code',
+    '<p>Hi {{.FirstName}},</p><p>Your password reset code is:</p><p style="font-size:24px;letter-spacing:4px"><strong>{{.Code}}</strong></p><p>It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If you did not ask for it, ignore this email.</p>',
+    'Hi {{.FirstName}}, your password reset code is {{.Code}}. It expires in {{.ExpiresInMinutes}} minutes and can be tried {{.MaxAttempts}} times. If you did not ask for it, ignore this email.'
 );

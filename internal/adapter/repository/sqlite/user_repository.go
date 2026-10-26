@@ -88,16 +88,24 @@ func (r *UserRepository) findOne(ctx context.Context, query string, arg any) (us
 	return u, nil
 }
 
+const accountColumns = `id, user_id, account_id, provider_id, password, created_at`
+
 func (r *UserRepository) FindAccount(ctx context.Context, userID int64, provider user.Provider) (user.Account, error) {
+	return r.findAccount(ctx, `SELECT `+accountColumns+` FROM accounts WHERE user_id = ? AND provider_id = ?`, userID, string(provider))
+}
+
+func (r *UserRepository) FindAccountByProvider(ctx context.Context, provider user.Provider, accountID string) (user.Account, error) {
+	return r.findAccount(ctx, `SELECT `+accountColumns+` FROM accounts WHERE provider_id = ? AND account_id = ?`, string(provider), accountID)
+}
+
+func (r *UserRepository) findAccount(ctx context.Context, query string, args ...any) (user.Account, error) {
 	var (
 		a         user.Account
 		password  sql.NullString
 		providerS string
 		createdAt string
 	)
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, account_id, provider_id, password, created_at
-		 FROM accounts WHERE user_id = ? AND provider_id = ?`, userID, string(provider)).
+	err := r.db.QueryRowContext(ctx, query, args...).
 		Scan(&a.ID, &a.UserID, &a.AccountID, &providerS, &password, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return user.Account{}, user.ErrNotFound
@@ -111,6 +119,33 @@ func (r *UserRepository) FindAccount(ctx context.Context, userID int64, provider
 		return user.Account{}, fmt.Errorf("user repo: account created_at: %w", err)
 	}
 	return a, nil
+}
+
+func (r *UserRepository) CreateAccount(ctx context.Context, a user.Account) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO accounts (user_id, account_id, provider_id, password, created_at) VALUES (?, ?, ?, ?, ?)`,
+		a.UserID, a.AccountID, string(a.Provider), nullString(a.PasswordHash), formatTime(a.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("user repo: create account: %w", err)
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64, hash string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE accounts SET password = ?, updated_at = `+nowSQL+` WHERE user_id = ? AND provider_id = ?`,
+		hash, userID, string(user.ProviderDefault))
+	if err != nil {
+		return fmt.Errorf("user repo: update password: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("user repo: update password: %w", err)
+	}
+	if n == 0 {
+		return user.ErrNotFound
+	}
+	return nil
 }
 
 func nullString(s string) any {

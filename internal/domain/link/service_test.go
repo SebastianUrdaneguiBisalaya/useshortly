@@ -3,12 +3,15 @@ package link
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 type fakeRepo struct {
@@ -41,6 +44,29 @@ func (r *fakeRepo) FindByCode(_ context.Context, code string) (Link, error) {
 		return Link{}, ErrNotFound
 	}
 	return l, nil
+}
+
+func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]Link, int, error) {
+	var all []Link
+	for _, l := range r.links {
+		if l.TenantID == tenantID {
+			all = append(all, l)
+		}
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
+	lo := min(p.Offset, len(all))
+	hi := min(lo+p.Limit, len(all))
+	return all[lo:hi], len(all), nil
+}
+
+func (r *fakeRepo) Delete(_ context.Context, tenantID, id int64) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			delete(r.links, code)
+			return nil
+		}
+	}
+	return ErrNotFound
 }
 
 func (r *fakeRepo) ConsumeClick(_ context.Context, code string) error {
@@ -354,4 +380,50 @@ func TestIsExpired(t *testing.T) {
 			assert.Equal(t, tt.want, tt.l.IsExpired(fixedNow))
 		})
 	}
+}
+
+func TestListAndDeleteAreScopedToTenant(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	s := newSvc(repo, &fakeGen{codes: []string{"aaaaaaa", "bbbbbbb", "ccccccc", "ddddddd"}})
+	var mine []Link
+	for _, tenant := range []int64{1, 1, 1, 2} {
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: tenant, UserID: 1, URL: "https://example.com"})
+		require.NoError(t, err)
+		if tenant == 1 {
+			mine = append(mine, l)
+		}
+	}
+
+	t.Run("lists one page, newest first, with the tenant's total", func(t *testing.T) {
+		list, total, err := s.List(ctx, 1, page.Params{Limit: 2})
+		require.NoError(t, err)
+		assert.Equal(t, 3, total)
+		require.Len(t, list, 2)
+		assert.Equal(t, mine[2].Code, list[0].Code)
+		assert.Equal(t, mine[1].Code, list[1].Code)
+
+		list, _, err = s.List(ctx, 1, page.Params{Limit: 2, Offset: 2})
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		assert.Equal(t, mine[0].Code, list[0].Code)
+	})
+
+	t.Run("an empty window falls back to the default limit", func(t *testing.T) {
+		list, _, err := s.List(ctx, 1, page.Params{})
+		require.NoError(t, err)
+		assert.Len(t, list, 3)
+	})
+
+	t.Run("another tenant cannot delete my link", func(t *testing.T) {
+		assert.ErrorIs(t, s.Delete(ctx, 2, mine[0].ID), ErrNotFound)
+		assert.Contains(t, repo.links, mine[0].Code)
+	})
+
+	t.Run("owner deletes it and it stops resolving", func(t *testing.T) {
+		require.NoError(t, s.Delete(ctx, 1, mine[0].ID))
+		_, err := s.Resolve(ctx, mine[0].Code)
+		assert.ErrorIs(t, err, ErrNotFound)
+		assert.ErrorIs(t, s.Delete(ctx, 1, mine[0].ID), ErrNotFound)
+	})
 }

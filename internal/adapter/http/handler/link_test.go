@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 type fakeLinkRepo struct {
@@ -26,6 +28,29 @@ func (r *fakeLinkRepo) Create(_ context.Context, l link.Link) (link.Link, error)
 	l.ID = int64(len(r.links) + 1)
 	r.links[l.Code] = l
 	return l, nil
+}
+
+func (r *fakeLinkRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
+	var all []link.Link
+	for _, l := range r.links {
+		if l.TenantID == tenantID {
+			all = append(all, l)
+		}
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
+	lo := min(p.Offset, len(all))
+	hi := min(lo+p.Limit, len(all))
+	return all[lo:hi], len(all), nil
+}
+
+func (r *fakeLinkRepo) Delete(_ context.Context, tenantID, id int64) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			delete(r.links, code)
+			return nil
+		}
+	}
+	return link.ErrNotFound
 }
 
 func (r *fakeLinkRepo) ConsumeClick(_ context.Context, code string) error {
@@ -132,4 +157,34 @@ func TestRedirectStopsAfterMaxClicks(t *testing.T) {
 	second := redirect()
 	assert.Equal(t, http.StatusGone, second.Code)
 	assert.Contains(t, second.Body.String(), "link_expired")
+}
+
+func TestPageParams(t *testing.T) {
+	tests := []struct {
+		query   string
+		want    page.Params
+		wantErr bool
+	}{
+		{"", page.Params{Limit: page.DefaultLimit}, false},
+		{"limit=10&offset=20", page.Params{Limit: 10, Offset: 20}, false},
+		{"limit=1000", page.Params{Limit: page.MaxLimit}, false},
+		{"limit=0", page.Params{}, true},
+		{"limit=-1", page.Params{}, true},
+		{"limit=abc", page.Params{}, true},
+		{"offset=-1", page.Params{}, true},
+		{"offset=1.5", page.Params{}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			got, ok := pageParams(rec, httptest.NewRequest(http.MethodGet, "/?"+tt.query, nil))
+			assert.Equal(t, !tt.wantErr, ok)
+			if tt.wantErr {
+				assert.Equal(t, http.StatusBadRequest, rec.Code)
+				assert.Contains(t, rec.Body.String(), "invalid_pagination")
+				return
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

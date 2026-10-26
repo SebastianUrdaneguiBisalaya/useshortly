@@ -435,6 +435,96 @@ func TestAPIKeys(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, e.do("DELETE", "/api/v1/orgs/"+acme+"/api-keys/"+keyID, ana, nil).status)
 }
 
+func TestListAndDeleteLinks(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	bobOrg := e.createOrg(bob, "Bobs")
+	links := "/api/v1/orgs/" + acme + "/links"
+
+	var ids []string
+	for _, u := range []string{"a", "b", "c"} {
+		res := e.do("POST", links, ana, map[string]string{"url": "https://example.com/" + u})
+		require.Equal(t, http.StatusCreated, res.status, res.raw)
+		ids = append(ids, res.id())
+	}
+	foreign := e.do("POST", "/api/v1/orgs/"+bobOrg+"/links", bob, map[string]string{"url": "https://example.com/bob"})
+	require.Equal(t, http.StatusCreated, foreign.status)
+
+	t.Run("lists the newest first with the window and the total", func(t *testing.T) {
+		res := e.do("GET", links+"?limit=2", ana, nil)
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		data := res.body["data"].([]any)
+		require.Len(t, data, 2)
+		assert.Equal(t, ids[2], strconv.FormatInt(int64(data[0].(map[string]any)["id"].(float64)), 10))
+		assert.Equal(t, map[string]any{"limit": float64(2), "offset": float64(0), "total": float64(3)}, res.body["meta"])
+
+		res = e.do("GET", links+"?limit=2&offset=2", ana, nil)
+		assert.Len(t, res.body["data"].([]any), 1)
+	})
+
+	t.Run("an empty list is [] and not null", func(t *testing.T) {
+		res := e.do("GET", links+"?offset=50", ana, nil)
+		assert.Equal(t, http.StatusOK, res.status)
+		assert.Contains(t, res.raw, `"data":[]`)
+	})
+
+	t.Run("bad pagination is a 400", func(t *testing.T) {
+		for _, q := range []string{"limit=0", "limit=x", "offset=-1"} {
+			res := e.do("GET", links+"?"+q, ana, nil)
+			assert.Equal(t, http.StatusBadRequest, res.status, q)
+			assert.Equal(t, "invalid_pagination", res.errCode(), q)
+		}
+	})
+
+	t.Run("another organization cannot list or delete", func(t *testing.T) {
+		assert.Equal(t, "not_member", e.do("GET", links, bob, nil).errCode())
+		assert.Equal(t, "not_member", e.do("DELETE", links+"/"+ids[0], bob, nil).errCode())
+		// An id of another organization, asked through my own organization, is just not found.
+		assert.Equal(t, http.StatusNotFound, e.do("DELETE", links+"/"+foreign.id(), ana, nil).status)
+		assert.Equal(t, http.StatusFound, e.do("GET", "/"+foreign.str("code"), "", nil).status, "it was not deleted")
+	})
+
+	t.Run("API key scopes: read lists, only write deletes", func(t *testing.T) {
+		keys := "/api/v1/orgs/" + acme + "/api-keys"
+		readKey := e.do("POST", keys, ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
+		writeKey := e.do("POST", keys, ana, map[string]string{"name": "w", "scope": "write"}).str("secret")
+		assert.Equal(t, http.StatusOK, e.do("GET", links, readKey, nil).status)
+		res := e.do("DELETE", links+"/"+ids[0], readKey, nil)
+		assert.Equal(t, http.StatusForbidden, res.status)
+		assert.Equal(t, "insufficient_scope", res.errCode())
+		assert.Equal(t, http.StatusNoContent, e.do("DELETE", links+"/"+ids[0], writeKey, nil).status)
+	})
+
+	t.Run("deleting removes the link everywhere", func(t *testing.T) {
+		code := e.do("GET", links+"?limit=1", ana, nil).body["data"].([]any)[0].(map[string]any)["code"].(string)
+		require.Equal(t, http.StatusFound, e.do("GET", "/"+code, "", nil).status)
+		require.Equal(t, http.StatusNoContent, e.do("DELETE", links+"/"+ids[2], ana, nil).status)
+		assert.Equal(t, http.StatusNotFound, e.do("GET", "/"+code, "", nil).status)
+		assert.Equal(t, http.StatusNotFound, e.do("DELETE", links+"/"+ids[2], ana, nil).status)
+		assert.Equal(t, http.StatusNotFound, e.do("DELETE", links+"/abc", ana, nil).status)
+		assert.Equal(t, float64(1), e.do("GET", links, ana, nil).body["meta"].(map[string]any)["total"])
+	})
+}
+
+func TestListAPIKeysIsPaginated(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	keys := "/api/v1/orgs/" + acme + "/api-keys"
+	for _, n := range []string{"one", "two", "three"} {
+		require.Equal(t, http.StatusCreated, e.do("POST", keys, ana, map[string]string{"name": n, "scope": "read"}).status)
+	}
+	res := e.do("GET", keys+"?limit=2&offset=1", ana, nil)
+	require.Equal(t, http.StatusOK, res.status, res.raw)
+	data := res.body["data"].([]any)
+	require.Len(t, data, 2)
+	assert.Equal(t, "two", data[0].(map[string]any)["name"])
+	assert.Equal(t, map[string]any{"limit": float64(2), "offset": float64(1), "total": float64(3)}, res.body["meta"])
+	assert.Equal(t, "invalid_pagination", e.do("GET", keys+"?limit=0", ana, nil).errCode())
+}
+
 func TestInvitationsMembersAndRemoval(t *testing.T) {
 	e := newEnv(t, false)
 	ana := e.signUp("ana@example.com", "Ana")

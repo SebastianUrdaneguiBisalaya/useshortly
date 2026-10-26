@@ -52,10 +52,53 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeData(w, http.StatusCreated, linkBody{
+	writeData(w, http.StatusCreated, h.body(l))
+}
+
+func (h *LinkHandler) body(l link.Link) linkBody {
+	return linkBody{
 		ID: l.ID, Code: l.Code, ShortURL: h.baseURL + "/" + l.Code, OriginURL: l.OriginURL,
 		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, CreatedAt: formatTime(l.CreatedAt),
-	})
+	}
+}
+
+// List answers one page of the organization's links, newest first.
+func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	p, ok := pageParams(w, r)
+	if !ok {
+		return
+	}
+	list, total, err := h.links.List(r.Context(), tenant.ID, p)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	out := make([]linkBody, 0, len(list))
+	for _, l := range list {
+		out = append(out, h.body(l))
+	}
+	writePage(w, out, p, total)
+}
+
+// Delete removes a link of the organization; one of another organization is a 404.
+func (h *LinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	if err := h.links.Delete(r.Context(), tenant.ID, linkID); err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Redirect answers 302 (not 301) so every click reaches the server.

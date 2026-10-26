@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/url"
 	"time"
+
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 )
 
 const (
@@ -91,6 +93,16 @@ func utc(t *time.Time) *time.Time {
 	}
 	u := t.UTC()
 	return &u
+}
+
+// List returns one page of the tenant's links, newest first, and how many it has in total.
+func (s *Service) List(ctx context.Context, tenantID int64, p page.Params) ([]Link, int, error) {
+	return s.repo.ListByTenant(ctx, tenantID, p.Normalize())
+}
+
+// Delete removes a link of the tenant; a link of another tenant is ErrNotFound.
+func (s *Service) Delete(ctx context.Context, tenantID, id int64) error {
+	return s.repo.Delete(ctx, tenantID, id)
 }
 
 func (s *Service) Resolve(ctx context.Context, code string) (string, error) {

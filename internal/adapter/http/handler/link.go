@@ -47,7 +47,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, linkBody{
+	writeData(w, http.StatusCreated, linkBody{
 		ID: l.ID, Code: l.Code, ShortURL: h.baseURL + "/" + l.Code, OriginURL: l.OriginURL,
 		ExpiresAt: formatTimePtr(l.ExpiresAt), CreatedAt: formatTime(l.CreatedAt),
 	})

@@ -63,7 +63,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, newOrgBody(o))
+	writeData(w, http.StatusCreated, newOrgBody(o))
 }
 
 func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 	for _, o := range list {
 		out = append(out, newOrgBody(o))
 	}
-	writeJSON(w, http.StatusOK, out)
+	writeData(w, http.StatusOK, out)
 }
 
 func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +89,7 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, newOrgBody(o))
+	writeData(w, http.StatusOK, newOrgBody(o))
 }
 
 func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	for _, m := range list {
 		out = append(out, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
 	}
-	writeJSON(w, http.StatusOK, out)
+	writeData(w, http.StatusOK, out)
 }
 
 func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +145,7 @@ func (h *OrgHandler) Invite(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, newInvitationBody(inv))
+	writeData(w, http.StatusCreated, newInvitationBody(inv))
 }
 
 func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	for _, i := range list {
 		out = append(out, newInvitationBody(i))
 	}
-	writeJSON(w, http.StatusOK, out)
+	writeData(w, http.StatusOK, out)
 }
 
 // AcceptInvitation joins the caller to the organization that invited their email.
@@ -177,7 +177,7 @@ func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
+	writeData(w, http.StatusOK, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
 }
 
 func (h *OrgHandler) RejectInvitation(w http.ResponseWriter, r *http.Request) {

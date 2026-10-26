@@ -48,7 +48,7 @@ type sessionBody struct {
 func writeSession(w http.ResponseWriter, status int, s user.Session) {
 	// A session carries secrets: never let a proxy or the browser cache it.
 	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, status, sessionBody{
+	writeData(w, status, sessionBody{
 		User: newUserBody(s.User), Token: s.Token.Value, ExpiresAt: formatTime(s.Token.ExpiresAt),
 		RefreshToken: s.Refresh.Token, RefreshExpiresAt: formatTime(s.Refresh.ExpiresAt),
 	})
@@ -72,7 +72,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]string{"message": "a confirmation code was sent to the email"})
+	writeData(w, http.StatusAccepted, map[string]string{"message": "a confirmation code was sent to the email"})
 }
 
 // VerifyRegistration checks the emailed code, creates the account and signs the user in.
@@ -168,7 +168,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]string{"message": "if the email has an account, a code was sent"})
+	writeData(w, http.StatusAccepted, map[string]string{"message": "if the email has an account, a code was sent"})
 }
 
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -189,5 +189,5 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 // Me returns the signed-in user.
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))
+	writeData(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))
 }

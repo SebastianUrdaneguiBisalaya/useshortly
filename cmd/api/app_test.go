@@ -164,6 +164,7 @@ func (e *env) do(method, path, token string, body any) response {
 		rd = bytes.NewReader(j)
 	}
 	req := httptest.NewRequest(method, path, rd)
+	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -171,6 +172,11 @@ func (e *env) do(method, path, token string, body any) response {
 	e.app.handler.ServeHTTP(rec, req)
 	res := response{status: rec.Code, header: rec.Header(), raw: rec.Body.String()}
 	_ = json.Unmarshal(rec.Body.Bytes(), &res.body)
+	// Successes come as {"data": ...}: expose the payload so tests read fields directly.
+	// Errors keep the full envelope, so errCode can read {"error": {...}}.
+	if data, ok := res.body["data"].(map[string]any); ok {
+		res.body = data
+	}
 	return res
 }
 
@@ -311,10 +317,27 @@ func TestAuthRequired(t *testing.T) {
 
 func TestStrictBodies(t *testing.T) {
 	e := newEnv(t, false)
-	assert.Equal(t, "invalid_body", e.do("POST", "/api/v1/auth/login", "", `{"email":"a@b.co","password":"x","extra":1}`).errCode(), "unknown field")
-	assert.Equal(t, "invalid_body", e.do("POST", "/api/v1/auth/login", "", `not json`).errCode())
-	assert.Equal(t, "invalid_body", e.do("POST", "/api/v1/auth/login", "", `{"email":"a@b.co"} {"x":1}`).errCode(), "two values")
-	assert.Equal(t, "invalid_body", e.do("POST", "/api/v1/auth/login", "", strings.Repeat("a", 2<<20)).errCode(), "too large")
+	login := func(body string) response { return e.do("POST", "/api/v1/auth/login", "", body) }
+
+	res := login(`{"email":"a@b.co","password":"x","extra":1}`)
+	assert.Equal(t, http.StatusBadRequest, res.status)
+	assert.Equal(t, "unknown_field", res.errCode(), "unknown field")
+	assert.Contains(t, res.raw, `"field":"extra"`)
+
+	res = login(`not json`)
+	assert.Equal(t, http.StatusBadRequest, res.status)
+	assert.Equal(t, "malformed_json", res.errCode())
+
+	assert.Equal(t, "empty_body", login(``).errCode())
+	assert.Equal(t, "invalid_body", login(`{"email":"a@b.co"} {"x":1}`).errCode(), "two values")
+
+	res = login(`{"email":5}`)
+	assert.Equal(t, "invalid_field_type", res.errCode())
+	assert.Contains(t, res.raw, `"field":"email"`)
+
+	res = login(`{"email":"` + strings.Repeat("a", 2<<20) + `"}`)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, res.status)
+	assert.Equal(t, "body_too_large", res.errCode())
 }
 
 func TestOrganizationsLinksAndRedirect(t *testing.T) {

@@ -53,7 +53,7 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, struct {
+	writeData(w, http.StatusCreated, struct {
 		apiKeyBody
 		Secret string `json:"secret"`
 	}{newAPIKeyBody(k), secret})
@@ -73,7 +73,7 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	for _, k := range list {
 		out = append(out, newAPIKeyBody(k))
 	}
-	writeJSON(w, http.StatusOK, out)
+	writeData(w, http.StatusOK, out)
 }
 
 func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {

@@ -54,6 +54,8 @@ var httpErrors = []struct {
 	{apikey.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "the expiration must be in the future"}},
 
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},
+	{link.ErrInvalidAlias, apiError{http.StatusBadRequest, "invalid_alias", "the alias must be 3 to 15 letters, digits, - or _, not 7 characters long and not a reserved word"}},
+	{link.ErrAliasTaken, apiError{http.StatusConflict, "alias_taken", "the alias is already in use"}},
 	{link.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{link.ErrExpired, apiError{http.StatusGone, "link_expired", "the link expired"}},
 	{link.ErrCodeTaken, apiError{http.StatusServiceUnavailable, "code_unavailable", "could not allocate a short code, try again"}},

@@ -26,21 +26,39 @@ func NewService(repo Repository, gen CodeGenerator) *Service {
 	}
 }
 
-// Shorten creates a link owned by tenantID on behalf of userID.
-func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL string, alias string, expiresAt *time.Time) (Link, error) {
-	u, err := url.ParseRequestURI(rawURL)
-	if len(rawURL) > maxURLLen || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+// ShortenInput is what a caller can set when creating a link. Alias, ExpiresAt and MaxClicks
+// are optional: empty or nil means "generate a code", "never expires" and "unlimited".
+type ShortenInput struct {
+	TenantID  int64
+	UserID    int64
+	URL       string
+	Alias     string
+	ExpiresAt *time.Time
+	MaxClicks *int64
+}
+
+// Shorten creates a link owned by in.TenantID on behalf of in.UserID.
+func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
+	u, err := url.ParseRequestURI(in.URL)
+	if len(in.URL) > maxURLLen || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Link{}, ErrInvalidURL
 	}
-	expiresAt = utc(expiresAt)
+	expiresAt := utc(in.ExpiresAt)
+	if expiresAt != nil && !expiresAt.After(s.now()) {
+		return Link{}, ErrInvalidExpiry
+	}
+	if in.MaxClicks != nil && *in.MaxClicks <= 0 {
+		return Link{}, ErrInvalidMaxClicks
+	}
 	link := Link{
-		OriginURL: rawURL,
+		OriginURL: in.URL,
 		ExpiresAt: expiresAt,
-		TenantID:  tenantID,
-		CreatedBy: userID,
+		MaxClicks: in.MaxClicks,
+		TenantID:  in.TenantID,
+		CreatedBy: in.UserID,
 		CreatedAt: s.now(),
 	}
-	if alias != "" {
+	if alias := in.Alias; alias != "" {
 		if err := validateAlias(alias); err != nil {
 			return Link{}, err
 		}
@@ -82,6 +100,11 @@ func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
 	}
 	if l.IsExpired(s.now()) {
 		return "", ErrExpired
+	}
+	if l.MaxClicks != nil {
+		if err := s.repo.ConsumeClick(ctx, code); err != nil {
+			return "", err
+		}
 	}
 	return l.OriginURL, nil
 }

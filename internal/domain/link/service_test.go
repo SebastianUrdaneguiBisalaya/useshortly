@@ -160,3 +160,13 @@ func TestResolve(t *testing.T) {
 		})
 	}
 }
+
+// Regression: `now: time.Now().UTC` froze the clock at construction time.
+func TestClockAdvancesAndIsUTC(t *testing.T) {
+	s := NewService(nil, nil)
+	a := s.now()
+	time.Sleep(5 * time.Millisecond)
+	b := s.now()
+	assert.True(t, b.After(a), "the clock must keep moving")
+	assert.Equal(t, time.UTC, a.Location())
+}

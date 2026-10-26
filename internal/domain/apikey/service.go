@@ -26,7 +26,7 @@ type Service struct {
 }
 
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo, rand: rand.Reader, now: time.Now().UTC}
+	return &Service{repo: repo, rand: rand.Reader, now: func() time.Time { return time.Now().UTC() }}
 }
 
 // Create returns the stored key and its secret. The secret is never stored and
@@ -38,6 +38,10 @@ func (s *Service) Create(ctx context.Context, tenantID, userID int64, name strin
 	}
 	if expiresAt != nil && !expiresAt.After(s.now()) {
 		return APIKey{}, "", ErrInvalidExpiry
+	}
+	if expiresAt != nil {
+		u := expiresAt.UTC()
+		expiresAt = &u
 	}
 	buf := make([]byte, secretBytes)
 	if _, err := io.ReadFull(s.rand, buf); err != nil {

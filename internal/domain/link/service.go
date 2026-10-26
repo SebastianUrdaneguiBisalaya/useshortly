@@ -22,7 +22,7 @@ func NewService(repo Repository, gen CodeGenerator) *Service {
 	return &Service{
 		repo: repo,
 		gen:  gen,
-		now:  time.Now().UTC,
+		now:  func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -32,6 +32,7 @@ func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL st
 	if len(rawURL) > maxURLLen || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Link{}, ErrInvalidURL
 	}
+	expiresAt = utc(expiresAt)
 	for range maxRetries {
 		code, err := s.gen.Generate()
 		if err != nil {
@@ -51,6 +52,15 @@ func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL st
 		return l, err
 	}
 	return Link{}, ErrCodeTaken
+}
+
+// utc returns t in UTC, so every stored and returned instant uses one zone.
+func utc(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	u := t.UTC()
+	return &u
 }
 
 func (s *Service) Resolve(ctx context.Context, code string) (string, error) {

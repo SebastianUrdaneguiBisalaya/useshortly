@@ -389,3 +389,14 @@ func TestInviteRejectsInvalidCopiesBeforeCreatingAnything(t *testing.T) {
 	assert.Empty(t, repo.invs)
 	assert.Empty(t, mailer.sent)
 }
+
+func TestRequireMember(t *testing.T) {
+	svc, _, o := setup(t)
+	m, err := svc.RequireMember(ctx, 10, o.ID)
+	require.NoError(t, err)
+	assert.Equal(t, RoleOwner, m.Role)
+	_, err = svc.RequireMember(ctx, 99, o.ID)
+	assert.ErrorIs(t, err, ErrNotMember)
+	_, err = svc.RequireMember(ctx, 10, 999)
+	assert.ErrorIs(t, err, ErrNotMember)
+}

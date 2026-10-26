@@ -47,6 +47,12 @@ func (s *Service) CreateOrganization(ctx context.Context, ownerID int64, name, d
 	return s.repo.CreateWithOwner(ctx, Organization{Name: name, Description: description, CreatedAt: s.now()}, ownerID)
 }
 
+// RequireMember returns ErrNotMember unless userID belongs to the tenant. Other services
+// (api keys, links) call it before acting on a tenant on someone's behalf.
+func (s *Service) RequireMember(ctx context.Context, userID, tenantID int64) (Member, error) {
+	return s.repo.FindMember(ctx, tenantID, userID)
+}
+
 func (s *Service) Get(ctx context.Context, actorID, tenantID int64) (Organization, error) {
 	if _, err := s.repo.FindMember(ctx, tenantID, actorID); err != nil {
 		return Organization{}, err

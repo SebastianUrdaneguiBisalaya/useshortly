@@ -72,6 +72,9 @@ func Load() (*Config, error) {
 	if len(cfg.OTPSecret) < 32 {
 		return nil, fmt.Errorf("OTP_SECRET must be at least 32 characters")
 	}
+	if cfg.Env == "production" && cfg.ResendAPIKey == "" {
+		return nil, fmt.Errorf("RESEND_API_KEY is required when ENVIRONMENT is production")
+	}
 	if cfg.ResendAPIKey != "" && cfg.MailFrom == "" {
 		return nil, fmt.Errorf("MAIL_FROM is required when RESEND_API_KEY is set")
 	}

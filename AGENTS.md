@@ -91,6 +91,7 @@ any that touches more than one layer (domain, adapter, migration).
 | SQLite driver (Turso)  | `turso.tech/database/tursogo`    | `database/sql` driver, no CGO. Local file, optional sync to Turso Cloud; hidden behind a `Repository` port. |
 | Query building         | Plain SQL + repository pattern   | No ORM; makes migrating to sqlc/sqlx later a pure adapter change. |
 | Auth (JWT)             | `github.com/golang-jwt/jwt/v5`   | Hidden behind a `TokenService` port. |
+| Password hashing       | `golang.org/x/crypto/argon2`     | argon2id behind the `user.PasswordHasher` port. |
 | Config                 | `github.com/joho/godotenv`       | Development only; in production env vars are injected by the platform (container, platform, etc.). |
 | IDs                    | `github.com/google/uuid`         | |
 | Testing                | stdlib `testing` + `github.com/stretchr/testify` | Assertions and table-driven tests. |

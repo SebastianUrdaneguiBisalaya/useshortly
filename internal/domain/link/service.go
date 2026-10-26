@@ -5,11 +5,12 @@ import (
 	"errors"
 	"net/url"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-const maxRetries = 5
+const (
+	maxRetries = 5
+	maxURLLen  = 255 // links.origin_url column limit
+)
 
 type Service struct {
 	repo Repository
@@ -25,9 +26,10 @@ func NewService(repo Repository, gen CodeGenerator) *Service {
 	}
 }
 
-func (s *Service) Shorten(ctx context.Context, rawURL string, expiresAt *time.Time) (Link, error) {
+// Shorten creates a link owned by tenantID on behalf of userID.
+func (s *Service) Shorten(ctx context.Context, tenantID, userID int64, rawURL string, expiresAt *time.Time) (Link, error) {
 	u, err := url.ParseRequestURI(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+	if len(rawURL) > maxURLLen || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Link{}, ErrInvalidURL
 	}
 	for range maxRetries {
@@ -35,15 +37,14 @@ func (s *Service) Shorten(ctx context.Context, rawURL string, expiresAt *time.Ti
 		if err != nil {
 			return Link{}, err
 		}
-		l := Link{
-			ID:        uuid.NewString(),
+		l, err := s.repo.Create(ctx, Link{
 			Code:      code,
 			OriginURL: rawURL,
-			CreatedAt: s.now(),
-			UpdatedAt: s.now(),
 			ExpiresAt: expiresAt,
-		}
-		err = s.repo.Create(ctx, l)
+			TenantID:  tenantID,
+			CreatedBy: userID,
+			CreatedAt: s.now(),
+		})
 		if errors.Is(err, ErrCodeTaken) {
 			continue
 		}

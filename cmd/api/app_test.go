@@ -358,7 +358,7 @@ func TestTenantsAreIsolated(t *testing.T) {
 		"read org":      e.do("GET", "/api/v1/orgs/"+acme, bob, nil),
 		"list members":  e.do("GET", "/api/v1/orgs/"+acme+"/members", bob, nil),
 		"create link":   e.do("POST", "/api/v1/orgs/"+acme+"/links", bob, map[string]string{"url": "https://example.com"}),
-		"create key":    e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", bob, map[string]string{"name": "x"}),
+		"create key":    e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", bob, map[string]string{"name": "x", "scope": "read"}),
 		"list keys":     e.do("GET", "/api/v1/orgs/"+acme+"/api-keys", bob, nil),
 		"invite":        e.do("POST", "/api/v1/orgs/"+acme+"/invitations", bob, map[string]string{"email": "c@example.com"}),
 		"list invites":  e.do("GET", "/api/v1/orgs/"+acme+"/invitations", bob, nil),
@@ -376,7 +376,7 @@ func TestAPIKeys(t *testing.T) {
 	acme := e.createOrg(ana, "Acme")
 	other := e.createOrg(ana, "Other")
 
-	res := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ci"})
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ci", "scope": "write"})
 	require.Equal(t, http.StatusCreated, res.status, res.raw)
 	secret, keyID := res.str("secret"), res.id()
 	assert.True(t, strings.HasPrefix(secret, "usl_"))
@@ -665,8 +665,8 @@ func TestAPIKeyStopsWorkingWhenItsCreatorLeavesTheOrganization(t *testing.T) {
 	require.Equal(t, http.StatusCreated, inv.status)
 	require.Equal(t, http.StatusOK, e.do("POST", "/api/v1/invitations/"+inv.id()+"/accept", bob, nil).status)
 
-	anaKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ana-ci"}).str("secret")
-	bobKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", bob, map[string]string{"name": "bob-ci"}).str("secret")
+	anaKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ana-ci", "scope": "write"}).str("secret")
+	bobKey := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", bob, map[string]string{"name": "bob-ci", "scope": "write"}).str("secret")
 	link := map[string]string{"url": "https://example.com"}
 	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", bobKey, link).status)
 
@@ -677,4 +677,44 @@ func TestAPIKeyStopsWorkingWhenItsCreatorLeavesTheOrganization(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, res.status)
 	assert.Equal(t, "api_key_owner_not_member", res.errCode())
 	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", anaKey, link).status, "other members' keys are unaffected")
+}
+
+func TestAPIKeyScopes(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	keys := "/api/v1/orgs/" + acme + "/api-keys"
+	link := map[string]string{"url": "https://example.com"}
+
+	// The scope is required and checked.
+	for _, body := range []map[string]string{{"name": "k"}, {"name": "k", "scope": ""}, {"name": "k", "scope": "admin"}, {"name": "k", "scope": "WRITE"}} {
+		res := e.do("POST", keys, ana, body)
+		assert.Equal(t, http.StatusBadRequest, res.status, "%v", body)
+		assert.Equal(t, "invalid_scope", res.errCode(), "%v", body)
+	}
+
+	readKey := e.do("POST", keys, ana, map[string]string{"name": "reader", "scope": "read"})
+	require.Equal(t, http.StatusCreated, readKey.status, readKey.raw)
+	assert.Equal(t, "read", readKey.str("scope"))
+	writeKey := e.do("POST", keys, ana, map[string]string{"name": "writer", "scope": "write"})
+	require.Equal(t, http.StatusCreated, writeKey.status)
+
+	// Creating a link needs write.
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", readKey.str("secret"), link)
+	assert.Equal(t, http.StatusForbidden, res.status)
+	assert.Equal(t, "insufficient_scope", res.errCode())
+	assert.Contains(t, res.raw, "read", "the message says what the key has")
+	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", writeKey.str("secret"), link).status)
+	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, link).status, "users are not limited by key scopes")
+
+	// The listing shows each key's scope; the scope has no way to change.
+	listed := e.do("GET", keys, ana, nil)
+	assert.Contains(t, listed.raw, `"scope":"read"`)
+	assert.Contains(t, listed.raw, `"scope":"write"`)
+	patch := e.do("PATCH", keys+"/"+readKey.id(), ana, map[string]string{"scope": "write"})
+	assert.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, patch.status, "no endpoint changes a scope")
+	assert.Equal(t, http.StatusForbidden, e.do("POST", "/api/v1/orgs/"+acme+"/links", readKey.str("secret"), link).status, "still read-only")
+
+	// Scope does not widen what keys may reach: management stays closed to them.
+	assert.Equal(t, "api_key_not_allowed", e.do("POST", keys, writeKey.str("secret"), map[string]string{"name": "x", "scope": "write"}).errCode())
 }

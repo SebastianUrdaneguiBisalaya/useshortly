@@ -106,7 +106,7 @@ func TestAPIKeyRepository(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	exp := now.Add(time.Hour)
 	k, err := repo.Create(ctx, apikey.APIKey{
-		TenantID: 1, CreatedBy: u.ID, Name: "ci", Prefix: "usl_abcd1234", KeyHash: "h1", ExpiresAt: &exp, CreatedAt: now,
+		TenantID: 1, CreatedBy: u.ID, Name: "ci", Prefix: "usl_abcd1234", KeyHash: "h1", Scope: apikey.ScopeRead, ExpiresAt: &exp, CreatedAt: now,
 	})
 	require.NoError(t, err)
 	assert.NotZero(t, k.ID)
@@ -114,6 +114,7 @@ func TestAPIKeyRepository(t *testing.T) {
 	got, err := repo.FindByHash(ctx, "h1")
 	require.NoError(t, err)
 	assert.Equal(t, "ci", got.Name)
+	assert.Equal(t, apikey.ScopeRead, got.Scope)
 	require.NotNil(t, got.ExpiresAt)
 	assert.True(t, got.ExpiresAt.Equal(exp))
 	assert.Nil(t, got.LastUsedAt)
@@ -144,7 +145,7 @@ func TestForeignKeysAreEnforced(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	_, err := NewAPIKeyRepository(db).Create(ctx, apikey.APIKey{
-		TenantID: 99, CreatedBy: 99, Name: "x", Prefix: "p", KeyHash: "h", CreatedAt: time.Now(),
+		TenantID: 99, CreatedBy: 99, Name: "x", Prefix: "p", KeyHash: "h", Scope: apikey.ScopeRead, CreatedAt: time.Now(),
 	})
 	assert.Error(t, err)
 
@@ -205,4 +206,18 @@ func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {
 		_, err := repo.Create(ctx, link.Link{Code: code, OriginURL: "https://example.com", ExpiresAt: &exp, TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
 		require.NoError(t, err, code)
 	}
+}
+
+func TestAPIKeyScopeIsConstrainedByTheDatabase(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewAPIKeyRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+
+	_, err = repo.Create(ctx, apikey.APIKey{TenantID: 1, CreatedBy: u.ID, Name: "x", Prefix: "p", KeyHash: "h1", Scope: "admin", CreatedAt: time.Now().UTC()})
+	assert.Error(t, err, "the CHECK refuses a scope the domain would never create")
+	_, err = repo.Create(ctx, apikey.APIKey{TenantID: 1, CreatedBy: u.ID, Name: "x", Prefix: "p", KeyHash: "h2", CreatedAt: time.Now().UTC()})
+	assert.Error(t, err, "and an empty one")
 }

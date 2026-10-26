@@ -19,6 +19,7 @@ type apiKeyBody struct {
 	ID         int64   `json:"id"`
 	Name       string  `json:"name"`
 	Prefix     string  `json:"prefix"`
+	Scope      string  `json:"scope"`
 	CreatedBy  int64   `json:"created_by"`
 	LastUsedAt *string `json:"last_used_at"`
 	ExpiresAt  *string `json:"expires_at"`
@@ -27,12 +28,13 @@ type apiKeyBody struct {
 
 func newAPIKeyBody(k apikey.APIKey) apiKeyBody {
 	return apiKeyBody{
-		ID: k.ID, Name: k.Name, Prefix: k.Prefix, CreatedBy: k.CreatedBy,
+		ID: k.ID, Name: k.Name, Prefix: k.Prefix, Scope: string(k.Scope), CreatedBy: k.CreatedBy,
 		LastUsedAt: formatTimePtr(k.LastUsedAt), ExpiresAt: formatTimePtr(k.ExpiresAt), CreatedAt: formatTime(k.CreatedAt),
 	}
 }
 
-// Create answers with the secret once; it cannot be read again.
+// Create answers with the secret once; it cannot be read again. The scope (read or write)
+// is required and cannot be changed afterwards.
 func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -40,12 +42,13 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		Name      string     `json:"name"`
+		Scope     string     `json:"scope"`
 		ExpiresAt *time.Time `json:"expires_at"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	k, secret, err := h.keys.Create(r.Context(), tenant.ID, PrincipalFrom(r).UserID, in.Name, in.ExpiresAt)
+	k, secret, err := h.keys.Create(r.Context(), tenant.ID, PrincipalFrom(r).UserID, in.Name, apikey.Scope(in.Scope), in.ExpiresAt)
 	if err != nil {
 		WriteError(w, r, err)
 		return

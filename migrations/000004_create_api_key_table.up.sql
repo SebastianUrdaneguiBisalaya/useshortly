@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     name TEXT NOT NULL CHECK (length(name) <= 100),
     prefix TEXT NOT NULL,
     key_hash TEXT NOT NULL UNIQUE,
+    scope TEXT NOT NULL CHECK (scope IN ('read', 'write')),
     last_used_at TEXT,
     expires_at TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),

@@ -21,6 +21,8 @@ type Config struct {
 	AppURL           string
 	ResendAPIKey     string
 	MailFrom         string
+	OTPSecret        string
+	GoogleClientID   string
 }
 
 func Load() (*Config, error) {
@@ -36,6 +38,8 @@ func Load() (*Config, error) {
 		AppURL:           getEnv("APP_URL", "http://localhost:8080"),
 		ResendAPIKey:     getEnv("RESEND_API_KEY", ""),
 		MailFrom:         getEnv("MAIL_FROM", ""),
+		OTPSecret:        getEnv("OTP_SECRET", ""),
+		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {
@@ -64,6 +68,9 @@ func Load() (*Config, error) {
 	}
 	if len(cfg.JWTSecret) < 32 {
 		return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters")
+	}
+	if len(cfg.OTPSecret) < 32 {
+		return nil, fmt.Errorf("OTP_SECRET must be at least 32 characters")
 	}
 	if cfg.ResendAPIKey != "" && cfg.MailFrom == "" {
 		return nil, fmt.Errorf("MAIL_FROM is required when RESEND_API_KEY is set")

@@ -8,6 +8,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,10 @@ func TestRefreshTokenRepository(t *testing.T) {
 		require.NoError(t, err)
 		return tok
 	}
-	a1, a2, b1 := mk(ana.ID, o1.ID, "h-a1"), mk(ana.ID, o2.ID, "h-a2"), mk(bob.ID, o1.ID, "h-b1")
+	a1 := mk(ana.ID, o1.ID, "h-a1")
+	mk(ana.ID, o2.ID, "h-a2")
+	mk(ana.ID, o1.ID, "h-a3")
+	mk(bob.ID, o1.ID, "h-b1")
 
 	got, err := repo.FindByHash(ctx, "h-a1")
 	require.NoError(t, err)
@@ -53,14 +57,21 @@ func TestRefreshTokenRepository(t *testing.T) {
 
 	// Revoking a member in one tenant touches only that user in that tenant.
 	require.NoError(t, repo.RevokeForMember(ctx, ana.ID, o2.ID))
-	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-b1": false} {
+	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": false, "h-b1": false} {
 		tok, err := repo.FindByHash(ctx, hash)
 		require.NoError(t, err)
 		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
 	}
 	assert.NoError(t, repo.RevokeForMember(ctx, 999, 999), "no tokens is not an error")
-	_ = a2
-	_ = b1
+
+	// Revoking a user touches every tenant, and only that user.
+	require.NoError(t, repo.RevokeForUser(ctx, ana.ID))
+	for hash, wantRevoked := range map[string]bool{"h-a1": true, "h-a2": true, "h-a3": true, "h-b1": false} {
+		tok, err := repo.FindByHash(ctx, hash)
+		require.NoError(t, err)
+		assert.Equal(t, wantRevoked, tok.RevokedAt != nil, hash)
+	}
+	assert.NoError(t, repo.RevokeForUser(ctx, 999))
 }
 
 func TestRefreshTokensDieWithTheirOrganization(t *testing.T) {
@@ -82,7 +93,7 @@ func TestRefreshTokensDieWithTheirOrganization(t *testing.T) {
 func TestEmailTemplateRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEmailTemplateRepository(newDB(t))
-	for _, code := range []string{mailing.TemplateWelcome, mailing.TemplateLogin, mailing.TemplateInvitation} {
+	for _, code := range []string{mailing.TemplateWelcome, mailing.TemplateLogin, mailing.TemplateInvitation, mailing.TemplatePasswordReset} {
 		tpl, err := repo.FindByCode(ctx, code)
 		require.NoError(t, err, code)
 		assert.Equal(t, code, tpl.Code)
@@ -108,14 +119,15 @@ func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 	svc := mailing.NewService(NewEmailTemplateRepository(newDB(t)), sender, "https://app.example.com")
 
 	cases := map[string]map[string]string{
-		mailing.TemplateWelcome:    {"FirstName": "Ana", "LastName": "Lopez"},
-		mailing.TemplateLogin:      {"FirstName": "Ana", "Time": "Mon, 26 Oct 2026 10:00:00 UTC"},
-		mailing.TemplateInvitation: {"InviterName": "Owner", "OrganizationName": "Acme", "InvitationID": "7", "ExpiresAt": "2026-11-02"},
+		mailing.TemplateWelcome:       {"FirstName": "Ana", "LastName": "Lopez"},
+		mailing.TemplateLogin:         {"FirstName": "Ana", "Time": "Mon, 26 Oct 2026 10:00:00 UTC"},
+		mailing.TemplatePasswordReset: {"FirstName": "Ana", "Code": "123456", "ExpiresInMinutes": "10", "MaxAttempts": "3"},
+		mailing.TemplateInvitation:    {"InviterName": "Owner", "OrganizationName": "Acme", "InvitationID": "7", "ExpiresAt": "2026-11-02"},
 	}
 	for code, data := range cases {
 		require.NoError(t, svc.Send(ctx, code, "ana@example.com", data), code)
 	}
-	require.Len(t, sender.sent, 3)
+	require.Len(t, sender.sent, 4)
 	for _, m := range sender.sent {
 		assert.NotEmpty(t, m.Subject)
 		assert.NotContains(t, m.HTML+m.Text+m.Subject, "<no value>")
@@ -127,4 +139,45 @@ func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 		}
 	}
 	assert.Contains(t, invitation.HTML, "https://app.example.com/invitations/7")
+}
+
+func TestUserRepositoryAccounts(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository(newDB(t))
+	u := newUser(t, repo, "ana@example.com")
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	_, err := repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
+	assert.ErrorIs(t, err, user.ErrNotFound)
+
+	require.NoError(t, repo.CreateAccount(ctx, user.Account{UserID: u.ID, AccountID: "g-1", Provider: user.ProviderGoogle, CreatedAt: now}))
+	acc, err := repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, acc.UserID)
+	assert.Empty(t, acc.PasswordHash)
+	assert.Error(t, repo.CreateAccount(ctx, user.Account{UserID: u.ID, AccountID: "g-1", Provider: user.ProviderGoogle, CreatedAt: now}), "same account twice")
+
+	// Both sign-in methods coexist on one user.
+	_, err = repo.FindAccount(ctx, u.ID, user.ProviderDefault)
+	assert.NoError(t, err)
+}
+
+func TestUserRepositoryUpdatePassword(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository(newDB(t))
+	u := newUser(t, repo, "ana@example.com")
+
+	require.NoError(t, repo.UpdatePassword(ctx, u.ID, "new-hash"))
+	acc, err := repo.FindAccount(ctx, u.ID, user.ProviderDefault)
+	require.NoError(t, err)
+	assert.Equal(t, "new-hash", acc.PasswordHash)
+
+	assert.ErrorIs(t, repo.UpdatePassword(ctx, 999, "x"), user.ErrNotFound)
+
+	// A Google-only user has no password account to update.
+	g, err := repo.Create(ctx,
+		user.User{Email: "g@example.com", FirstName: "G", LastName: "U", CreatedAt: time.Now().UTC()},
+		user.Account{AccountID: "g-9", Provider: user.ProviderGoogle, CreatedAt: time.Now().UTC()})
+	require.NoError(t, err)
+	assert.ErrorIs(t, repo.UpdatePassword(ctx, g.ID, "x"), user.ErrNotFound)
 }

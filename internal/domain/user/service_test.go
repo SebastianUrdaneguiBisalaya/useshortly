@@ -15,7 +15,6 @@ import (
 type fakeRepo struct {
 	users    map[int64]User
 	accounts map[int64]Account
-	extra    []Account // accounts added with CreateAccount
 	nextID   int64
 }
 
@@ -42,14 +41,6 @@ func (r *fakeRepo) FindAccountByProvider(_ context.Context, p Provider, accountI
 		}
 	}
 	return Account{}, ErrNotFound
-}
-
-func (r *fakeRepo) CreateAccount(_ context.Context, a Account) error {
-	r.extra = append(r.extra, a)
-	if _, ok := r.accounts[a.UserID]; !ok {
-		r.accounts[a.UserID] = a
-	}
-	return nil
 }
 
 func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string) error {

@@ -14,8 +14,6 @@ type Repository interface {
 	// FindAccountByProvider looks an account up by the provider's own id (e.g. Google's
 	// "sub"). Returns ErrNotFound.
 	FindAccountByProvider(ctx context.Context, provider Provider, accountID string) (Account, error)
-	// CreateAccount links another sign-in method to an existing user.
-	CreateAccount(ctx context.Context, a Account) error
 	// UpdatePassword replaces the hash of the user's DEFAULT account. Returns ErrNotFound
 	// if the user has no password account.
 	UpdatePassword(ctx context.Context, userID int64, hash string) error

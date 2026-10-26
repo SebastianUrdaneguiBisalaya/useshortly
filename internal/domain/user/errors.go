@@ -16,4 +16,7 @@ var (
 
 	// Google sign-in.
 	ErrGoogleEmailNotVerified = errors.New("user: google email is not verified")
+	// ErrProviderMismatch: the email already belongs to a user with a different sign-in
+	// method (password vs Google). Methods are never merged, see GoogleService.Login.
+	ErrProviderMismatch = errors.New("user: email is registered with another sign-in method")
 )

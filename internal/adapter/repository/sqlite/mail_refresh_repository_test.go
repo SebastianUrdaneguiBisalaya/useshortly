@@ -141,25 +141,36 @@ func TestSeededTemplatesRenderWithServiceData(t *testing.T) {
 	assert.Contains(t, invitation.HTML, "https://app.example.com/invitations/7")
 }
 
-func TestUserRepositoryAccounts(t *testing.T) {
+func TestUserRepositoryGoogleAccount(t *testing.T) {
 	ctx := context.Background()
 	repo := NewUserRepository(newDB(t))
-	u := newUser(t, repo, "ana@example.com")
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
 	_, err := repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
 	assert.ErrorIs(t, err, user.ErrNotFound)
 
-	require.NoError(t, repo.CreateAccount(ctx, user.Account{UserID: u.ID, AccountID: "g-1", Provider: user.ProviderGoogle, CreatedAt: now}))
+	u, err := repo.Create(ctx,
+		user.User{Email: "g@example.com", EmailVerified: true, FirstName: "G", LastName: "U", ImageURL: "https://img/g.png", CreatedAt: now},
+		user.Account{AccountID: "g-1", Provider: user.ProviderGoogle, CreatedAt: now})
+	require.NoError(t, err)
+
 	acc, err := repo.FindAccountByProvider(ctx, user.ProviderGoogle, "g-1")
 	require.NoError(t, err)
 	assert.Equal(t, u.ID, acc.UserID)
 	assert.Empty(t, acc.PasswordHash)
-	assert.Error(t, repo.CreateAccount(ctx, user.Account{UserID: u.ID, AccountID: "g-1", Provider: user.ProviderGoogle, CreatedAt: now}), "same account twice")
+	got, err := repo.FindByID(ctx, u.ID)
+	require.NoError(t, err)
+	assert.True(t, got.EmailVerified)
+	assert.Equal(t, "https://img/g.png", got.ImageURL)
 
-	// Both sign-in methods coexist on one user.
 	_, err = repo.FindAccount(ctx, u.ID, user.ProviderDefault)
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, user.ErrNotFound, "a Google user has no password account")
+
+	// The same address cannot be registered again with another method.
+	_, err = repo.Create(ctx,
+		user.User{Email: "G@Example.com", FirstName: "G", LastName: "U", CreatedAt: now},
+		user.Account{AccountID: "g@example.com", Provider: user.ProviderDefault, PasswordHash: "h", CreatedAt: now})
+	assert.ErrorIs(t, err, user.ErrEmailTaken)
 }
 
 func TestUserRepositoryUpdatePassword(t *testing.T) {

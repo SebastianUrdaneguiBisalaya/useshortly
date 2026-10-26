@@ -38,13 +38,11 @@ func NewGoogleService(repo Repository, verifier GoogleVerifier, tokens auth.Toke
 	return &GoogleService{repo: repo, verifier: verifier, tokens: tokens, mailer: mailer, now: time.Now().UTC}
 }
 
-// Login signs in with a Google ID token, creating the user on first use:
-//   - known Google account: sign in;
-//   - unknown Google account, but the (verified) email already has a user: link Google to it;
-//   - otherwise: create the user and its Google account.
-//
-// An unverified Google email is refused, otherwise anyone could claim an address they
-// do not own and take over the account registered with it.
+// Login signs in with a Google ID token, creating the user on first use. An email
+// belongs to exactly one sign-in method: if it is already registered with a password
+// (or with another Google account) the login is refused with ErrProviderMismatch instead
+// of merging the two, which is what stops someone from taking over an address by
+// registering it first. An unverified Google email is refused too.
 func (s *GoogleService) Login(ctx context.Context, idToken string) (Session, error) {
 	id, err := s.verifier.Verify(ctx, idToken)
 	if err != nil {
@@ -87,32 +85,22 @@ func (s *GoogleService) findOrCreate(ctx context.Context, id GoogleIdentity, ema
 	if !errors.Is(err, ErrNotFound) {
 		return User{}, false, err
 	}
-	now := s.now()
-	account := Account{AccountID: id.Subject, Provider: ProviderGoogle, CreatedAt: now}
-
-	u, err = s.repo.FindByEmail(ctx, email)
-	switch {
-	case err == nil:
-		account.UserID = u.ID
-		return u, false, s.repo.CreateAccount(ctx, account)
-	case !errors.Is(err, ErrNotFound):
+	if _, err := s.repo.FindByEmail(ctx, email); err == nil {
+		return User{}, false, ErrProviderMismatch
+	} else if !errors.Is(err, ErrNotFound) {
 		return User{}, false, err
 	}
-	first, last := id.FirstName, id.LastName
+	first := id.FirstName
 	if strings.TrimSpace(first) == "" {
 		first, _, _ = strings.Cut(email, "@")
 	}
+	now := s.now()
 	u, err = s.repo.Create(ctx,
-		User{Email: email, EmailVerified: true, FirstName: first, LastName: last, ImageURL: id.PictureURL, CreatedAt: now},
-		account,
+		User{Email: email, EmailVerified: true, FirstName: first, LastName: id.LastName, ImageURL: id.PictureURL, CreatedAt: now},
+		Account{AccountID: id.Subject, Provider: ProviderGoogle, CreatedAt: now},
 	)
-	if errors.Is(err, ErrEmailTaken) {
-		// Lost a race with a concurrent first sign-in: link to the user that won.
-		if u, err = s.repo.FindByEmail(ctx, email); err != nil {
-			return User{}, false, err
-		}
-		account.UserID = u.ID
-		return u, false, s.repo.CreateAccount(ctx, account)
+	if errors.Is(err, ErrEmailTaken) { // a concurrent sign-in or signup took the email first
+		return User{}, false, ErrProviderMismatch
 	}
 	return u, err == nil, err
 }

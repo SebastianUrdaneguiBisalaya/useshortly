@@ -121,16 +121,6 @@ func (r *UserRepository) findAccount(ctx context.Context, query string, args ...
 	return a, nil
 }
 
-func (r *UserRepository) CreateAccount(ctx context.Context, a user.Account) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO accounts (user_id, account_id, provider_id, password, created_at) VALUES (?, ?, ?, ?, ?)`,
-		a.UserID, a.AccountID, string(a.Provider), nullString(a.PasswordHash), formatTime(a.CreatedAt))
-	if err != nil {
-		return fmt.Errorf("user repo: create account: %w", err)
-	}
-	return nil
-}
-
 func (r *UserRepository) UpdatePassword(ctx context.Context, userID int64, hash string) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE accounts SET password = ?, updated_at = `+nowSQL+` WHERE user_id = ? AND provider_id = ?`,

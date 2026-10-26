@@ -57,19 +57,49 @@ func TestGoogleLoginSecondTimeSignsInTheSameUser(t *testing.T) {
 	assert.Equal(t, "LOGIN", mailer.sent[1].code)
 }
 
-func TestGoogleLoginLinksToExistingPasswordUser(t *testing.T) {
-	svc, repo, _ := newGoogle(ana, nil)
+func TestGoogleLoginRefusesEmailRegisteredWithPassword(t *testing.T) {
+	svc, repo, mailer := newGoogle(ana, nil)
 	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
-	u, err := users.Register(context.Background(), valid) // ana@example.com with a password
+	_, err := users.Register(context.Background(), valid) // ana@example.com with a password
 	require.NoError(t, err)
 
-	s, err := svc.Login(context.Background(), "idtoken")
+	_, err = svc.Login(context.Background(), "idtoken")
+	assert.ErrorIs(t, err, ErrProviderMismatch)
+	assert.Len(t, repo.users, 1, "no second user, no merged account")
+	assert.Equal(t, ProviderDefault, repo.accounts[1].Provider)
+	assert.Empty(t, mailer.sent)
+}
+
+func TestPasswordSignupRefusesEmailRegisteredWithGoogle(t *testing.T) {
+	svc, repo, _ := newGoogle(ana, nil)
+	_, err := svc.Login(context.Background(), "idtoken")
 	require.NoError(t, err)
-	assert.Equal(t, u.ID, s.User.ID, "no duplicate user")
-	assert.Len(t, repo.users, 1)
-	require.Len(t, repo.extra, 1)
-	assert.Equal(t, ProviderGoogle, repo.extra[0].Provider)
-	assert.Equal(t, u.ID, repo.extra[0].UserID)
+
+	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
+	_, err = users.Register(context.Background(), valid)
+	assert.ErrorIs(t, err, ErrEmailTaken)
+}
+
+func TestGooglePasswordLoginIsNotPossible(t *testing.T) {
+	svc, repo, _ := newGoogle(ana, nil)
+	_, err := svc.Login(context.Background(), "idtoken")
+	require.NoError(t, err)
+
+	users := NewService(repo, fakeHasher{}, fakeTokens{}, &fakeMailer{})
+	_, err = users.Login(context.Background(), "ana@example.com", "anything-at-all")
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+// racyRepo reports the email as free, then loses the race on Create.
+type racyRepo struct{ *fakeRepo }
+
+func (racyRepo) FindByEmail(context.Context, string) (User, error)   { return User{}, ErrNotFound }
+func (racyRepo) Create(context.Context, User, Account) (User, error) { return User{}, ErrEmailTaken }
+
+func TestGoogleLoginLosingTheCreationRaceIsAMismatch(t *testing.T) {
+	svc := NewGoogleService(racyRepo{newFakeRepo()}, fakeVerifier{ana, nil}, fakeTokens{}, &fakeMailer{})
+	_, err := svc.Login(context.Background(), "idtoken")
+	assert.ErrorIs(t, err, ErrProviderMismatch)
 }
 
 func TestGoogleLoginRefusesUnverifiedEmail(t *testing.T) {

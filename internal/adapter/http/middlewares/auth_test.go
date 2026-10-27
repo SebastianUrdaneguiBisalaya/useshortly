@@ -108,6 +108,20 @@ func TestMCPTokenIsRefusedWhereOnlyUsersGo(t *testing.T) {
 	assert.Equal(t, "mcp_token_not_allowed", errCode(t, rec))
 }
 
+func TestUserOrMCPAcceptsMCPTokensButNotAPIKeys(t *testing.T) {
+	a := newAuth(fakeVerifier{claims: auth.MCPClaims{UserID: "42", Scope: auth.ScopeRead}})
+	rec, p := serve(t, a, a.UserOrMCP, edToken)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.True(t, p.ViaMCP())
+
+	rec, _ = serve(t, a, a.UserOrMCP, hsToken)
+	assert.Equal(t, http.StatusOK, rec.Code, "the user JWT still works")
+
+	rec, _ = serve(t, a, a.UserOrMCP, "usl_somekey")
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, "api_key_not_allowed", errCode(t, rec))
+}
+
 func TestMCPTokenFailsClosed(t *testing.T) {
 	tests := map[string]struct {
 		a    *Auth

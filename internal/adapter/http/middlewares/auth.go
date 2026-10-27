@@ -44,14 +44,24 @@ func (a *Auth) WithMCP(v auth.MCPTokenVerifier) *Auth {
 	return a
 }
 
+// allowed says which credentials besides a user JWT a route accepts.
+type allowed struct{ key, mcp bool }
+
 // User requires a JWT. API keys and MCP tokens are refused: they cannot manage accounts or
 // organizations.
-func (a *Auth) User(next http.Handler) http.Handler { return a.require(next, false) }
+func (a *Auth) User(next http.Handler) http.Handler { return a.require(next, allowed{}) }
 
 // UserOrKey accepts a JWT, an API key ("usl_...") or an MCP token.
-func (a *Auth) UserOrKey(next http.Handler) http.Handler { return a.require(next, true) }
+func (a *Auth) UserOrKey(next http.Handler) http.Handler {
+	return a.require(next, allowed{key: true, mcp: true})
+}
 
-func (a *Auth) require(next http.Handler, allowDelegated bool) http.Handler {
+// UserOrMCP accepts a JWT or an MCP token, never an API key: for the read-only account views an
+// MCP client needs (who am I, which organizations do I belong to), which a tenant-bound key has
+// no business seeing.
+func (a *Auth) UserOrMCP(next http.Handler) http.Handler { return a.require(next, allowed{mcp: true}) }
+
+func (a *Auth) require(next http.Handler, allow allowed) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, ok := bearer(r)
 		if !ok {
@@ -65,13 +75,13 @@ func (a *Auth) require(next http.Handler, allowDelegated bool) http.Handler {
 		)
 		switch {
 		case strings.HasPrefix(token, "usl_"):
-			if !allowDelegated {
+			if !allow.key {
 				handler.WriteAPIError(w, http.StatusForbidden, "api_key_not_allowed", "api keys cannot be used on this endpoint")
 				return
 			}
 			p, err = a.apiKey(r.Context(), token)
 		case tokenAlg(token) == "EdDSA":
-			if !allowDelegated {
+			if !allow.mcp {
 				handler.WriteAPIError(w, http.StatusForbidden, "mcp_token_not_allowed", "mcp tokens cannot be used on this endpoint")
 				return
 			}

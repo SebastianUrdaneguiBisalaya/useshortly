@@ -55,15 +55,19 @@ func NewRouter(h Handlers) http.Handler {
 	// Signed-in users only (JWT). These routes involve no tenant yet.
 	user := api.NewRoute().Subrouter()
 	user.Use(h.Auth.User, h.Limits.PerPrincipal())
-	user.HandleFunc("/me", h.Accounts.Me).Methods(http.MethodGet)
 	if h.Accounts.CanDelete() {
 		user.HandleFunc("/me/delete-code", h.Accounts.RequestDeletion).Methods(http.MethodPost)
 		user.HandleFunc("/me", h.Accounts.DeleteAccount).Methods(http.MethodDelete)
 	}
 	user.HandleFunc("/orgs", h.Orgs.Create).Methods(http.MethodPost)
-	user.HandleFunc("/orgs", h.Orgs.ListMine).Methods(http.MethodGet)
 	user.HandleFunc("/invitations/{invitationID}/accept", h.Orgs.AcceptInvitation).Methods(http.MethodPost)
 	user.HandleFunc("/invitations/{invitationID}/reject", h.Orgs.RejectInvitation).Methods(http.MethodPost)
+
+	// Read-only account views, open to an MCP token (read scope) as well as to the user.
+	userView := api.NewRoute().Subrouter()
+	userView.Use(h.Auth.UserOrMCP, h.Limits.PerPrincipal())
+	userView.Handle("/me", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Accounts.Me))).Methods(http.MethodGet)
+	userView.Handle("/orgs", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Orgs.ListMine))).Methods(http.MethodGet)
 
 	// Signed-in users acting on one organization: Tenant checks {orgID} once for all of them.
 	userOrg := user.PathPrefix("/orgs/{orgID}").Subrouter()

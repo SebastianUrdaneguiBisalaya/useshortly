@@ -73,9 +73,35 @@ func TestMCPTokens(t *testing.T) {
 	assert.Equal(t, "insufficient_scope", res.errCode())
 	assert.Equal(t, http.StatusCreated, e.do("POST", links, write, body).status)
 
-	// Never on account or organization management, whatever the scope.
-	for _, p := range []string{"/api/v1/me", "/api/v1/orgs", "/api/v1/orgs/" + acme + "/api-keys"} {
-		assert.Equal(t, "mcp_token_not_allowed", e.do("GET", p, write, nil).errCode(), p)
+	// The read-only account views are open to an MCP token with the read scope...
+	for _, tok := range []string{read, write} {
+		me := e.do("GET", "/api/v1/me", tok, nil)
+		require.Equal(t, http.StatusOK, me.status, me.raw)
+		assert.Equal(t, "ana@example.com", me.str("email"))
+		assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/orgs", tok, nil).status)
+	}
+	assert.Contains(t, e.do("GET", "/api/v1/orgs", read, nil).raw, "Acme")
+
+	// ...and nothing else about accounts or organizations, whatever the scope.
+	for _, c := range []struct{ method, path string }{
+		{"POST", "/api/v1/orgs"},
+		{"DELETE", "/api/v1/me"},
+		{"POST", "/api/v1/me/delete-code"},
+		{"GET", "/api/v1/orgs/" + acme},
+		{"DELETE", "/api/v1/orgs/" + acme},
+		{"GET", "/api/v1/orgs/" + acme + "/members"},
+		{"POST", "/api/v1/orgs/" + acme + "/invitations"},
+		{"GET", "/api/v1/orgs/" + acme + "/api-keys"},
+		{"POST", "/api/v1/orgs/" + acme + "/api-keys"},
+	} {
+		assert.Equal(t, "mcp_token_not_allowed", e.do(c.method, c.path, write, nil).errCode(), c.method+" "+c.path)
+	}
+
+	// An API key still cannot see the account views.
+	key := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "ci", "scope": "write"})
+	require.Equal(t, http.StatusCreated, key.status, key.raw)
+	for _, p := range []string{"/api/v1/me", "/api/v1/orgs"} {
+		assert.Equal(t, "api_key_not_allowed", e.do("GET", p, key.str("secret"), nil).errCode(), p)
 	}
 
 	// It acts as that user: Bob is not a member of Acme.

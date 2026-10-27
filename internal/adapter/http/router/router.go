@@ -20,6 +20,8 @@ type Handlers struct {
 	Stats    *handler.StatsHandler
 	QR       *handler.QRHandler
 	Pages    *handler.UnlockPageHandler
+	// Limits protects the endpoints from floods and guessing; nil limits nothing.
+	Limits *middlewares.RateLimits
 }
 
 func NewRouter(h Handlers) http.Handler {
@@ -31,21 +33,27 @@ func NewRouter(h Handlers) http.Handler {
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 
-	// Public: signup, sign-in and password reset.
-	api.HandleFunc("/auth/register", h.Accounts.Register).Methods(http.MethodPost)
-	api.HandleFunc("/auth/register/verify", h.Accounts.VerifyRegistration).Methods(http.MethodPost)
-	api.HandleFunc("/auth/login", h.Accounts.Login).Methods(http.MethodPost)
-	api.HandleFunc("/auth/refresh", h.Accounts.Refresh).Methods(http.MethodPost)
-	api.HandleFunc("/auth/logout", h.Accounts.Logout).Methods(http.MethodPost)
+	// Public: signup, sign-in and password reset. They share one budget per address, because each
+	// request can cost an argon2id hash or an email and these are what attackers guess at.
+	strict := api.NewRoute().Subrouter()
+	strict.Use(h.Limits.StrictPerIP())
+	strict.HandleFunc("/auth/register", h.Accounts.Register).Methods(http.MethodPost)
+	strict.HandleFunc("/auth/register/verify", h.Accounts.VerifyRegistration).Methods(http.MethodPost)
+	strict.HandleFunc("/auth/login", h.Accounts.Login).Methods(http.MethodPost)
 	if h.Accounts.HasGoogle() {
-		api.HandleFunc("/auth/google", h.Accounts.Google).Methods(http.MethodPost)
+		strict.HandleFunc("/auth/google", h.Accounts.Google).Methods(http.MethodPost)
 	}
-	api.HandleFunc("/auth/forgot-password", h.Accounts.ForgotPassword).Methods(http.MethodPost)
-	api.HandleFunc("/auth/reset-password", h.Accounts.ResetPassword).Methods(http.MethodPost)
+	strict.HandleFunc("/auth/forgot-password", h.Accounts.ForgotPassword).Methods(http.MethodPost)
+	strict.HandleFunc("/auth/reset-password", h.Accounts.ResetPassword).Methods(http.MethodPost)
+
+	sessions := api.NewRoute().Subrouter()
+	sessions.Use(h.Limits.RefreshPerIP())
+	sessions.HandleFunc("/auth/refresh", h.Accounts.Refresh).Methods(http.MethodPost)
+	sessions.HandleFunc("/auth/logout", h.Accounts.Logout).Methods(http.MethodPost)
 
 	// Signed-in users only (JWT). These routes involve no tenant yet.
 	user := api.NewRoute().Subrouter()
-	user.Use(h.Auth.User)
+	user.Use(h.Auth.User, h.Limits.PerPrincipal())
 	user.HandleFunc("/me", h.Accounts.Me).Methods(http.MethodGet)
 	user.HandleFunc("/orgs", h.Orgs.Create).Methods(http.MethodPost)
 	user.HandleFunc("/orgs", h.Orgs.ListMine).Methods(http.MethodGet)
@@ -66,7 +74,7 @@ func NewRouter(h Handlers) http.Handler {
 
 	// JWT or API key, also bound to one organization.
 	either := api.NewRoute().Subrouter()
-	either.Use(h.Auth.UserOrKey)
+	either.Use(h.Auth.UserOrKey, h.Limits.PerPrincipal())
 	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
 	eitherOrg.Use(h.Tenant.Require)
 	// Creating and deleting need the write scope; listing only the read scope.
@@ -84,7 +92,11 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 
 	// Public redirect. Registered last so it never shadows /health or /api.
-	r.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)
-	r.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}/unlock", h.Links.Unlock).Methods(http.MethodPost)
+	redirects := r.NewRoute().Subrouter()
+	redirects.Use(h.Limits.RedirectPerIP())
+	redirects.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)
+	unlocks := r.NewRoute().Subrouter()
+	unlocks.Use(h.Limits.UnlockPerIP())
+	unlocks.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}/unlock", h.Links.Unlock).Methods(http.MethodPost)
 	return r
 }

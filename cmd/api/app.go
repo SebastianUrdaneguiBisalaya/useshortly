@@ -41,6 +41,8 @@ type adapters struct {
 	countries analytics.CountryResolver
 	// attempts limits the password tries of protected links.
 	attempts link.AttemptLimiter
+	// limits caps how fast one caller can hit the endpoints; nil limits nothing.
+	limits *middlewares.RateLimits
 }
 
 type app struct {
@@ -103,6 +105,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
 			Stats:    handler.NewStatsHandler(stats),
 			Pages:    handler.NewUnlockPageHandler(pages),
+			Limits:   a.limits,
 			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}

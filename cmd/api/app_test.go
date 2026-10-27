@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
@@ -118,7 +119,7 @@ func newEnv(t *testing.T, withGoogle bool) *env {
 
 func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env {
 	t.Helper()
-	return newEnvFull(t, withGoogle, linkCache, nil, false)
+	return newEnvFull(t, withGoogle, linkCache, nil, false, nil)
 }
 
 // memAttempts is an in-memory link.AttemptLimiter with the same backoff as the Redis one and a
@@ -167,7 +168,7 @@ type fakeCountries map[string]string
 
 func (f fakeCountries) Country(ip netip.Addr) string { return f[ip.String()] }
 
-func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries analytics.CountryResolver, trustProxy bool) *env {
+func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries analytics.CountryResolver, trustProxy bool, limits *middlewares.RateLimits) *env {
 	t.Helper()
 	ctx := context.Background()
 	db, err := database.NewSQLite(ctx, database.SQLiteConfig{Path: filepath.Join(t.TempDir(), "app.db")})
@@ -195,6 +196,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 		linkCache: linkCache,
 		countries: countries,
 		attempts:  attempts,
+		limits:    limits,
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -640,7 +642,7 @@ func TestRedirectsAreRecordedAsClicks(t *testing.T) {
 }
 
 func TestClicksAreEnrichedAndReportedAsStats(t *testing.T) {
-	e := newEnvFull(t, false, nil, fakeCountries{"203.0.113.7": "PE", "198.51.100.9": "US"}, true)
+	e := newEnvFull(t, false, nil, fakeCountries{"203.0.113.7": "PE", "198.51.100.9": "US"}, true, nil)
 	ana := e.signUp("ana@example.com", "Ana")
 	bob := e.signUp("bob@example.com", "Bob")
 	acme := e.createOrg(ana, "Acme")
@@ -1031,6 +1033,74 @@ func TestUnlockPagesPerOrganizationAndLink(t *testing.T) {
 		var n int
 		require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM unlock_pages WHERE link_id = ?`, vip).Scan(&n))
 		assert.Zero(t, n)
+	})
+}
+
+func TestRequestsAreRateLimited(t *testing.T) {
+	limits := middlewares.DefaultRateLimits(false)
+	limits.Strict = middlewares.Rate{Requests: 4, Per: time.Minute}
+	limits.Refresh = middlewares.Rate{Requests: 3, Per: time.Minute}
+	limits.Redirect = middlewares.Rate{Requests: 5, Per: time.Minute}
+	limits.Unlock = middlewares.Rate{Requests: 2, Per: time.Minute}
+	limits.API = middlewares.Rate{Requests: 6, Per: time.Minute}
+	e := newEnvFull(t, false, nil, nil, false, limits)
+
+	from := func(addr, method, path, token string, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.RemoteAddr = addr
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	t.Run("the sign-in routes share one budget and then answer 429", func(t *testing.T) {
+		const addr = "198.51.100.10:1"
+		paths := []string{"/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password"}
+		for i, p := range paths {
+			rec := from(addr, http.MethodPost, p, "", `{}`)
+			assert.NotEqual(t, http.StatusTooManyRequests, rec.Code, "request %d", i+1)
+		}
+		rec := from(addr, http.MethodPost, "/api/v1/auth/login", "", `{}`)
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+		assert.Contains(t, rec.Body.String(), "rate_limited")
+		assert.NotEmpty(t, rec.Header().Get("Retry-After"))
+		assert.NotEqual(t, http.StatusTooManyRequests, from("198.51.100.11:1", http.MethodPost, "/api/v1/auth/login", "", `{}`).Code, "another address")
+		assert.NotEqual(t, http.StatusTooManyRequests, from(addr, http.MethodPost, "/api/v1/auth/refresh", "", `{}`).Code, "refresh has its own budget")
+	})
+
+	t.Run("a flood of redirects is cut, other addresses and /health are not", func(t *testing.T) {
+		const addr = "198.51.100.20:1"
+		for range 5 {
+			assert.Equal(t, http.StatusNotFound, from(addr, http.MethodGet, "/nowhere", "", "").Code)
+		}
+		assert.Equal(t, http.StatusTooManyRequests, from(addr, http.MethodGet, "/nowhere", "", "").Code)
+		assert.Equal(t, http.StatusNotFound, from("198.51.100.21:1", http.MethodGet, "/nowhere", "", "").Code)
+		for range 20 {
+			assert.Equal(t, http.StatusOK, from(addr, http.MethodGet, "/health", "", "").Code, "health checks are never limited")
+		}
+	})
+
+	t.Run("password tries on a link have their own budget", func(t *testing.T) {
+		const addr = "198.51.100.30:1"
+		for range 2 {
+			assert.NotEqual(t, http.StatusTooManyRequests, from(addr, http.MethodPost, "/nowhere/unlock", "", `{"password":"x"}`).Code)
+		}
+		assert.Equal(t, http.StatusTooManyRequests, from(addr, http.MethodPost, "/nowhere/unlock", "", `{"password":"x"}`).Code)
+	})
+
+	t.Run("signed-in callers are limited per user, not per address", func(t *testing.T) {
+		ana := e.signUp("ana@example.com", "Ana") // two requests of the strict budget of the default address
+		bob := e.signUp("bob@example.com", "Bob")
+		const shared = "198.51.100.41:1" // one office, two people
+		for range 6 {
+			assert.Equal(t, http.StatusOK, from(shared, http.MethodGet, "/api/v1/me", ana, "").Code)
+		}
+		assert.Equal(t, http.StatusTooManyRequests, from(shared, http.MethodGet, "/api/v1/me", ana, "").Code)
+		assert.Equal(t, http.StatusOK, from(shared, http.MethodGet, "/api/v1/me", bob, "").Code, "Bob has his own budget from the same address")
 	})
 }
 

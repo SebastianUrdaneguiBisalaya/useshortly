@@ -9,6 +9,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/geoip"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	limiterredis "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/limiter/redis"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/logsender"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/resend"
@@ -87,6 +88,11 @@ func run() error {
 		ad.countries = geo
 	} else {
 		log.Println("GEOIP_DB_PATH is not set: the country of clicks is not recorded")
+	}
+	if cfg.RateLimit {
+		ad.limits = middlewares.DefaultRateLimits(cfg.TrustProxy)
+	} else {
+		log.Println("RATE_LIMIT is false: requests are not rate limited")
 	}
 	a := newApp(cfg, db.DB, ad)
 	// Let emails still in flight finish before the database and Redis close.

@@ -34,6 +34,8 @@ type Config struct {
 	TrustProxy bool
 	// AbuseEmail is where visitors report a link from the unlock page; empty shows no report link.
 	AbuseEmail string
+	// RateLimit turns the request limits on (the default); only switch it off behind something that already limits.
+	RateLimit bool
 }
 
 func Load() (*Config, error) {
@@ -81,6 +83,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("TRUST_PROXY must be true or false")
 	}
 	cfg.TrustProxy = trustProxy
+	rateLimit, err := strconv.ParseBool(getEnv("RATE_LIMIT", "true"))
+	if err != nil {
+		return nil, fmt.Errorf("RATE_LIMIT must be true or false")
+	}
+	cfg.RateLimit = rateLimit
 	if cfg.Env == "" {
 		return nil, fmt.Errorf("ENVIRONMENT is not set")
 	}

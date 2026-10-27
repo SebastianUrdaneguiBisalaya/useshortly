@@ -1,7 +1,7 @@
 import type { BetterAuthOptions } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { cimd } from "@better-auth/cimd";
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { fetchClientMetadataResource as fetchOverTheNetwork } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import type { Config } from "../config.js";
 import type { AuthDatabase } from "../db/index.js";
@@ -38,7 +38,14 @@ export const tableNames = {
   oauthResource: "mcp_oauth_resource",
 } as const;
 
-export function authOptions(config: Config, database: AuthDatabase["database"]) {
+/** Where client metadata documents are fetched from. Only tests replace it. */
+export type Network = { fetchClientMetadataResource: typeof fetchOverTheNetwork };
+
+export function authOptions(
+  config: Config,
+  database: AuthDatabase["database"],
+  network: Network = { fetchClientMetadataResource: fetchOverTheNetwork },
+) {
   const resource = `${config.publicUrl}${resourcePath}`;
   return {
     appName: "useshortly",
@@ -94,7 +101,7 @@ export function authOptions(config: Config, database: AuthDatabase["database"]) 
         },
       }),
       // Clients identify themselves with a metadata document (the MCP-recommended way); no DCR.
-      cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+      cimd({ fetchClientMetadataResource: network.fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
     ],
   } satisfies BetterAuthOptions;
 }

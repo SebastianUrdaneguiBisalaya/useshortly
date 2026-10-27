@@ -13,7 +13,7 @@ import { createApp } from "../app.js";
 import { createTokenSigner } from "../api/token.js";
 import { createAuth, type Auth } from "../auth/auth.js";
 import { migrate } from "../auth/migrate.js";
-import { authOptions } from "../auth/options.js";
+import { authOptions, type Network } from "../auth/options.js";
 import { loadConfig } from "../config.js";
 import { openLocal } from "../db/local.js";
 
@@ -36,6 +36,9 @@ async function freePort(): Promise<number> {
   await new Promise((resolve) => probe.close(resolve));
   return port;
 }
+
+/** The client whose metadata document the test network serves. */
+export const cimdClient = "https://client.example/mcp-client.json";
 
 export async function createHarness() {
   // The server listens on a real port because the access token check fetches its keys over HTTP.
@@ -84,8 +87,25 @@ export async function createHarness() {
   apiReplies["GET /me"] = () =>
     Response.json({ data: { id: 7, email: "ana@example.com", email_verified: true, first_name: "Ana", last_name: "Lopez" } });
 
+  // Client metadata documents (CIMD) are served from here instead of the internet.
+  const metadataDocs: Record<string, unknown> = {
+    [cimdClient]: {
+      client_id: cimdClient,
+      client_name: "Journey Client",
+      redirect_uris: [redirectUri],
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      scope: "mcp:read mcp:write offline_access",
+    },
+  };
+  const fetchClientMetadataResource = (async (input: string | URL | Request) => {
+    const doc = metadataDocs[String(input)];
+    return doc ? Response.json(doc, { headers: { "cache-control": "max-age=60" } }) : new Response("not found", { status: 404 });
+  }) as Network["fetchClientMetadataResource"];
+
   const db = openLocal(":memory:");
-  const options = authOptions(config, db);
+  const options = authOptions(config, db, { fetchClientMetadataResource });
   await migrate(options);
   const auth: Auth = createAuth(options);
   const app = createApp({ config, auth, identity, api });
@@ -130,7 +150,7 @@ export async function createHarness() {
     return { verifier, challenge: createHash("sha256").update(verifier).digest("base64url") };
   };
 
-  const authorizeUrl = (challenge: string, o: { scope?: string; client?: string } = {}) =>
+  const authorizeUrl = (challenge: string, o: { scope?: string; client?: string; resource?: string } = {}) =>
     `/api/auth/oauth2/authorize?${new URLSearchParams({
       client_id: o.client ?? trustedClient,
       redirect_uri: redirectUri,
@@ -139,11 +159,11 @@ export async function createHarness() {
       state: "xyz",
       code_challenge: challenge,
       code_challenge_method: "S256",
-      resource,
+      resource: o.resource ?? resource,
     })}`;
 
   /** authorize -> the sign-in page, returning the signed query it carries. */
-  const startFlow = async (challenge: string, o: { scope?: string; client?: string } = {}) => {
+  const startFlow = async (challenge: string, o: { scope?: string; client?: string; resource?: string } = {}) => {
     const res = await req(authorizeUrl(challenge, o));
     expect(res.status).toBe(302);
     const location = new URL(res.headers.get("location")!, base);
@@ -171,27 +191,27 @@ export async function createHarness() {
     return { cookie, resumed: await req(signIn.headers.get("location")!, { headers: { cookie } }) };
   };
 
-  const exchange = (code: string, verifier: string, client = trustedClient) =>
+  const exchange = (code: string, verifier: string, client = trustedClient, o: { resource?: string; redirectUri?: string } = {}) =>
     req("/api/auth/oauth2/token", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: redirectUri,
+        redirect_uri: o.redirectUri ?? redirectUri,
         client_id: client,
         code_verifier: verifier,
-        resource,
+        resource: o.resource ?? resource,
       }),
     });
 
   /** A real access token for the trusted client, obtained through the whole authorization flow. */
-  const accessToken = async (scope = "mcp:read") => {
+  const accessToken = async (scope = "mcp:read", o: { resource?: string } = {}) => {
     const { verifier, challenge } = pkce();
-    const query = await startFlow(challenge, { scope });
+    const query = await startFlow(challenge, { scope, resource: o.resource });
     const { resumed } = await signInAndResume(query);
     const code = new URL(resumed.headers.get("location")!).searchParams.get("code")!;
-    const res = await exchange(code, verifier);
+    const res = await exchange(code, verifier, trustedClient, { resource: o.resource });
     expect(res.status).toBe(200);
     return ((await res.json()) as { access_token: string }).access_token;
   };
@@ -258,7 +278,7 @@ export async function createHarness() {
   };
 
   return {
-    config, base, resource, db, auth, app, close, state, reset, api, apiCalls, apiReplies,
+    config, base, resource, db, auth, app, close, state, reset, api, apiCalls, apiReplies, metadataDocs,
     req, origin, pkce, authorizeUrl, startFlow, form, cookieOf, signInAndResume, exchange, accessToken, rpc, rpcResult, callTool, jwtParts, signatureIsValid,
   };
 }

@@ -43,7 +43,8 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 // linkSelect reads a link with the host of its domain, if it has one.
 const linkSelect = `SELECT l.id, l.code, l.origin_url, l.expires_at, l.max_clicks, l.click_count, l.password_hash,
 	l.tenant_id, l.domain_id, d.host, l.created_by, l.updated_by, l.created_at, l.updated_at
-	FROM links l LEFT JOIN domains d ON d.id = l.domain_id `
+	FROM links l JOIN organizations o ON o.id = l.tenant_id AND o.deleted_at IS NULL
+	LEFT JOIN domains d ON d.id = l.domain_id `
 
 // scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
 func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
@@ -52,12 +53,13 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		expires, updated sql.NullString
 		passwordHash     sql.NullString
 		updatedBy        sql.NullInt64
+		createdBy        sql.NullInt64
 		maxClicks        sql.NullInt64
 		domainID         sql.NullInt64
 		domainHost       sql.NullString
 		createdAt        string
 	)
-	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &l.CreatedBy, &updatedBy, &createdAt, &updated)
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &createdBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
 		return link.Link{}, err
 	}
@@ -68,6 +70,7 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		l.DomainID = &domainID.Int64
 	}
 	l.DomainHost = domainHost.String
+	l.CreatedBy = createdBy.Int64 // 0 once the user who created it was deleted
 	l.PasswordHash = passwordHash.String
 	if updatedBy.Valid {
 		l.UpdatedBy = &updatedBy.Int64

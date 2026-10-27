@@ -98,6 +98,17 @@ func run() error {
 	a := newApp(cfg, db.DB, ad)
 	// Let emails still in flight finish before the database and Redis close.
 	defer a.mail.Wait()
+	// Delete what deleted organizations left behind; stop it before the database closes.
+	purgeCtx, stopPurge := context.WithCancel(ctx)
+	purgeDone := make(chan struct{})
+	go func() {
+		defer close(purgeDone)
+		a.purger.Run(purgeCtx)
+	}()
+	defer func() {
+		stopPurge()
+		<-purgeDone
+	}()
 	// Flush the queued clicks before the database closes.
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

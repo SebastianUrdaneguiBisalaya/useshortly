@@ -62,6 +62,21 @@ func (r *fakeRepo) FindByID(_ context.Context, id int64) (Organization, error) {
 	return Organization{}, ErrNotFound
 }
 
+func (r *fakeRepo) SoftDelete(_ context.Context, id int64, _ time.Time) error {
+	if _, ok := r.orgs[id]; !ok {
+		return ErrNotFound
+	}
+	delete(r.orgs, id)
+	kept := r.members[:0]
+	for _, m := range r.members {
+		if m.TenantID != id {
+			kept = append(kept, m)
+		}
+	}
+	r.members = kept
+	return nil
+}
+
 func (r *fakeRepo) ListByUser(_ context.Context, userID int64) ([]Organization, error) {
 	var out []Organization
 	for _, m := range r.members {
@@ -390,4 +405,25 @@ func TestNameIsPublicAndOnlyTheName(t *testing.T) {
 	assert.Equal(t, "Acme", name, "no membership needed: it is shown to visitors")
 	_, err = svc.Name(ctx, 9999)
 	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+type fakeWaker struct{ kicks int }
+
+func (w *fakeWaker) Kick() { w.kicks++ }
+
+func TestDeleteIsOwnerOnlyAndWakesThePurger(t *testing.T) {
+	svc, repo, o := setup(t)
+	waker := &fakeWaker{}
+	svc.WithPurger(waker)
+	repo.members = append(repo.members, Member{ID: repo.id(), TenantID: o.ID, UserID: 11, Role: RoleAdmin})
+
+	assert.ErrorIs(t, svc.Delete(ctx, 11, o.ID), ErrNotOwner, "an admin cannot")
+	assert.ErrorIs(t, svc.Delete(ctx, 99, o.ID), ErrNotMember)
+	assert.Zero(t, waker.kicks)
+	assert.Contains(t, repo.orgs, o.ID)
+
+	require.NoError(t, svc.Delete(ctx, 10, o.ID))
+	assert.Equal(t, 1, waker.kicks)
+	assert.NotContains(t, repo.orgs, o.ID)
+	assert.ErrorIs(t, svc.Delete(ctx, 10, o.ID), ErrNotMember, "gone for everyone, owner included")
 }

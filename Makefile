@@ -10,14 +10,29 @@ test:
 	go test ./...
 
 # Migrations are plain SQL files applied with the sqlite3 CLI to DATABASE_PATH
-# (golang-migrate has no driver for Turso). Write them idempotently (IF NOT EXISTS).
-# Applies every migrations/*.up.sql in order.
+# (golang-migrate has no driver for Turso). Each file is applied once and recorded in
+# schema_migrations, because some of them rebuild tables and must not run twice. -bail stops at the
+# first error, and the table rebuilds run in a transaction, so a failure changes nothing.
+# Databases created before schema_migrations existed already have 000001 to 000010.
 migrate-up:
-	@for f in $$(ls migrations/*.up.sql | sort); do echo "up: $$f"; sqlite3 "$(DATABASE_PATH)" < $$f || exit 1; done
+	@db="$(DATABASE_PATH)"; \
+	fresh=$$(sqlite3 "$$db" "SELECT count(*) FROM sqlite_master WHERE name = 'schema_migrations'"); \
+	sqlite3 "$$db" "CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))"; \
+	if [ "$$fresh" = 0 ] && [ "$$(sqlite3 "$$db" "SELECT count(*) FROM sqlite_master WHERE name = 'links'")" != 0 ]; then \
+		for f in $$(ls migrations/*.up.sql | sort | head -n 10); do sqlite3 "$$db" "INSERT INTO schema_migrations (name) VALUES ('$$(basename $$f)')"; done; \
+		echo "existing database: 000001 to 000010 marked as applied"; \
+	fi; \
+	for f in $$(ls migrations/*.up.sql | sort); do \
+		n=$$(basename $$f); \
+		if [ -n "$$(sqlite3 "$$db" "SELECT 1 FROM schema_migrations WHERE name = '$$n'")" ]; then echo "skip: $$f"; continue; fi; \
+		echo "up: $$f"; \
+		sqlite3 -bail "$$db" < $$f && sqlite3 "$$db" "INSERT INTO schema_migrations (name) VALUES ('$$n')" || exit 1; \
+	done
 
 # Applies one down migration, e.g.: make migrate-down file=migrations/000001_create_links_table.down.sql
 migrate-down:
-	sqlite3 "$(DATABASE_PATH)" < $(file)
+	sqlite3 -bail "$(DATABASE_PATH)" < $(file)
+	@sqlite3 "$(DATABASE_PATH)" "DELETE FROM schema_migrations WHERE name = '$$(basename $(file) | sed 's/\.down\.sql$$/.up.sql/')'" 2>/dev/null || true
 
 # Creates a new pair of up/down migration files, e.g.:
 #   make migrate-create name=create_products_table

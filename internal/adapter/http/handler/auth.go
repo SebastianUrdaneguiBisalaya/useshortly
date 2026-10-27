@@ -10,11 +10,21 @@ type AuthHandler struct {
 	users  *user.Service
 	google *user.GoogleService // nil when Google sign-in is not configured
 	reset  *user.PasswordResetService
+	delete *user.DeletionService // nil leaves account deletion out
+}
+
+// WithDeletion enables deleting the account (see RequestDeletion and DeleteAccount).
+func (h *AuthHandler) WithDeletion(d *user.DeletionService) *AuthHandler {
+	h.delete = d
+	return h
 }
 
 func NewAuthHandler(users *user.Service, google *user.GoogleService, reset *user.PasswordResetService) *AuthHandler {
 	return &AuthHandler{users: users, google: google, reset: reset}
 }
+
+// CanDelete reports whether account deletion is wired.
+func (h *AuthHandler) CanDelete() bool { return h.delete != nil }
 
 // HasGoogle reports whether POST /auth/google should be exposed.
 func (h *AuthHandler) HasGoogle() bool { return h.google != nil }
@@ -188,6 +198,31 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 // Me returns the signed-in user.
+// RequestDeletion emails the signed-in user the code that confirms deleting their account.
+func (h *AuthHandler) RequestDeletion(w http.ResponseWriter, r *http.Request) {
+	if err := h.delete.RequestCode(r.Context(), PrincipalFrom(r).UserID); err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusAccepted, map[string]string{"message": "a confirmation code was sent to your email"})
+}
+
+// DeleteAccount deletes the signed-in user, every organization they own and what is in them,
+// once the emailed code is right. It cannot be undone.
+func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Code string `json:"code"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	if err := h.delete.Delete(r.Context(), PrincipalFrom(r).UserID, in.Code); err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))
 }

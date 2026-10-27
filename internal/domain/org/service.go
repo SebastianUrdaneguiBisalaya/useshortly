@@ -25,7 +25,19 @@ type Mailer interface {
 type Service struct {
 	repo   Repository
 	mailer Mailer
+	purger Waker
 	now    func() time.Time
+}
+
+// Waker is told that there is something to purge, so the purger does not wait for its next tick.
+type Waker interface {
+	Kick()
+}
+
+// WithPurger makes Delete wake the purger as soon as it commits.
+func (s *Service) WithPurger(p Waker) *Service {
+	s.purger = p
+	return s
 }
 
 func NewService(repo Repository, mailer Mailer) *Service {
@@ -39,6 +51,26 @@ func (s *Service) CreateOrganization(ctx context.Context, ownerID int64, name, d
 		return Organization{}, ErrInvalidName
 	}
 	return s.repo.CreateWithOwner(ctx, Organization{Name: name, Description: description, CreatedAt: s.now()}, ownerID)
+}
+
+// Delete removes the organization with its members, invitations, API keys, domains, links and
+// clicks. Only the OWNER can. It answers once the organization is hidden; the heavy rows are
+// deleted afterwards by the Purger, which keeps retrying until they are gone.
+func (s *Service) Delete(ctx context.Context, actorID, tenantID int64) error {
+	m, err := s.repo.FindMember(ctx, tenantID, actorID)
+	if err != nil {
+		return err
+	}
+	if m.Role != RoleOwner {
+		return ErrNotOwner
+	}
+	if err := s.repo.SoftDelete(ctx, tenantID, s.now()); err != nil {
+		return err
+	}
+	if s.purger != nil {
+		s.purger.Kick()
+	}
+	return nil
 }
 
 // RequireMember returns ErrNotMember unless userID belongs to the tenant. Other services

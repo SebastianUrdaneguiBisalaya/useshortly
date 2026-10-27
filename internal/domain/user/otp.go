@@ -24,6 +24,7 @@ type Purpose string
 const (
 	PurposeReset  Purpose = "reset"
 	PurposeSignup Purpose = "signup"
+	PurposeDelete Purpose = "delete"
 )
 
 // CodeStore keeps the hash of the pending one-time code of an email for a purpose, plus

@@ -19,6 +19,8 @@ type fakeRepo struct {
 	users    map[int64]User
 	accounts map[int64]Account
 	nextID   int64
+	// deleteErr makes DeleteWithOrganizations fail, with nothing changed.
+	deleteErr error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -53,6 +55,18 @@ func (r *fakeRepo) UpdatePassword(_ context.Context, userID int64, hash string, 
 	}
 	a.PasswordHash, a.UpdatedAt = hash, &at
 	r.accounts[userID] = a
+	return nil
+}
+
+func (r *fakeRepo) DeleteWithOrganizations(_ context.Context, userID int64, _ time.Time) error {
+	if r.deleteErr != nil {
+		return r.deleteErr
+	}
+	if _, ok := r.users[userID]; !ok {
+		return ErrNotFound
+	}
+	delete(r.users, userID)
+	delete(r.accounts, userID)
 	return nil
 }
 

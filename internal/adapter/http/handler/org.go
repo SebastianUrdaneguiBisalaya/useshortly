@@ -92,6 +92,20 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newOrgBody(o))
 }
 
+// Delete removes the organization with everything in it. Only its OWNER can. The organization is
+// gone for every caller when this answers; its links and clicks are deleted in the background.
+func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	if err := h.orgs.Delete(r.Context(), PrincipalFrom(r).UserID, tenant.ID); err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

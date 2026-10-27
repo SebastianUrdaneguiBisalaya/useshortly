@@ -1598,3 +1598,97 @@ func mustInt(t *testing.T, s string) int64 {
 	require.NoError(t, err)
 	return n
 }
+
+func TestDeletingAnOrganization(t *testing.T) {
+	cache := &memLinkCache{data: map[string][]byte{}}
+	e := newEnvWithCache(t, false, cache)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	globex := e.createOrg(bob, "Globex")
+	_, err := e.sql.Exec(`INSERT INTO org_members (tenant_id, user_id, role) VALUES (?, 2, 'ADMIN')`, acme)
+	require.NoError(t, err)
+
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", bob, map[string]string{"url": "https://example.com/a", "alias": "gone-soon"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	res = e.do("POST", "/api/v1/orgs/"+globex+"/links", bob, map[string]string{"url": "https://example.com/b", "alias": "stays"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	require.Equal(t, http.StatusFound, e.do("GET", "/gone-soon", "", nil).status)
+	require.Contains(t, cache.data, "link:code:gone-soon")
+
+	assert.Equal(t, http.StatusUnauthorized, e.do("DELETE", "/api/v1/orgs/"+acme, "", nil).status)
+	assert.Equal(t, "not_owner", e.do("DELETE", "/api/v1/orgs/"+acme, bob, nil).errCode(), "an admin cannot")
+	assert.Equal(t, "not_member", e.do("DELETE", "/api/v1/orgs/"+globex, ana, nil).errCode())
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/orgs/"+acme, ana, nil).status)
+
+	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme, ana, nil).status)
+
+	// Gone for everyone at once. The cached copy is only dropped by the purger, which a request kicks.
+	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme, ana, nil).status)
+	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme+"/links", bob, nil).status)
+	mine := e.do("GET", "/api/v1/orgs", bob, nil)
+	assert.NotContains(t, mine.raw, `"Acme"`)
+	assert.Contains(t, mine.raw, `"Globex"`)
+
+	require.NoError(t, e.app.purger.Purge(context.Background()))
+	assert.NotContains(t, cache.data, "link:code:gone-soon", "the purger evicts the cache")
+	assert.Equal(t, http.StatusNotFound, e.do("GET", "/gone-soon", "", nil).status)
+	assert.Equal(t, http.StatusFound, e.do("GET", "/stays", "", nil).status)
+	for _, table := range []string{"links", "clicks", "org_members", "api_keys"} {
+		var n int
+		require.NoError(t, e.sql.QueryRow(`SELECT count(*) FROM `+table+` WHERE `+map[string]string{
+			"links": "tenant_id", "clicks": "link_id IN (SELECT id FROM links WHERE tenant_id", "org_members": "tenant_id", "api_keys": "tenant_id",
+		}[table]+" = "+acme+map[string]string{"clicks": ")"}[table]).Scan(&n))
+		assert.Zero(t, n, table)
+	}
+	var orgs int
+	require.NoError(t, e.sql.QueryRow(`SELECT count(*) FROM organizations WHERE id = ?`, acme).Scan(&orgs))
+	assert.Zero(t, orgs, "the organization row is gone once purged")
+
+	// Its name can be used again.
+	assert.Equal(t, http.StatusCreated, e.do("POST", "/api/v1/orgs", ana, map[string]string{"name": "Acme"}).status)
+}
+
+func TestDeletingAnAccount(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	globex := e.createOrg(bob, "Globex")
+	_, err := e.sql.Exec(`INSERT INTO org_members (tenant_id, user_id, role) VALUES (?, 1, 'ADMIN')`, globex)
+	require.NoError(t, err)
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]string{"url": "https://example.com/a", "alias": "anas-link"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	res = e.do("POST", "/api/v1/orgs/"+globex+"/links", ana, map[string]string{"url": "https://example.com/b", "alias": "kept-link"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+
+	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/me/delete-code", "", nil).status)
+	assert.Equal(t, "invalid_code", e.do("DELETE", "/api/v1/me", ana, map[string]string{"code": "123456"}).errCode(), "no code was requested")
+
+	require.Equal(t, http.StatusAccepted, e.do("POST", "/api/v1/me/delete-code", ana, nil).status)
+	assert.Equal(t, "code_too_soon", e.do("POST", "/api/v1/me/delete-code", ana, nil).errCode())
+	code := e.lastCode("ana@example.com")
+	assert.Equal(t, "invalid_code", e.do("DELETE", "/api/v1/me", ana, map[string]string{"code": "000000"}).errCode())
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/me", ana, nil).status, "a wrong code deletes nothing")
+
+	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/me", ana, map[string]string{"code": code}).status)
+
+	// Her token stops working at once, her organization is gone, and Bob's is untouched.
+	assert.Equal(t, http.StatusUnauthorized, e.do("GET", "/api/v1/me", ana, nil).status)
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/orgs/"+globex, bob, nil).status)
+	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme, bob, nil).status)
+	assert.Equal(t, http.StatusNotFound, e.do("GET", "/anas-link", "", nil).status, "links of her organization stop")
+	assert.Equal(t, http.StatusFound, e.do("GET", "/kept-link", "", nil).status, "the link she made in Bob's organization stays")
+	list := e.do("GET", "/api/v1/orgs/"+globex+"/links", bob, nil)
+	assert.Equal(t, http.StatusOK, list.status)
+	assert.Contains(t, list.raw, "kept-link")
+
+	require.NoError(t, e.app.purger.Purge(context.Background()))
+	var n int
+	require.NoError(t, e.sql.QueryRow(`SELECT count(*) FROM organizations WHERE name LIKE 'Acme%'`).Scan(&n))
+	assert.Zero(t, n)
+
+	// Her email is free to register again.
+	require.NoError(t, e.sql.QueryRow(`SELECT count(*) FROM users WHERE email = 'ana@example.com'`).Scan(&n))
+	assert.Zero(t, n)
+}

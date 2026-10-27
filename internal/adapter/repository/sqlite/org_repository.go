@@ -55,11 +55,52 @@ func (r *OrgRepository) CreateWithOwner(ctx context.Context, o org.Organization,
 }
 
 func (r *OrgRepository) FindByID(ctx context.Context, id int64) (org.Organization, error) {
-	o, err := scanOrg(r.db.QueryRowContext(ctx, `SELECT `+orgColumns+` FROM organizations WHERE id = ?`, id))
+	o, err := scanOrg(r.db.QueryRowContext(ctx, `SELECT `+orgColumns+` FROM organizations WHERE id = ? AND deleted_at IS NULL`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return org.Organization{}, org.ErrNotFound
 	}
 	return o, err
+}
+
+func (r *OrgRepository) SoftDelete(ctx context.Context, id int64, at time.Time) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("org repo: begin: %w", err)
+	}
+	defer tx.Rollback()
+	if err := softDeleteOrg(ctx, tx, id, at); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("org repo: commit: %w", err)
+	}
+	return nil
+}
+
+// softDeleteOrg is the fast part of deleting an organization, run inside the caller's transaction:
+// mark it, free its name for a new organization, and cut every way into it (members, invitations,
+// API keys). Links, clicks and domains are left for the purger. Returns org.ErrNotFound if the
+// organization does not exist or is already deleted.
+func softDeleteOrg(ctx context.Context, tx *sql.Tx, id int64, at time.Time) error {
+	res, err := tx.ExecContext(ctx,
+		`UPDATE organizations SET deleted_at = ?, name = substr(name, 1, 200) || '#deleted-' || id
+		 WHERE id = ? AND deleted_at IS NULL`, formatTime(at), id)
+	if err != nil {
+		return fmt.Errorf("org repo: mark deleted: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("org repo: mark deleted: %w", err)
+	}
+	if n == 0 {
+		return org.ErrNotFound
+	}
+	for _, table := range []string{"org_members", "org_invitations", "api_keys"} {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE tenant_id = ?`, id); err != nil {
+			return fmt.Errorf("org repo: delete %s: %w", table, err)
+		}
+	}
+	return nil
 }
 
 func (r *OrgRepository) ListByUser(ctx context.Context, userID int64) ([]org.Organization, error) {

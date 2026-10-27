@@ -15,6 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_domains_tenant_id
 -- domain (NULL is the default host). SQLite cannot drop the inline UNIQUE, so the table is
 -- rebuilt; foreign keys are off meanwhile so dropping it does not cascade to clicks and unlock pages.
 PRAGMA foreign_keys = OFF;
+BEGIN;
 
 CREATE TABLE links_new (
     id INTEGER PRIMARY KEY,
@@ -53,5 +54,5 @@ CREATE INDEX IF NOT EXISTS idx_links_domain_id ON links (domain_id);
 
 -- One code per domain; a NULL domain_id counts as 0 so the default host is unique too.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_links_domain_code ON links (COALESCE(domain_id, 0), code);
-
+COMMIT;
 PRAGMA foreign_keys = ON;

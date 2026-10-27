@@ -5,11 +5,12 @@ import "time"
 // Template codes. Plain string constants so consumers can name a template without
 // depending on this package's types.
 const (
-	TemplateWelcome       = "WELCOME"
-	TemplateLogin         = "LOGIN"
-	TemplateInvitation    = "INVITATION"
-	TemplatePasswordReset = "PASSWORD_RESET"
-	TemplateVerifyEmail   = "VERIFY_EMAIL"
+	TemplateWelcome         = "WELCOME"
+	TemplateLogin           = "LOGIN"
+	TemplateInvitation      = "INVITATION"
+	TemplatePasswordReset   = "PASSWORD_RESET"
+	TemplateVerifyEmail     = "VERIFY_EMAIL"
+	TemplateAccountDeletion = "ACCOUNT_DELETION"
 )
 
 // Template is a row of email_templates. Subject, BodyHTML and BodyText are Go templates.

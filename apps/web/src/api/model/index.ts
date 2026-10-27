@@ -53,7 +53,6 @@ export * from './organization';
 export * from './organizationListResponse';
 export * from './organizationResponse';
 export * from './pageMeta';
-export * from './refreshTokenRequest';
 export * from './registerRequest';
 export * from './resetPasswordRequest';
 export * from './session';

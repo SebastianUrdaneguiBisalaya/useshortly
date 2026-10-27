@@ -33,8 +33,6 @@ export const LoginWithGoogleResponse = zod.object({
   "data": zod.object({
   "expires_at": zod.string().optional(),
   "refresh_expires_at": zod.string().optional(),
-  "refresh_token": zod.string().optional(),
-  "token": zod.string().optional(),
   "user": zod.object({
   "created_at": zod.string().optional(),
   "email": zod.string().optional(),
@@ -60,8 +58,6 @@ export const LoginResponse = zod.object({
   "data": zod.object({
   "expires_at": zod.string().optional(),
   "refresh_expires_at": zod.string().optional(),
-  "refresh_token": zod.string().optional(),
-  "token": zod.string().optional(),
   "user": zod.object({
   "created_at": zod.string().optional(),
   "email": zod.string().optional(),
@@ -76,27 +72,19 @@ export const LoginResponse = zod.object({
 })
 
 /**
+ * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Sign out
  */
-export const LogoutBody = zod.object({
-  "refresh_token": zod.string().optional()
-}).describe('Refresh token to revoke')
-
 export const LogoutResponse = zod.void()
 
 /**
+ * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Refresh a session
  */
-export const RefreshSessionBody = zod.object({
-  "refresh_token": zod.string().optional()
-}).describe('Refresh token')
-
 export const RefreshSessionResponse = zod.object({
   "data": zod.object({
   "expires_at": zod.string().optional(),
   "refresh_expires_at": zod.string().optional(),
-  "refresh_token": zod.string().optional(),
-  "token": zod.string().optional(),
   "user": zod.object({
   "created_at": zod.string().optional(),
   "email": zod.string().optional(),
@@ -138,8 +126,6 @@ export const VerifyRegistrationResponse = zod.object({
   "data": zod.object({
   "expires_at": zod.string().optional(),
   "refresh_expires_at": zod.string().optional(),
-  "refresh_token": zod.string().optional(),
-  "token": zod.string().optional(),
   "user": zod.object({
   "created_at": zod.string().optional(),
   "email": zod.string().optional(),

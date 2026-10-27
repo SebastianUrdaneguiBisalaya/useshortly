@@ -59,7 +59,6 @@
     "resetPassword": {
       "title": "Reset password",
       "description": "Enter the code we sent to {{email}} and choose a new password.",
-      "descriptionNoEmail": "Enter the code we sent to your email and choose a new password.",
       "code": {
         "label": "Verification code"
       },
@@ -72,7 +71,14 @@
         "placeholder": "repeat the password"
       },
       "submit": "Reset password",
-      "submitting": "Resetting"
+      "submitting": "Resetting",
+      "success": "Password updated. Sign in with your new password."
+    },
+    "verifyEmail": {
+      "title": "Verify your email",
+      "description": "Enter the code we sent to {{email}} to finish creating your account.",
+      "submit": "Verify",
+      "submitting": "Verifying"
     }
   },
   "theme": {
@@ -86,5 +92,28 @@
     "system": "System",
     "en": "English",
     "es": "Spanish"
+  },
+  "protected": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "links": "Links"
+    },
+    "sidebar": {
+      "closeMenu": "Close menu",
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar",
+      "primary": "Primary",
+      "openMenu": "Open menu"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Try again.",
+    "invalidCredentials": "Incorrect email or password",
+    "emailTaken": "That email is already registered",
+    "providerMismatch": "That email is registered with another sign-in method",
+    "invalidCode": "The code is wrong or expired",
+    "tooManyAttempts": "Too many wrong codes. Request a new one.",
+    "codeTooSoon": "A code was requested too recently. Wait a minute.",
+    "googleEmailNotVerified": "The Google email is not verified"
   }
 }

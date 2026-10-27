@@ -21,7 +21,6 @@ import type {
   GoogleLoginRequest,
   LoginRequest,
   MessageResponse,
-  RefreshTokenRequest,
   RegisterRequest,
   ResetPasswordRequest,
   SessionResponse,
@@ -239,18 +238,17 @@ export const useLogin = <TError = ErrorType<ErrorResponse>,
       return useMutation(getLoginMutationOptions(options), queryClient);
     }
     /**
+ * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Sign out
  */
 export const logout = (
-    refreshTokenRequest: BodyType<RefreshTokenRequest>,
+
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
 
 
       return customInstance<void>(
-      {url: `/auth/logout`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: refreshTokenRequest, signal
+      {url: `/auth/logout`, method: 'POST', signal
     },
       options);
     }
@@ -261,8 +259,8 @@ export const logout = (
 export const getLogoutMutationKey = () => ['logout'] as const;
 
 export const getLogoutMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,LogoutMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,LogoutMutationVariables, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext> => {
 
 const mutationKey = getLogoutMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -274,10 +272,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logout>>, LogoutMutationVariables> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logout>>, void> = () => {
 
-          return  logout(data,requestOptions)
+
+          return  logout(requestOptions)
         }
 
 
@@ -288,36 +286,35 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type LogoutMutationResult = NonNullable<Awaited<ReturnType<typeof logout>>>
-    export type LogoutMutationBody = BodyType<RefreshTokenRequest>
+
     export type LogoutMutationError = ErrorType<ErrorResponse>
-    export type LogoutMutationVariables = {data: BodyType<RefreshTokenRequest>}
+
 
     /**
  * @summary Sign out
  */
 export const useLogout = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,LogoutMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof logout>>,
         TError,
-        LogoutMutationVariables,
+        void,
         TContext
       > => {
       return useMutation(getLogoutMutationOptions(options), queryClient);
     }
     /**
+ * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Refresh a session
  */
 export const refreshSession = (
-    refreshTokenRequest: BodyType<RefreshTokenRequest>,
+
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
 
 
       return customInstance<SessionResponse>(
-      {url: `/auth/refresh`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: refreshTokenRequest, signal
+      {url: `/auth/refresh`, method: 'POST', signal
     },
       options);
     }
@@ -328,8 +325,8 @@ export const refreshSession = (
 export const getRefreshSessionMutationKey = () => ['refreshSession'] as const;
 
 export const getRefreshSessionMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,RefreshSessionMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,RefreshSessionMutationVariables, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext> => {
 
 const mutationKey = getRefreshSessionMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -341,10 +338,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSession>>, RefreshSessionMutationVariables> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSession>>, void> = () => {
 
-          return  refreshSession(data,requestOptions)
+
+          return  refreshSession(requestOptions)
         }
 
 
@@ -355,19 +352,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RefreshSessionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshSession>>>
-    export type RefreshSessionMutationBody = BodyType<RefreshTokenRequest>
+
     export type RefreshSessionMutationError = ErrorType<ErrorResponse>
-    export type RefreshSessionMutationVariables = {data: BodyType<RefreshTokenRequest>}
+
 
     /**
  * @summary Refresh a session
  */
 export const useRefreshSession = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,RefreshSessionMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof refreshSession>>,
         TError,
-        RefreshSessionMutationVariables,
+        void,
         TContext
       > => {
       return useMutation(getRefreshSessionMutationOptions(options), queryClient);

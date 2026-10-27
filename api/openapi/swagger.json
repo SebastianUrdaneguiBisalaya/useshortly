@@ -760,22 +760,23 @@
         },
         "securitySchemes": {
             "BearerAuth": {
-                "description": "\"Bearer \u003ctoken\u003e\": a JWT access token, or an API key where the route allows it.",
+                "description": "\"Bearer <token>\": a JWT access token, or an API key where the route allows it.",
                 "in": "header",
                 "name": "Authorization",
                 "type": "apiKey"
             }
         }
     },
+    "externalDocs": {
+        "description": "",
+        "url": ""
+    },
     "info": {
         "description": "Self-hosted URL shortener. JSON keys are snake_case; every success is {\"data\": ...} and every failure {\"error\": {...}}.",
         "title": "useshortly API",
         "version": "1.0"
     },
-    "externalDocs": {
-        "description": "",
-        "url": ""
-    },
+    "openapi": "3.1.0",
     "paths": {
         "/auth/forgot-password": {
             "post": {
@@ -785,8 +786,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/ForgotPasswordRequest",
-                                "summary": "body",
-                                "description": "Account email"
+                                "description": "Account email",
+                                "summary": "body"
                             }
                         }
                     },
@@ -840,8 +841,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/GoogleLoginRequest",
-                                "summary": "body",
-                                "description": "Google authorization code"
+                                "description": "Google authorization code",
+                                "summary": "body"
                             }
                         }
                     },
@@ -904,8 +905,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/LoginRequest",
-                                "summary": "body",
-                                "description": "Credentials"
+                                "description": "Credentials",
+                                "summary": "body"
                             }
                         }
                     },
@@ -968,8 +969,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "summary": "body",
-                                "description": "Refresh token to revoke"
+                                "description": "Refresh token to revoke",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1015,8 +1016,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "summary": "body",
-                                "description": "Refresh token"
+                                "description": "Refresh token",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1079,8 +1080,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/RegisterRequest",
-                                "summary": "body",
-                                "description": "Account data"
+                                "description": "Account data",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1143,8 +1144,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/VerifyRegistrationRequest",
-                                "summary": "body",
-                                "description": "Email and emailed code"
+                                "description": "Email and emailed code",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1197,8 +1198,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/ResetPasswordRequest",
-                                "summary": "body",
-                                "description": "Email, emailed code and new password"
+                                "description": "Email, emailed code and new password",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1392,8 +1393,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/ConfirmationCodeRequest",
-                                "summary": "body",
-                                "description": "Emailed confirmation code"
+                                "description": "Emailed confirmation code",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1589,8 +1590,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/CreateOrganizationRequest",
-                                "summary": "body",
-                                "description": "Organization data"
+                                "description": "Organization data",
+                                "summary": "body"
                             }
                         }
                     },
@@ -1916,8 +1917,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/CreateAPIKeyRequest",
-                                "summary": "body",
-                                "description": "Key name, scope and optional expiry"
+                                "description": "Key name, scope and optional expiry",
+                                "summary": "body"
                             }
                         }
                     },
@@ -2198,8 +2199,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/CreateDomainRequest",
-                                "summary": "body",
-                                "description": "Host to serve links from"
+                                "description": "Host to serve links from",
+                                "summary": "body"
                             }
                         }
                     },
@@ -2645,8 +2646,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/InviteRequest",
-                                "summary": "body",
-                                "description": "Invitee and optional copies"
+                                "description": "Invitee and optional copies",
+                                "summary": "body"
                             }
                         }
                     },
@@ -2848,8 +2849,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/CreateLinkRequest",
-                                "summary": "body",
-                                "description": "Link to create"
+                                "description": "Link to create",
+                                "summary": "body"
                             }
                         }
                     },
@@ -3072,11 +3073,13 @@
                         "content": {
                             "image/png": {
                                 "schema": {
+                                    "format": "binary",
                                     "type": "string"
                                 }
                             },
                             "image/svg+xml": {
                                 "schema": {
+                                    "format": "binary",
                                     "type": "string"
                                 }
                             }
@@ -3475,8 +3478,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/SetUnlockPageRequest",
-                                "summary": "body",
-                                "description": "Page HTML"
+                                "description": "Page HTML",
+                                "summary": "body"
                             }
                         }
                     },
@@ -3877,8 +3880,8 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/SetUnlockPageRequest",
-                                "summary": "body",
-                                "description": "Page HTML"
+                                "description": "Page HTML",
+                                "summary": "body"
                             }
                         }
                     },
@@ -4063,7 +4066,6 @@
             }
         }
     },
-    "openapi": "3.1.0",
     "servers": [
         {
             "url": "/api/v1"

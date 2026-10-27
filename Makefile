@@ -13,10 +13,11 @@ run:
 test:
 	go test ./...
 
-# Generates the OpenAPI 3.1 spec from the handler annotations into api/openapi, for Orval and the
-# MCP server to consume.
+# Generates the OpenAPI 3.1 spec from the handler annotations into api/openapi/swagger.json, for
+# Orval and the MCP server to consume. openapi-fix then patches what swag cannot say (the QR image).
 openapi:
-	$(SWAG) init --v3.1 -g main.go -d cmd/api,internal/adapter/http/handler --parseInternal --propertyStrategy snakecase -o api/openapi --outputTypes json,yaml
+	$(SWAG) init --v3.1 -g main.go -d cmd/api,internal/adapter/http/handler --parseInternal --propertyStrategy snakecase -o api/openapi --outputTypes json
+	go run ./scripts/openapi-fix api/openapi/swagger.json
 
 # Migrations are plain SQL files applied with the sqlite3 CLI to DATABASE_PATH
 # (golang-migrate has no driver for Turso). Each file is applied once and recorded in

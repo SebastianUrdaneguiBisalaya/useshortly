@@ -1,22 +1,26 @@
-FROM node:24-alpine AS development-dependencies-env
-COPY . /app
+# Production image. Build from apps/web: docker build -t useshortly-web .
+# VITE_* values are read from .env at build time (they end up in the browser bundle, so they are not secrets).
+FROM node:24-alpine AS base
+# The exact pnpm version the lockfile was made with.
+RUN npm install -g pnpm@12.15.0
 WORKDIR /app
-RUN npm ci
+# pnpm-workspace.yaml carries allowBuilds: without it pnpm stops to ask which install scripts may run.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-FROM node:24-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
-WORKDIR /app
-RUN npm ci --omit=dev
+FROM base AS deps
+RUN pnpm install --frozen-lockfile --prod
 
-FROM node:24-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
-RUN npm run build
+FROM base AS build
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build
 
 FROM node:24-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+ENV NODE_ENV=production PORT=3000
 WORKDIR /app
-CMD ["npm", "run", "start"]
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/build ./build
+COPY package.json ./
+USER node
+EXPOSE 3000
+CMD ["node_modules/.bin/react-router-serve", "./build/server/index.js"]

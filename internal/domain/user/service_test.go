@@ -560,3 +560,16 @@ func TestClockAdvancesAndIsUTC(t *testing.T) {
 	assert.True(t, b.After(a), "the clock must keep moving")
 	assert.Equal(t, time.UTC, a.Location())
 }
+
+func TestByIDResolvesAUserAndTreatsAMissingOneAsInvalidCredentials(t *testing.T) {
+	repo := newFakeRepo()
+	repo.users[5] = User{ID: 5, Email: "ana@example.com"}
+	s := NewService(repo, fakeHasher{}, fakeTokens{}, newFakeRefresh(), &fakeMailer{}, nil)
+
+	u, err := s.ByID(context.Background(), 5)
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), u.ID)
+
+	_, err = s.ByID(context.Background(), 6)
+	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}

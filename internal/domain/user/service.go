@@ -222,6 +222,16 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, error) 
 	return u, err
 }
 
+// ByID returns the user with that id, or auth.ErrInvalidCredentials when there is none: a
+// credential for a user that no longer exists must stop working.
+func (s *Service) ByID(ctx context.Context, id int64) (User, error) {
+	u, err := s.repo.FindByID(ctx, id)
+	if errors.Is(err, ErrNotFound) {
+		return User{}, auth.ErrInvalidCredentials
+	}
+	return u, err
+}
+
 func normalizeEmail(raw string) (string, error) {
 	email := strings.ToLower(strings.TrimSpace(raw))
 	addr, err := mail.ParseAddress(email)

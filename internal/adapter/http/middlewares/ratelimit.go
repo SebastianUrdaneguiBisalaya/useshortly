@@ -90,6 +90,9 @@ func (l *RateLimits) PerPrincipal() middleware {
 	}
 	return httprate.LimitBy(l.API.Requests, l.API.Per, func(r *http.Request) (string, error) {
 		p := handler.PrincipalFrom(r)
+		if p.ViaMCP() {
+			return "mcp:" + strconv.FormatInt(p.UserID, 10), nil
+		}
 		if p.ViaAPIKey() {
 			return "key:" + strconv.FormatInt(p.UserID, 10), nil
 		}

@@ -19,10 +19,12 @@ type LinkHandler struct {
 	links   *link.Service
 	clicks  ClickRecorder // nil records nothing
 	baseURL string        // public URL short links are served from
+	// trustProxy reads the visitor's address from X-Forwarded-For; see clientIP.
+	trustProxy bool
 }
 
-func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string) *LinkHandler {
-	return &LinkHandler{links: links, clicks: clicks, baseURL: strings.TrimRight(baseURL, "/")}
+func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string, trustProxy bool) *LinkHandler {
+	return &LinkHandler{links: links, clicks: clicks, baseURL: strings.TrimRight(baseURL, "/"), trustProxy: trustProxy}
 }
 
 type linkBody struct {
@@ -116,7 +118,9 @@ func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.clicks != nil {
-		h.clicks.Record(analytics.Click{LinkID: l.ID, Referrer: r.Referer(), UserAgent: r.UserAgent()})
+		h.clicks.Record(analytics.Click{
+			LinkID: l.ID, Referrer: r.Referer(), UserAgent: r.UserAgent(), IP: clientIP(r, h.trustProxy),
+		})
 	}
 	http.Redirect(w, r, l.OriginURL, http.StatusFound)
 }

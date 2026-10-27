@@ -12,6 +12,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/router"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/useragent"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
@@ -33,6 +34,8 @@ type adapters struct {
 	google user.GoogleAuth // nil disables Google sign-in
 	// linkCache sits in front of the redirect lookup; nil serves every redirect from the database.
 	linkCache cached.Store
+	// countries finds the country of a click's address; nil leaves the country empty.
+	countries analytics.CountryResolver
 }
 
 type app struct {
@@ -78,7 +81,8 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
 	links := link.NewService(linkRepo, codegen.NewBase62())
-	clicks := analytics.NewRecorder(sqlite.NewClickRepository(db), clickBuffer)
+	clickRepo := sqlite.NewClickRepository(db)
+	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 
 	return &app{
 		mail:   mail,
@@ -89,7 +93,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy),
 		}),
 	}
 }

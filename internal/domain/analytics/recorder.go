@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"log/slog"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,22 +23,25 @@ const (
 // Analytics are best effort. If the buffer is full the click is dropped and counted rather than
 // slowing the redirect down, and a failed write is logged. Call Close on shutdown to flush.
 type Recorder struct {
-	repo    Repository
-	now     func() time.Time
-	clicks  chan Click
-	done    chan struct{}
-	dropped atomic.Int64
+	repo     Repository
+	enricher Enricher // nil stores clicks as they come
+	now      func() time.Time
+	clicks   chan Click
+	done     chan struct{}
+	dropped  atomic.Int64
 
 	mu     sync.RWMutex // guards closed and the close of clicks
 	closed bool
 }
 
-func NewRecorder(repo Repository, buffer int) *Recorder {
+// NewRecorder starts the worker. The enricher runs in the worker, off the redirect path.
+func NewRecorder(repo Repository, enricher Enricher, buffer int) *Recorder {
 	r := &Recorder{
-		repo:   repo,
-		now:    func() time.Time { return time.Now().UTC() },
-		clicks: make(chan Click, buffer),
-		done:   make(chan struct{}),
+		repo:     repo,
+		enricher: enricher,
+		now:      func() time.Time { return time.Now().UTC() },
+		clicks:   make(chan Click, buffer),
+		done:     make(chan struct{}),
 	}
 	go r.run()
 	return r
@@ -73,6 +77,10 @@ func (r *Recorder) Dropped() int64 { return r.dropped.Load() }
 func (r *Recorder) run() {
 	defer close(r.done)
 	for c := range r.clicks {
+		if r.enricher != nil {
+			c = r.enricher.Enrich(c)
+		}
+		c.IP = netip.Addr{}
 		ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
 		if _, err := r.repo.Create(ctx, c); err != nil {
 			slog.Warn("click not recorded", "link_id", c.LinkID, "error", err)

@@ -21,3 +21,16 @@ export const link = z.object({
 });
 
 export const pageMeta = z.object({ limit: z.number(), offset: z.number(), total: z.number() });
+
+const count = z.object({ name: z.string(), clicks: z.number() });
+
+export const linkStats = z.object({
+  link_id: z.number(),
+  from: z.string(),
+  to: z.string(),
+  total: z.number(),
+  daily: z.array(z.object({ date: z.string(), clicks: z.number() })).nullable().transform((v) => v ?? []),
+  referrers: z.array(count).nullable().transform((v) => v ?? []),
+  countries: z.array(count).nullable().transform((v) => v ?? []),
+  devices: z.array(count).nullable().transform((v) => v ?? []),
+});

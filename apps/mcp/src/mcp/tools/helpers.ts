@@ -13,7 +13,7 @@ import type { UserApi } from "../../api/client.js";
 export type ToolContext = { api: UserApi };
 
 export type ToolResult = {
-  content: { type: "text"; text: string }[];
+  content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[];
   structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };

@@ -83,6 +83,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	links := link.NewService(linkRepo, codegen.NewBase62())
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
+	stats := analytics.NewService(clickRepo)
 
 	return &app{
 		mail:   mail,
@@ -94,6 +95,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
 			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy),
+			Stats:    handler.NewStatsHandler(stats),
 		}),
 	}
 }

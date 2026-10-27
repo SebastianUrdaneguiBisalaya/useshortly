@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
@@ -112,6 +114,16 @@ func newEnv(t *testing.T, withGoogle bool) *env {
 
 func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env {
 	t.Helper()
+	return newEnvFull(t, withGoogle, linkCache, nil, false)
+}
+
+// fakeCountries places every address in a fixed country.
+type fakeCountries map[string]string
+
+func (f fakeCountries) Country(ip netip.Addr) string { return f[ip.String()] }
+
+func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries analytics.CountryResolver, trustProxy bool) *env {
+	t.Helper()
 	ctx := context.Background()
 	db, err := database.NewSQLite(ctx, database.SQLiteConfig{Path: filepath.Join(t.TempDir(), "app.db")})
 	if err != nil {
@@ -135,6 +147,7 @@ func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env
 		sender: box,
 
 		linkCache: linkCache,
+		countries: countries,
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -147,6 +160,7 @@ func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env
 		RefreshTTL: 24 * time.Hour,
 
 		LinkCacheTTL: time.Minute,
+		TrustProxy:   trustProxy,
 	}
 	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB}
 	t.Cleanup(e.app.mail.Wait)
@@ -575,6 +589,81 @@ func TestRedirectsAreRecordedAsClicks(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, e2.do("DELETE", "/api/v1/orgs/"+org2+"/links/"+l2.id(), ana2, nil).status)
 	require.NoError(t, e2.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM clicks`).Scan(&n))
 	assert.Zero(t, n, "clicks are deleted with their link")
+}
+
+func TestClicksAreEnrichedAndReportedAsStats(t *testing.T) {
+	e := newEnvFull(t, false, nil, fakeCountries{"203.0.113.7": "PE", "198.51.100.9": "US"}, true)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	bobOrg := e.createOrg(bob, "Bobs")
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]string{"url": "https://example.com/s", "alias": "stats-01"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	linkID := res.id()
+	stats := "/api/v1/orgs/" + acme + "/links/" + linkID + "/stats"
+
+	visit := func(remote, forwarded, referer, ua string) {
+		req := httptest.NewRequest(http.MethodGet, "/stats-01", nil)
+		req.RemoteAddr = remote
+		if forwarded != "" {
+			req.Header.Set("X-Forwarded-For", forwarded)
+		}
+		req.Header.Set("Referer", referer)
+		req.Header.Set("User-Agent", ua)
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusFound, rec.Code)
+	}
+	iphone := "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1"
+	desktop := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0 Safari/537.36"
+	visit("10.0.0.2:80", "203.0.113.7, 10.0.0.2", "https://news.example/a", iphone) // behind the proxy
+	visit("10.0.0.2:80", "203.0.113.7", "https://news.example/a", iphone)
+	visit("198.51.100.9:5000", "", "", desktop) // no forwarded header: the remote address is used
+	require.NoError(t, e.app.clicks.Close(context.Background()))
+
+	var country, device string
+	require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT country, device FROM clicks ORDER BY id LIMIT 1`).Scan(&country, &device))
+	assert.Equal(t, []string{"PE", "mobile"}, []string{country, device})
+
+	res = e.do("GET", stats, ana, nil)
+	require.Equal(t, http.StatusOK, res.status, res.raw)
+	assert.EqualValues(t, 3, res.body["total"])
+	assert.Len(t, res.body["daily"], analytics.DefaultDays)
+	today := res.body["daily"].([]any)[analytics.DefaultDays-1].(map[string]any)
+	assert.EqualValues(t, 3, today["clicks"], "the last day of the default window is today")
+	assert.Equal(t, []any{map[string]any{"name": "PE", "clicks": float64(2)}, map[string]any{"name": "US", "clicks": float64(1)}}, res.body["countries"])
+	assert.Equal(t, []any{map[string]any{"name": "mobile", "clicks": float64(2)}, map[string]any{"name": "desktop", "clicks": float64(1)}}, res.body["devices"])
+	assert.Equal(t, []any{map[string]any{"name": "https://news.example/a", "clicks": float64(2)}, map[string]any{"name": "direct", "clicks": float64(1)}}, res.body["referrers"])
+
+	t.Run("a window without clicks is all zeros", func(t *testing.T) {
+		res := e.do("GET", stats+"?from=2020-01-01&to=2020-01-03", ana, nil)
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		assert.EqualValues(t, 0, res.body["total"])
+		assert.Len(t, res.body["daily"], 3)
+		assert.Equal(t, []any{}, res.body["referrers"])
+	})
+
+	t.Run("bad ranges are 400", func(t *testing.T) {
+		for _, q := range []string{"from=yesterday", "to=2026-13-40", "from=2026-03-05&to=2026-03-01", "from=2020-01-01&to=2026-01-01"} {
+			res := e.do("GET", stats+"?"+q, ana, nil)
+			assert.Equal(t, http.StatusBadRequest, res.status, q)
+			assert.Equal(t, "invalid_range", res.errCode(), q)
+		}
+	})
+
+	t.Run("only the owner organization sees them", func(t *testing.T) {
+		assert.Equal(t, "not_member", e.do("GET", stats, bob, nil).errCode())
+		// Bob's own organization, but Ana's link id: it does not exist there.
+		res := e.do("GET", "/api/v1/orgs/"+bobOrg+"/links/"+linkID+"/stats", bob, nil)
+		assert.Equal(t, http.StatusNotFound, res.status)
+		assert.Equal(t, http.StatusNotFound, e.do("GET", "/api/v1/orgs/"+acme+"/links/99999/stats", ana, nil).status)
+		assert.Equal(t, http.StatusNotFound, e.do("GET", "/api/v1/orgs/"+acme+"/links/abc/stats", ana, nil).status)
+	})
+
+	t.Run("an API key needs only the read scope", func(t *testing.T) {
+		secret := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
+		assert.Equal(t, http.StatusOK, e.do("GET", stats, secret, nil).status)
+	})
 }
 
 func TestListAndDeleteLinks(t *testing.T) {

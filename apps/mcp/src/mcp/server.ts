@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/server";
 import type { UserApi } from "../api/client.js";
 import { registerLinkQr, registerLinkStats } from "./tools/analytics.js";
 import { registerAddDomain, registerListDomains, registerVerifyDomain } from "./tools/domains.js";
+import { registerPerformanceReportPrompt } from "./prompts/performance-report.js";
+import { registerShortenUrlPrompt } from "./prompts/shorten-url.js";
 import { registerListLinks } from "./tools/links.js";
 import { registerListOrganizations } from "./tools/organizations.js";
 import { registerCreateLink, registerDeleteLink } from "./tools/write-links.js";
@@ -21,6 +23,7 @@ export function createMcpServer(api: UserApi): McpServer {
   registerLinkStats(server, context);
   registerLinkQr(server, context);
   registerListDomains(server, context);
+  registerPerformanceReportPrompt(server);
 
   // Tools that change things exist only for connections the user granted write access: a
   // read-only connection does not even see them, and the API would refuse them anyway.
@@ -29,6 +32,7 @@ export function createMcpServer(api: UserApi): McpServer {
     registerDeleteLink(server, context);
     registerAddDomain(server, context);
     registerVerifyDomain(server, context);
+    registerShortenUrlPrompt(server);
   }
   return server;
 }

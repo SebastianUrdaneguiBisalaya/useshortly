@@ -1,36 +1,39 @@
 {
-  "name": "desktop",
-  "version": "1.0.0",
-  "description": "",
-  "main": "dist/main.js",
-  "scripts": {
-    "dev": "tsc -w --preserveWatchOutput & electron .",
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "dist:mac": "pnpm build && electron-builder --mac",
-    "dist:win": "pnpm build && electron-builder --win",
-    "dist:linux": "pnpm build && electron-builder --linux"
-  },
-  "keywords": [],
-  "author": {
-    "name": "Sebastian Marat Urdanegui Bisalaya",
-    "url": "https://www.sebastianurdanegui.com/"
-  },
-  "private": false,
-  "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.15.0",
-      "onFail": "download"
-    }
-  },
-  "packageManager": "pnpm@12.15.0",
-  "type": "module",
-  "devDependencies": {
-    "@types/node": "26.6.5",
-    "electron": "45.0.0",
-    "electron-builder": "26.18.0",
-    "typescript": "7.0.2"
-  }
+	"name": "desktop",
+	"version": "1.0.0",
+	"description": "",
+	"main": "dist/main.js",
+	"scripts": {
+		"dev": "tsc -w --preserveWatchOutput & electron .",
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"dist:mac": "pnpm build && electron-builder --mac",
+		"dist:win": "pnpm build && electron-builder --win",
+		"dist:linux": "pnpm build && electron-builder --linux",
+		"lint": "biome check",
+		"format": "biome format --write"
+	},
+	"keywords": [],
+	"author": {
+		"name": "Sebastian Marat Urdanegui Bisalaya",
+		"url": "https://www.sebastianurdanegui.com/"
+	},
+	"private": false,
+	"license": "ISC",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.15.0",
+			"onFail": "download"
+		}
+	},
+	"packageManager": "pnpm@12.15.0",
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "2.6.3",
+		"@types/node": "26.6.5",
+		"electron": "45.0.0",
+		"electron-builder": "26.18.0",
+		"typescript": "7.0.2"
+	}
 }

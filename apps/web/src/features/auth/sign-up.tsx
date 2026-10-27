@@ -1,4 +1,3 @@
-import { useLingui } from "@lingui/react";
 import { Google } from "@ridemountainpig/svgl-react";
 import { useMemo } from "react";
 import { Link as RouterLink } from "react-router";
@@ -10,17 +9,18 @@ import { Link } from "~/components/ui/foundations/link/link";
 import { Separator } from "~/components/ui/foundations/separator/separator";
 import { Typography } from "~/components/ui/foundations/typography/typography";
 import { createSignUpSchema } from "~/features/auth/schemas";
+import { useTranslate } from "~/hooks/use-translate";
 
 export default function SignUpPage() {
-  const { _ } = useLingui();
-  const schema = useMemo(() => createSignUpSchema(_), [
-    _,
+  const t = useTranslate();
+  const schema = useMemo(() => createSignUpSchema(t), [
+    t,
   ]);
 
   return (
     <>
       <Typography.H2 className="border-none">
-        {_("auth.signUp.title")}
+        {t("auth.signUp.title")}
       </Typography.H2>
       <Form
         className="w-full"
@@ -44,12 +44,12 @@ export default function SignUpPage() {
                 {(field) => (
                   <Input errorMessage={field.error}>
                     <Input.Label>
-                      {_("auth.signUp.firstName.label")}
+                      {t("auth.signUp.firstName.label")}
                     </Input.Label>
                     <Input.Field
                       autoComplete="off"
                       autoFocus
-                      placeholder={_("auth.signUp.firstName.placeholder")}
+                      placeholder={t("auth.signUp.firstName.placeholder")}
                       {...field.inputProps}
                     />
                   </Input>
@@ -58,10 +58,10 @@ export default function SignUpPage() {
               <Field name="last_name">
                 {(field) => (
                   <Input errorMessage={field.error}>
-                    <Input.Label>{_("auth.signUp.lastName.label")}</Input.Label>
+                    <Input.Label>{t("auth.signUp.lastName.label")}</Input.Label>
                     <Input.Field
                       autoComplete="off"
-                      placeholder={_("auth.signUp.lastName.placeholder")}
+                      placeholder={t("auth.signUp.lastName.placeholder")}
                       {...field.inputProps}
                     />
                   </Input>
@@ -71,10 +71,10 @@ export default function SignUpPage() {
             <Field name="email">
               {(field) => (
                 <Input errorMessage={field.error}>
-                  <Input.Label>{_("auth.common.email.label")}</Input.Label>
+                  <Input.Label>{t("auth.common.email.label")}</Input.Label>
                   <Input.Field
                     autoComplete="off"
-                    placeholder={_("auth.common.email.placeholder")}
+                    placeholder={t("auth.common.email.placeholder")}
                     {...field.inputProps}
                   />
                 </Input>
@@ -83,16 +83,16 @@ export default function SignUpPage() {
             <Field name="password">
               {(field) => (
                 <Input errorMessage={field.error}>
-                  <Input.Label>{_("auth.common.password.label")}</Input.Label>
+                  <Input.Label>{t("auth.common.password.label")}</Input.Label>
                   <Input.Field
                     autoComplete="off"
-                    placeholder={_("auth.common.password.placeholder")}
+                    placeholder={t("auth.common.password.placeholder")}
                     type="password"
                     {...field.inputProps}
                   />
                   <Input.PasswordToggle
-                    hideLabel={_("auth.common.password.hide")}
-                    showLabel={_("auth.common.password.show")}
+                    hideLabel={t("auth.common.password.hide")}
+                    showLabel={t("auth.common.password.show")}
                   />
                 </Input>
               )}
@@ -102,8 +102,8 @@ export default function SignUpPage() {
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting
-                ? _("auth.signUp.submitting")
-                : _("auth.signUp.submit")}
+                ? t("auth.signUp.submitting")
+                : t("auth.signUp.submit")}
             </Form.Submit>
             {form.formState.errors.root?.message && (
               <Typography.Span
@@ -116,7 +116,7 @@ export default function SignUpPage() {
           </Layout.Stack>
         )}
       </Form>
-      <Separator>{_("auth.common.or")}</Separator>
+      <Separator>{t("auth.common.or")}</Separator>
       <Button
         className="w-full py-3"
         type="button"
@@ -130,16 +130,16 @@ export default function SignUpPage() {
             />
           }
         />
-        <Button.Text>{_("auth.signUp.google")}</Button.Text>
+        <Button.Text>{t("auth.signUp.google")}</Button.Text>
       </Button>
       <Layout.HStack className="justify-between">
-        <Typography.Span>{_("auth.signUp.haveAccount")}</Typography.Span>
+        <Typography.Span>{t("auth.signUp.haveAccount")}</Typography.Span>
         <Link
           as={RouterLink}
           className="text-xs"
           to="/auth/sign-in"
         >
-          {_("auth.signUp.signInLink")}
+          {t("auth.signUp.signInLink")}
         </Link>
       </Layout.HStack>
     </>

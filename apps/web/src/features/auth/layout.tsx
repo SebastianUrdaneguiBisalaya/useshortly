@@ -1,14 +1,14 @@
-import { useLingui } from "@lingui/react";
 import { Outlet } from "react-router";
 import { SwitchLanguage } from "~/components/ui/actions-controls/switch-language/switch-language";
 import { SwitchTheme } from "~/components/ui/actions-controls/switch-theme/switch-theme";
 import { Layout } from "~/components/ui/layout/layout/layout";
 import { useLanguage } from "~/hooks/use-language";
 import { useTheme } from "~/hooks/use-theme";
+import { useTranslate } from "~/hooks/use-translate";
 
 /** Wraps every `/auth/*` page: centered column plus the theme and language switchers. */
 export default function AuthLayout() {
-  const { _ } = useLingui();
+  const t = useTranslate();
   const theme = useTheme();
   const language = useLanguage();
 
@@ -20,20 +20,20 @@ export default function AuthLayout() {
       >
         <SwitchLanguage
           lang={{
-            en: _("language.en"),
-            es: _("language.es"),
-            groupLabel: _("language.group"),
-            system: _("language.system"),
+            en: t("language.en"),
+            es: t("language.es"),
+            groupLabel: t("language.group"),
+            system: t("language.system"),
           }}
           onValueChange={language.setPreference}
           value={language.preference}
         />
         <SwitchTheme
           lang={{
-            dark: _("theme.dark"),
-            groupLabel: _("theme.group"),
-            light: _("theme.light"),
-            system: _("theme.system"),
+            dark: t("theme.dark"),
+            groupLabel: t("theme.group"),
+            light: t("theme.light"),
+            system: t("theme.system"),
           }}
           onValueChange={theme.setPreference}
           value={theme.preference}

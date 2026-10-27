@@ -1,4 +1,3 @@
-import { useLingui } from "@lingui/react";
 import { Google } from "@ridemountainpig/svgl-react";
 import { useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router";
@@ -10,18 +9,19 @@ import { Link } from "~/components/ui/foundations/link/link";
 import { Separator } from "~/components/ui/foundations/separator/separator";
 import { Typography } from "~/components/ui/foundations/typography/typography";
 import { createSignInSchema } from "~/features/auth/schemas";
+import { useTranslate } from "~/hooks/use-translate";
 
 export default function SignInPage() {
-  const { _ } = useLingui();
+  const t = useTranslate();
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const schema = useMemo(() => createSignInSchema(_), [
-    _,
+  const schema = useMemo(() => createSignInSchema(t), [
+    t,
   ]);
 
   return (
     <>
       <Typography.H2 className="border-none">
-        {_("auth.signIn.title")}
+        {t("auth.signIn.title")}
       </Typography.H2>
       <Form
         className="w-full"
@@ -38,11 +38,11 @@ export default function SignInPage() {
             <Field name="email">
               {(field) => (
                 <Input errorMessage={field.error}>
-                  <Input.Label>{_("auth.common.email.label")}</Input.Label>
+                  <Input.Label>{t("auth.common.email.label")}</Input.Label>
                   <Input.Field
                     autoComplete="off"
                     autoFocus
-                    placeholder={_("auth.common.email.placeholder")}
+                    placeholder={t("auth.common.email.placeholder")}
                     {...field.inputProps}
                   />
                 </Input>
@@ -51,16 +51,16 @@ export default function SignInPage() {
             <Field name="password">
               {(field) => (
                 <Input errorMessage={field.error}>
-                  <Input.Label>{_("auth.common.password.label")}</Input.Label>
+                  <Input.Label>{t("auth.common.password.label")}</Input.Label>
                   <Input.Field
                     autoComplete="off"
-                    placeholder={_("auth.common.password.placeholder")}
+                    placeholder={t("auth.common.password.placeholder")}
                     type="password"
                     {...field.inputProps}
                   />
                   <Input.PasswordToggle
-                    hideLabel={_("auth.common.password.hide")}
-                    showLabel={_("auth.common.password.show")}
+                    hideLabel={t("auth.common.password.hide")}
+                    showLabel={t("auth.common.password.show")}
                   />
                 </Input>
               )}
@@ -70,8 +70,8 @@ export default function SignInPage() {
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting
-                ? _("auth.signIn.submitting")
-                : _("auth.signIn.submit")}
+                ? t("auth.signIn.submitting")
+                : t("auth.signIn.submit")}
             </Form.Submit>
             {form.formState.errors.root?.message && (
               <Typography.Span
@@ -84,7 +84,7 @@ export default function SignInPage() {
           </Layout.Stack>
         )}
       </Form>
-      <Separator>{_("auth.common.or")}</Separator>
+      <Separator>{t("auth.common.or")}</Separator>
       <Button
         className="w-full py-3"
         onClick={() => {
@@ -101,7 +101,7 @@ export default function SignInPage() {
             />
           }
         />
-        <Button.Text>{_("auth.signIn.google")}</Button.Text>
+        <Button.Text>{t("auth.signIn.google")}</Button.Text>
       </Button>
       {googleError && (
         <Typography.Span
@@ -117,17 +117,17 @@ export default function SignInPage() {
         to="/auth/forgot-password"
       >
         <Typography.Span className="text-foreground-secondary">
-          {_("auth.signIn.forgotPassword")}
+          {t("auth.signIn.forgotPassword")}
         </Typography.Span>
       </Link>
       <Layout.HStack className="justify-between">
-        <Typography.Span>{_("auth.signIn.noAccount")}</Typography.Span>
+        <Typography.Span>{t("auth.signIn.noAccount")}</Typography.Span>
         <Link
           as={RouterLink}
           className="text-xs"
           to="/auth/sign-up"
         >
-          {_("auth.signIn.signUpLink")}
+          {t("auth.signIn.signUpLink")}
         </Link>
       </Layout.HStack>
     </>

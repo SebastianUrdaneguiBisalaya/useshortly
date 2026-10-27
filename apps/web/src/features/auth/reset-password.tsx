@@ -1,4 +1,3 @@
-import { useLingui } from "@lingui/react";
 import { useMemo } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router";
 import { Form } from "~/components/ui/forms-inputs/form/form";
@@ -8,13 +7,14 @@ import { Layout } from "~/components/ui/layout/layout/layout";
 import { Link } from "~/components/ui/foundations/link/link";
 import { Typography } from "~/components/ui/foundations/typography/typography";
 import { createResetPasswordSchema, OTP_LENGTH } from "~/features/auth/schemas";
+import { useTranslate } from "~/hooks/use-translate";
 
 export default function ResetPasswordPage() {
-  const { _ } = useLingui();
+  const t = useTranslate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email");
-  const schema = useMemo(() => createResetPasswordSchema(_), [
-    _,
+  const schema = useMemo(() => createResetPasswordSchema(t), [
+    t,
   ]);
 
   return (
@@ -24,14 +24,14 @@ export default function ResetPasswordPage() {
         gap="sm"
       >
         <Typography.H2 className="border-none">
-          {_("auth.resetPassword.title")}
+          {t("auth.resetPassword.title")}
         </Typography.H2>
         <Typography.Span className="text-foreground-secondary">
           {email
-            ? _("auth.resetPassword.description", {
+            ? t("auth.resetPassword.description", {
                 email,
               })
-            : _("auth.resetPassword.descriptionNoEmail")}
+            : t("auth.resetPassword.descriptionNoEmail")}
         </Typography.Span>
       </Layout.Stack>
       <Form
@@ -51,7 +51,7 @@ export default function ResetPasswordPage() {
               {(field) => (
                 <InputOtp
                   errorMessage={field.error}
-                  label={_("auth.resetPassword.code.label")}
+                  label={t("auth.resetPassword.code.label")}
                   length={OTP_LENGTH}
                   {...field.changeProps}
                 />
@@ -61,17 +61,17 @@ export default function ResetPasswordPage() {
               {(field) => (
                 <Input errorMessage={field.error}>
                   <Input.Label>
-                    {_("auth.resetPassword.newPassword.label")}
+                    {t("auth.resetPassword.newPassword.label")}
                   </Input.Label>
                   <Input.Field
                     autoComplete="off"
-                    placeholder={_("auth.resetPassword.newPassword.placeholder")}
+                    placeholder={t("auth.resetPassword.newPassword.placeholder")}
                     type="password"
                     {...field.inputProps}
                   />
                   <Input.PasswordToggle
-                    hideLabel={_("auth.common.password.hide")}
-                    showLabel={_("auth.common.password.show")}
+                    hideLabel={t("auth.common.password.hide")}
+                    showLabel={t("auth.common.password.show")}
                   />
                 </Input>
               )}
@@ -80,19 +80,19 @@ export default function ResetPasswordPage() {
               {(field) => (
                 <Input errorMessage={field.error}>
                   <Input.Label>
-                    {_("auth.resetPassword.confirmPassword.label")}
+                    {t("auth.resetPassword.confirmPassword.label")}
                   </Input.Label>
                   <Input.Field
                     autoComplete="off"
-                    placeholder={_(
+                    placeholder={t(
                       "auth.resetPassword.confirmPassword.placeholder",
                     )}
                     type="password"
                     {...field.inputProps}
                   />
                   <Input.PasswordToggle
-                    hideLabel={_("auth.common.password.hide")}
-                    showLabel={_("auth.common.password.show")}
+                    hideLabel={t("auth.common.password.hide")}
+                    showLabel={t("auth.common.password.show")}
                   />
                 </Input>
               )}
@@ -102,8 +102,8 @@ export default function ResetPasswordPage() {
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting
-                ? _("auth.resetPassword.submitting")
-                : _("auth.resetPassword.submit")}
+                ? t("auth.resetPassword.submitting")
+                : t("auth.resetPassword.submit")}
             </Form.Submit>
             {form.formState.errors.root?.message && (
               <Typography.Span
@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
         className="self-center"
         to="/auth/sign-in"
       >
-        {_("auth.common.backToSignIn")}
+        {t("auth.common.backToSignIn")}
       </Link>
     </>
   );

@@ -1,0 +1,90 @@
+{
+  "auth": {
+    "common": {
+      "or": "Or",
+      "email": {
+        "label": "Email",
+        "placeholder": "hello@gmail.com"
+      },
+      "password": {
+        "label": "Password",
+        "placeholder": "yourpassword",
+        "show": "Show password",
+        "hide": "Hide password"
+      },
+      "google": "Continue with Google",
+      "backToSignIn": "Back to sign in"
+    },
+    "validation": {
+      "emailInvalid": "Enter a valid email address",
+      "passwordRequired": "Enter your password",
+      "passwordMin": "Password must be at least {{min}} characters",
+      "passwordMax": "Password must be at most {{max}} characters",
+      "passwordsMismatch": "Passwords do not match",
+      "codeInvalid": "Enter the {{length}}-digit code",
+      "firstNameRequired": "Enter your first name",
+      "lastNameRequired": "Enter your last name"
+    },
+    "signIn": {
+      "title": "Sign in",
+      "submit": "Sign in",
+      "submitting": "Signing in",
+      "google": "Sign in with Google",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an account yet?",
+      "signUpLink": "Create account"
+    },
+    "signUp": {
+      "title": "Create account",
+      "submit": "Create account",
+      "submitting": "Creating account",
+      "google": "Sign up with Google",
+      "firstName": {
+        "label": "First name",
+        "placeholder": "John"
+      },
+      "lastName": {
+        "label": "Last name",
+        "placeholder": "Doe"
+      },
+      "haveAccount": "Already have an account?",
+      "signInLink": "Sign in"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "description": "Enter your email and we will send you a code to reset it.",
+      "submit": "Send code",
+      "submitting": "Sending"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Enter the code we sent to {{email}} and choose a new password.",
+      "descriptionNoEmail": "Enter the code we sent to your email and choose a new password.",
+      "code": {
+        "label": "Verification code"
+      },
+      "newPassword": {
+        "label": "New password",
+        "placeholder": "newpassword"
+      },
+      "confirmPassword": {
+        "label": "Confirm password",
+        "placeholder": "repeat the password"
+      },
+      "submit": "Reset password",
+      "submitting": "Resetting"
+    }
+  },
+  "theme": {
+    "group": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "language": {
+    "group": "Language",
+    "system": "System",
+    "en": "English",
+    "es": "Spanish"
+  }
+}

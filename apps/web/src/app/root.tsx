@@ -6,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-import { I18nProvider } from "@lingui/react";
+import { I18nextProvider } from "react-i18next";
 import { Layout as L } from "~/components/ui/layout/layout/layout";
 
 import type { Route } from "./+types/root";
@@ -22,7 +22,7 @@ export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={i18n.locale} suppressHydrationWarning>
+    <html lang={i18n.language} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -35,11 +35,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           className="flex h-screen w-full flex-col overflow-hidden p-0 sm:p-0 lg:p-0"
           size="full"
         >
-          <I18nProvider i18n={i18n}>
+          <I18nextProvider i18n={i18n}>
             <QueryProvider>
               {children}
             </QueryProvider>
-          </I18nProvider>
+          </I18nextProvider>
           <ToasterProvider />
         </L.Container>
         <ScrollRestoration />

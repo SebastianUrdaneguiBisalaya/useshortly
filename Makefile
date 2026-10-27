@@ -1,13 +1,22 @@
 include .env
 export
 
-.PHONY: run test migrate-up migrate-down migrate-create
+.PHONY: run test openapi migrate-up migrate-down migrate-create
+
+# swag is installed with `go install github.com/swaggo/swag/v2/cmd/swag@latest`, which puts it in
+# GOPATH/bin; calling it from there means the target works even when that folder is not on PATH.
+SWAG := $(shell go env GOPATH)/bin/swag
 
 run:
 	go run ./cmd/api
 
 test:
 	go test ./...
+
+# Generates the OpenAPI 3.1 spec from the handler annotations into api/openapi, for Orval and the
+# MCP server to consume.
+openapi:
+	$(SWAG) init --v3.1 -g cmd/api/main.go -d ./,./internal/adapter/http --parseInternal -o api/openapi --outputTypes json,yaml
 
 # Migrations are plain SQL files applied with the sqlite3 CLI to DATABASE_PATH
 # (golang-migrate has no driver for Turso). Each file is applied once and recorded in

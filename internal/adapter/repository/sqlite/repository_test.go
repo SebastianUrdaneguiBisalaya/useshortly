@@ -268,6 +268,14 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	assert.Equal(t, "aaaaaaa", list[0].Code)
 	assert.Equal(t, &two, list[0].MaxClicks, "list rows carry every column")
 
+	byID, err := repo.FindByID(ctx, 1, ids[1])
+	require.NoError(t, err)
+	assert.Equal(t, "bbbbbbb", byID.Code)
+	_, err = repo.FindByID(ctx, 2, ids[1])
+	assert.ErrorIs(t, err, link.ErrNotFound, "another tenant's link is not found")
+	_, err = repo.FindByID(ctx, 1, 9999)
+	assert.ErrorIs(t, err, link.ErrNotFound)
+
 	list, total, err = repo.ListByTenant(ctx, 3, page.Params{Limit: 10})
 	require.NoError(t, err)
 	assert.Empty(t, list)

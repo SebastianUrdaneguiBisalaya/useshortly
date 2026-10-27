@@ -10,6 +10,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/router"
+	qradapter "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/qr"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/useragent"
@@ -20,6 +21,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -96,6 +98,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			APIKeys:  handler.NewAPIKeyHandler(keys),
 			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy),
 			Stats:    handler.NewStatsHandler(stats),
+			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}
 }

@@ -74,6 +74,15 @@ func (r *countingRepo) FindByCode(_ context.Context, code string) (link.Link, er
 	return l, nil
 }
 
+func (r *countingRepo) FindByID(_ context.Context, tenantID, id int64) (link.Link, error) {
+	for _, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			return l, nil
+		}
+	}
+	return link.Link{}, link.ErrNotFound
+}
+
 func (r *countingRepo) ListByTenant(context.Context, int64, page.Params) ([]link.Link, int, error) {
 	return nil, 7, nil
 }

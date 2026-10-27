@@ -46,6 +46,15 @@ func (r *fakeRepo) FindByCode(_ context.Context, code string) (Link, error) {
 	return l, nil
 }
 
+func (r *fakeRepo) FindByID(_ context.Context, tenantID, id int64) (Link, error) {
+	for _, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			return l, nil
+		}
+	}
+	return Link{}, ErrNotFound
+}
+
 func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]Link, int, error) {
 	var all []Link
 	for _, l := range r.links {
@@ -380,6 +389,21 @@ func TestIsExpired(t *testing.T) {
 			assert.Equal(t, tt.want, tt.l.IsExpired(fixedNow))
 		})
 	}
+}
+
+func TestGetIsScopedToTenant(t *testing.T) {
+	ctx := context.Background()
+	s := newSvc(newFakeRepo(), &fakeGen{codes: []string{"aaaaaaa"}})
+	l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
+	require.NoError(t, err)
+
+	got, err := s.Get(ctx, 1, l.ID)
+	require.NoError(t, err)
+	assert.Equal(t, l.Code, got.Code)
+	_, err = s.Get(ctx, 2, l.ID)
+	assert.ErrorIs(t, err, ErrNotFound, "another tenant's link looks like an unknown one")
+	_, err = s.Get(ctx, 1, 999)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestListAndDeleteAreScopedToTenant(t *testing.T) {

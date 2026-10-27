@@ -32,6 +32,15 @@ func (r *fakeLinkRepo) Create(_ context.Context, l link.Link) (link.Link, error)
 	return l, nil
 }
 
+func (r *fakeLinkRepo) FindByID(_ context.Context, tenantID, id int64) (link.Link, error) {
+	for _, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			return l, nil
+		}
+	}
+	return link.Link{}, link.ErrNotFound
+}
+
 func (r *fakeLinkRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
 	var all []link.Link
 	for _, l := range r.links {

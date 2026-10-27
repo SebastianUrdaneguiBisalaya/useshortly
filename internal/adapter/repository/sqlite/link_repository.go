@@ -79,6 +79,17 @@ func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link
 	return l, nil
 }
 
+func (r *LinkRepository) FindByID(ctx context.Context, tenantID, id int64) (link.Link, error) {
+	l, err := scanLink(r.db.QueryRowContext(ctx, `SELECT `+linkColumns+` FROM links WHERE id = ? AND tenant_id = ?`, id, tenantID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return link.Link{}, link.ErrNotFound
+	}
+	if err != nil {
+		return link.Link{}, fmt.Errorf("link repo: find by id: %w", err)
+	}
+	return l, nil
+}
+
 func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
 	var total int
 	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM links WHERE tenant_id = ?`, tenantID).Scan(&total); err != nil {

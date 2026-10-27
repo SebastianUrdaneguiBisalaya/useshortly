@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -663,6 +664,62 @@ func TestClicksAreEnrichedAndReportedAsStats(t *testing.T) {
 	t.Run("an API key needs only the read scope", func(t *testing.T) {
 		secret := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
 		assert.Equal(t, http.StatusOK, e.do("GET", stats, secret, nil).status)
+	})
+}
+
+func TestLinkQRCode(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	bobOrg := e.createOrg(bob, "Bobs")
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]string{"url": "https://example.com/q", "alias": "qr-link-1"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	qrURL := "/api/v1/orgs/" + acme + "/links/" + res.id() + "/qr"
+
+	get := func(path, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	t.Run("png by default", func(t *testing.T) {
+		rec := get(qrURL, ana)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.Equal(t, "image/png", rec.Header().Get("Content-Type"))
+		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+		img, err := png.Decode(rec.Body)
+		require.NoError(t, err)
+		assert.LessOrEqual(t, img.Bounds().Dx(), 256)
+	})
+
+	t.Run("svg with a size", func(t *testing.T) {
+		rec := get(qrURL+"?format=svg&size=512", ana)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "image/svg+xml", rec.Header().Get("Content-Type"))
+		assert.Contains(t, rec.Body.String(), `width="512"`)
+	})
+
+	t.Run("bad parameters are 400", func(t *testing.T) {
+		for q, code := range map[string]string{"format=gif": "invalid_format", "size=10": "invalid_size", "size=9999": "invalid_size", "size=big": "invalid_size"} {
+			rec := get(qrURL+"?"+q, ana)
+			assert.Equal(t, http.StatusBadRequest, rec.Code, q)
+			assert.Contains(t, rec.Body.String(), code, q)
+		}
+	})
+
+	t.Run("only the owner organization", func(t *testing.T) {
+		assert.Equal(t, http.StatusForbidden, get(qrURL, bob).Code)
+		other := get("/api/v1/orgs/"+bobOrg+"/links/"+res.id()+"/qr", bob)
+		assert.Equal(t, http.StatusNotFound, other.Code, "Ana's link id does not exist in Bob's organization")
+		assert.Equal(t, http.StatusNotFound, get("/api/v1/orgs/"+acme+"/links/99999/qr", ana).Code)
+	})
+
+	t.Run("an API key needs only the read scope", func(t *testing.T) {
+		secret := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
+		assert.Equal(t, http.StatusOK, get(qrURL, secret).Code)
 	})
 }
 

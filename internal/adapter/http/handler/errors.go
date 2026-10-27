@@ -9,6 +9,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -56,6 +57,9 @@ var httpErrors = []struct {
 
 	{analytics.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{analytics.ErrInvalidRange, apiError{http.StatusBadRequest, "invalid_range", "from must not be after to, and the range is at most 366 days"}},
+
+	{qr.ErrInvalidFormat, apiError{http.StatusBadRequest, "invalid_format", "the format must be png or svg"}},
+	{qr.ErrInvalidSize, apiError{http.StatusBadRequest, "invalid_size", "the size must be a number of pixels between 64 and 1024"}},
 
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},
 	{link.ErrInvalidAlias, apiError{http.StatusBadRequest, "invalid_alias", "the alias must be 3 to 15 letters, digits, - or _, not 7 characters long and not a reserved word"}},

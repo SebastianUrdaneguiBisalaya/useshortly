@@ -100,6 +100,11 @@ func (s *Service) List(ctx context.Context, tenantID int64, p page.Params) ([]Li
 	return s.repo.ListByTenant(ctx, tenantID, p.Normalize())
 }
 
+// Get returns one link of the tenant; a link of another tenant is ErrNotFound.
+func (s *Service) Get(ctx context.Context, tenantID, id int64) (Link, error) {
+	return s.repo.FindByID(ctx, tenantID, id)
+}
+
 // Delete removes a link of the tenant; a link of another tenant is ErrNotFound.
 func (s *Service) Delete(ctx context.Context, tenantID, id int64) error {
 	return s.repo.Delete(ctx, tenantID, id)

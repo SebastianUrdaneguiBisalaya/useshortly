@@ -102,6 +102,10 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 	return r.next.Create(ctx, l)
 }
 
+func (r *LinkRepository) FindByID(ctx context.Context, tenantID, id int64) (link.Link, error) {
+	return r.next.FindByID(ctx, tenantID, id)
+}
+
 func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
 	return r.next.ListByTenant(ctx, tenantID, p)
 }

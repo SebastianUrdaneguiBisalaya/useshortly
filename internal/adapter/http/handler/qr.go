@@ -37,6 +37,7 @@ func NewQRHandler(links *link.Service, qr *qr.Service, baseURL string) *QRHandle
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	getLinkQr
 //	@Router			/orgs/{orgID}/links/{linkID}/qr [get]
 func (h *QRHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)

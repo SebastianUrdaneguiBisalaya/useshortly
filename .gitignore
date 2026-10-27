@@ -41,5 +41,5 @@ node_modules/
 pnpm-lock.yaml
 
 # React Router
-/.react-router/
+.react-router/
 build/

@@ -120,6 +120,7 @@ type CreateLinkRequest struct {
 //	@Failure		404		{object}	ErrorResponse
 //	@Failure		409		{object}	ErrorResponse
 //	@Failure		429		{object}	ErrorResponse
+//	@ID	createLink
 //	@Router			/orgs/{orgID}/links [post]
 func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -164,6 +165,7 @@ func (h *LinkHandler) body(l link.Link) linkBody {
 //	@Failure		403		{object}	ErrorResponse
 //	@Failure		404		{object}	ErrorResponse
 //	@Failure		429		{object}	ErrorResponse
+//	@ID	listLinks
 //	@Router			/orgs/{orgID}/links [get]
 func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -200,6 +202,7 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 //	@Failure		403	{object}	ErrorResponse
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		429	{object}	ErrorResponse
+//	@ID	deleteLink
 //	@Router			/orgs/{orgID}/links/{linkID} [delete]
 func (h *LinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)

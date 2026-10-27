@@ -88,11 +88,12 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
 	// The page protected links show: the organization's for all of them, or one link's own.
-	for _, prefix := range []string{"/unlock-page", "/links/{linkID}/unlock-page"} {
-		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.Get))).Methods(http.MethodGet)
-		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Put))).Methods(http.MethodPut)
-		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Delete))).Methods(http.MethodDelete)
-	}
+	eitherOrg.Handle("/unlock-page", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/unlock-page", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Put))).Methods(http.MethodPut)
+	eitherOrg.Handle("/unlock-page", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/links/{linkID}/unlock-page", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.GetForLink))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}/unlock-page", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.PutForLink))).Methods(http.MethodPut)
+	eitherOrg.Handle("/links/{linkID}/unlock-page", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.DeleteForLink))).Methods(http.MethodDelete)
 	eitherOrg.Handle("/unlock-page/history", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.History))).Methods(http.MethodGet)
 	eitherOrg.Handle("/domains", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Create))).Methods(http.MethodPost)
 	eitherOrg.Handle("/domains", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Domains.List))).Methods(http.MethodGet)

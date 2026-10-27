@@ -29,11 +29,11 @@ type dataBody struct {
 }
 
 // pageMeta tells a client which window of a list it got and how big the whole list is.
-type pageMeta struct { // @name PageMeta
+type pageMeta struct {
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 	Total  int `json:"total"`
-}
+} // @name PageMeta
 
 // FieldError points at one invalid field of the request.
 type FieldError struct {

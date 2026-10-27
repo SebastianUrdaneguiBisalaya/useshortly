@@ -7,4 +7,10 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  server: {
+    // The backend has no CORS: in development the browser talks to Vite, which forwards the API.
+    proxy: {
+      "/api": process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8080",
+    },
+  },
 });

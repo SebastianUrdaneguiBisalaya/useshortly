@@ -19,6 +19,7 @@ type Handlers struct {
 	Links    *handler.LinkHandler
 	Stats    *handler.StatsHandler
 	QR       *handler.QRHandler
+	Pages    *handler.UnlockPageHandler
 }
 
 func NewRouter(h Handlers) http.Handler {
@@ -72,6 +73,12 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
+	// The page protected links show: the organization's for all of them, or one link's own.
+	for _, prefix := range []string{"/unlock-page", "/links/{linkID}/unlock-page"} {
+		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.Get))).Methods(http.MethodGet)
+		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Put))).Methods(http.MethodPut)
+		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Delete))).Methods(http.MethodDelete)
+	}
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 

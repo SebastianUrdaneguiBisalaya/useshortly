@@ -22,6 +22,7 @@ type LinkHandler struct {
 	baseURL string        // public URL short links are served from
 	// trustProxy reads the visitor's address from X-Forwarded-For; see clientIP.
 	trustProxy bool
+	pages      UnlockPages // nil shows the default unlock page
 }
 
 func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string, trustProxy bool) *LinkHandler {
@@ -127,7 +128,7 @@ func (h *LinkHandler) Unlock(w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r, h.trustProxy)
 	l, err := h.links.Unlock(r.Context(), mux.Vars(r)["code"], password, ip.String())
 	if err != nil {
-		WriteError(w, r, err)
+		h.writeLocked(w, r, l, err)
 		return
 	}
 	if h.clicks != nil {
@@ -161,7 +162,7 @@ func readPassword(w http.ResponseWriter, r *http.Request) (string, bool) {
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	l, err := h.links.Resolve(r.Context(), mux.Vars(r)["code"])
 	if err != nil {
-		WriteError(w, r, err)
+		h.writeLocked(w, r, l, err)
 		return
 	}
 	if h.clicks != nil {

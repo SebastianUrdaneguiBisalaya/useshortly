@@ -167,7 +167,7 @@ func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (L
 		return Link{}, err
 	}
 	if !allowed {
-		return Link{}, ErrTooManyAttempts
+		return l, ErrTooManyAttempts
 	}
 	ok, err := s.hasher.Verify(l.PasswordHash, password)
 	if err != nil {

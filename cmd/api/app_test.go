@@ -825,6 +825,126 @@ func TestUnlockProtectedLink(t *testing.T) {
 	})
 }
 
+func TestUnlockPagesPerOrganizationAndLink(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	bob := e.signUp("bob@example.com", "Bob")
+	acme := e.createOrg(ana, "Acme")
+	bobOrg := e.createOrg(bob, "Bobs")
+	mk := func(token, org, alias string) string {
+		res := e.do("POST", "/api/v1/orgs/"+org+"/links", token, map[string]any{"url": "https://example.com/" + alias, "alias": alias, "password": "hunter22"})
+		require.Equal(t, http.StatusCreated, res.status, res.raw)
+		return res.id()
+	}
+	vip, _, bobs := mk(ana, acme, "vip-link"), mk(ana, acme, "plain-link"), mk(bob, bobOrg, "bobs-link")
+	orgPage := "/api/v1/orgs/" + acme + "/unlock-page"
+	vipPage := "/api/v1/orgs/" + acme + "/links/" + vip + "/unlock-page"
+
+	browse := func(code string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/"+code, nil)
+		req.Header.Set("Accept", "text/html")
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		return rec
+	}
+	page := func(title string) map[string]string {
+		return map[string]string{"html": "<h1>" + title + "</h1><form method=post action=\"{{.Action}}\"><input name=password type=password></form>"}
+	}
+
+	t.Run("the default page until someone sets one", func(t *testing.T) {
+		rec := browse("vip-link")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Contains(t, rec.Body.String(), "This link is protected")
+		assert.Equal(t, http.StatusNotFound, e.do("GET", orgPage, ana, nil).status)
+	})
+
+	t.Run("the organization's page covers all its links", func(t *testing.T) {
+		res := e.do("PUT", orgPage, ana, page("Acme"))
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		assert.Nil(t, res.body["link_id"])
+		assert.NotEmpty(t, res.body["updated_at"])
+		for _, code := range []string{"vip-link", "plain-link"} {
+			assert.Contains(t, browse(code).Body.String(), "<h1>Acme</h1>", code)
+		}
+		assert.Contains(t, browse("bobs-link").Body.String(), "This link is protected", "another organization is unaffected")
+	})
+
+	t.Run("a link's own page wins and can be removed", func(t *testing.T) {
+		res := e.do("PUT", vipPage, ana, page("VIP"))
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		assert.Equal(t, vip, strconv.FormatInt(int64(res.body["link_id"].(float64)), 10))
+		assert.Contains(t, browse("vip-link").Body.String(), "<h1>VIP</h1>")
+		assert.Contains(t, browse("plain-link").Body.String(), "<h1>Acme</h1>")
+
+		assert.Equal(t, http.StatusNoContent, e.do("DELETE", vipPage, ana, nil).status)
+		assert.Contains(t, browse("vip-link").Body.String(), "<h1>Acme</h1>", "back to the organization's page")
+		assert.Equal(t, http.StatusNotFound, e.do("DELETE", vipPage, ana, nil).status)
+	})
+
+	t.Run("a custom page shows the messages and the wrong-password answer", func(t *testing.T) {
+		e.do("PUT", orgPage, ana, map[string]string{"html": "<h1>Acme</h1>{{if .Error}}<b>{{.Error}}</b>{{end}}<form method=post action=\"{{.Action}}\"></form>"})
+		req := httptest.NewRequest(http.MethodPost, "/plain-link/unlock", strings.NewReader("password=wrong"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Accept", "text/html")
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Contains(t, rec.Body.String(), "<b>That password is not right. Try again.</b>")
+	})
+
+	t.Run("read it back", func(t *testing.T) {
+		res := e.do("GET", orgPage, ana, nil)
+		require.Equal(t, http.StatusOK, res.status)
+		assert.Contains(t, res.str("html"), "<h1>Acme</h1>")
+		assert.Equal(t, http.StatusNotFound, e.do("GET", vipPage, ana, nil).status, "the link has no page of its own")
+	})
+
+	t.Run("invalid pages are refused", func(t *testing.T) {
+		for name, html := range map[string]string{
+			"empty":         "",
+			"no action":     "<form action=/x></form>",
+			"bad template":  "<form action={{.Action}",
+			"too big":       strings.Repeat("a", 70<<10) + "{{.Action}}",
+			"unknown field": "{{.Action}}{{.Nope}}",
+		} {
+			res := e.do("PUT", orgPage, ana, map[string]string{"html": html})
+			assert.Equal(t, http.StatusBadRequest, res.status, name)
+		}
+		assert.Equal(t, "invalid_template", e.do("PUT", orgPage, ana, map[string]string{"html": "<form></form>"}).errCode())
+		// The page that was there before is still there.
+		assert.Contains(t, e.do("GET", orgPage, ana, nil).str("html"), "<h1>Acme</h1>")
+	})
+
+	t.Run("only the owner organization", func(t *testing.T) {
+		assert.Equal(t, "not_member", e.do("PUT", orgPage, bob, page("Evil")).errCode())
+		assert.Equal(t, "not_member", e.do("GET", orgPage, bob, nil).errCode())
+		// Bob's own organization, Ana's link id: it does not exist there.
+		assert.Equal(t, http.StatusNotFound, e.do("PUT", "/api/v1/orgs/"+bobOrg+"/links/"+vip+"/unlock-page", bob, page("Evil")).status)
+		assert.Equal(t, http.StatusNotFound, e.do("PUT", "/api/v1/orgs/"+acme+"/links/"+bobs+"/unlock-page", ana, page("Evil")).status)
+		assert.Equal(t, http.StatusNotFound, e.do("PUT", "/api/v1/orgs/"+acme+"/links/abc/unlock-page", ana, page("x")).status)
+		assert.NotContains(t, browse("bobs-link").Body.String(), "Evil")
+	})
+
+	t.Run("API key scopes: read reads, write changes", func(t *testing.T) {
+		keys := "/api/v1/orgs/" + acme + "/api-keys"
+		readKey := e.do("POST", keys, ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
+		writeKey := e.do("POST", keys, ana, map[string]string{"name": "w", "scope": "write"}).str("secret")
+		assert.Equal(t, http.StatusOK, e.do("GET", orgPage, readKey, nil).status)
+		res := e.do("PUT", orgPage, readKey, page("x"))
+		assert.Equal(t, http.StatusForbidden, res.status)
+		assert.Equal(t, "insufficient_scope", res.errCode())
+		assert.Equal(t, http.StatusOK, e.do("PUT", orgPage, writeKey, page("Keyed")).status)
+	})
+
+	t.Run("deleting a link removes its page", func(t *testing.T) {
+		require.Equal(t, http.StatusOK, e.do("PUT", vipPage, ana, page("VIP")).status)
+		require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme+"/links/"+vip, ana, nil).status)
+		var n int
+		require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM unlock_pages WHERE link_id = ?`, vip).Scan(&n))
+		assert.Zero(t, n)
+	})
+}
+
 func TestListAndDeleteLinks(t *testing.T) {
 	e := newEnv(t, false)
 	ana := e.signUp("ana@example.com", "Ana")

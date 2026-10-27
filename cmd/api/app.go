@@ -22,6 +22,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -88,6 +89,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)
+	pages := unlockpage.NewService(sqlite.NewUnlockPageRepository(db))
 
 	return &app{
 		mail:   mail,
@@ -98,8 +100,9 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages),
 			Stats:    handler.NewStatsHandler(stats),
+			Pages:    handler.NewUnlockPageHandler(pages),
 			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}

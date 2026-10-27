@@ -10,6 +10,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -66,6 +67,9 @@ var httpErrors = []struct {
 	{link.ErrAliasTaken, apiError{http.StatusConflict, "alias_taken", "the alias is already in use"}},
 	{link.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "expires_at must be in the future"}},
 	{link.ErrInvalidMaxClicks, apiError{http.StatusBadRequest, "invalid_max_clicks", "max_clicks must be greater than 0"}},
+	{unlockpage.ErrNotFound, apiError{http.StatusNotFound, "not_found", "unlock page not found"}},
+	{unlockpage.ErrInvalidHTML, apiError{http.StatusBadRequest, "invalid_html", "the page is empty or larger than 64 KB"}},
+
 	{link.ErrInvalidPassword, apiError{http.StatusBadRequest, "invalid_password", "the password must be 4 to 64 characters"}},
 	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
 	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},

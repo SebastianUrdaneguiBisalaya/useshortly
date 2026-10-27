@@ -6,34 +6,42 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { I18nProvider } from "@lingui/react";
+import { Layout as L } from "~/components/ui/layout/layout/layout";
 
 import type { Route } from "./+types/root";
-import "./app.css";
+import "~/app/app.css";
+import { ToasterProvider } from "~/providers/toast-client";
+import { QueryProvider } from "~/providers/query-client";
+import { i18n } from "~/i18n";
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
+/** Applies the stored theme before first paint so a dark preference does not flash light. Reads the shape `stores/theme-store.ts` persists. */
+const THEME_INIT_SCRIPT = `try{var t=JSON.parse(localStorage.getItem("ui-theme")).state.preference;if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+
+export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang={i18n.locale} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Meta />
         <Links />
       </head>
       <body>
-        {children}
+        <L.Container
+          className="flex h-screen w-full flex-col overflow-hidden p-0 sm:p-0 lg:p-0"
+          size="full"
+        >
+          <I18nProvider i18n={i18n}>
+            <QueryProvider>
+              {children}
+            </QueryProvider>
+          </I18nProvider>
+          <ToasterProvider />
+        </L.Container>
         <ScrollRestoration />
         <Scripts />
       </body>

@@ -1,6 +1,6 @@
 {
-  "css": "app/globals.css",
-  "dir": "components/ui",
+  "css": "src/app/app.css",
+  "dir": "src/components/ui",
   "components": {
     "actions-controls/button": "main",
     "actions-controls/button-group": "main",
@@ -29,6 +29,8 @@
     "forms-inputs/rich-text-editor": "main",
     "forms-inputs/select": "select@1.1.0",
     "foundations/kbd": "main",
+    "foundations/link": "link@1.0.0",
+    "foundations/separator": "main",
     "foundations/typography": "main",
     "layout/layout": "main",
     "layout/page": "main",

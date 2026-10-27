@@ -11,12 +11,12 @@ export default defineConfig({
       client: "react-query",
       httpClient: "axios",
       mode: "tags-split",
-      target: "api/endpoints",
-      schemas: "api/model",
+      target: "src/api/endpoints",
+      schemas: "src/api/model",
       clean: true,
       override: {
         mutator: {
-          path: "api/axios-instance.ts",
+          path: "src/api/axios-instance.ts",
           name: "customInstance",
         },
         operations: {
@@ -35,7 +35,7 @@ export default defineConfig({
     output: {
       client: "zod",
       mode: "tags-split",
-      target: "api/zod",
+      target: "src/api/zod",
       fileExtension: ".zod.ts",
       clean: true,
       override: {

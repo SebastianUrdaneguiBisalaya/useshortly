@@ -111,7 +111,7 @@ export interface ButtonTextProps
 
 export interface ButtonIconProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Lucide icon component to render. */
-  icon: LucideIcon;
+  icon: LucideIcon | React.ReactElement;
   /** Accessible name for the icon. Required when the icon conveys meaning on its own (e.g. an icon-only button). */
   "aria-label"?: string;
   /** Additional classes applied to the icon's wrapping `span`. */
@@ -235,12 +235,16 @@ function ButtonIcon({
         className,
       )}
     >
-      <Icon
-        aria-hidden={!ariaLabel}
-        aria-label={ariaLabel}
-        icon={icon}
-        size="sm"
-      />
+      {React.isValidElement(icon) ? (
+        icon
+      ) : (
+        <Icon
+          aria-hidden={!ariaLabel}
+          aria-label={ariaLabel}
+          icon={icon}
+          size="sm"
+        />
+      )}
     </span>
   );
 }

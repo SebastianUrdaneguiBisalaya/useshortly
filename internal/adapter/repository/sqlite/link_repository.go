@@ -20,9 +20,9 @@ func NewLinkRepository(db *sql.DB) *LinkRepository {
 
 func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, error) {
 	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO links (code, origin_url, expires_at, max_clicks, password_hash, tenant_id, created_by, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		l.Code, l.OriginURL, nullTime(l.ExpiresAt), nullInt64(l.MaxClicks), nullString(l.PasswordHash), l.TenantID, l.CreatedBy, formatTime(l.CreatedAt))
+		`INSERT INTO links (code, origin_url, expires_at, max_clicks, password_hash, tenant_id, domain_id, created_by, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		l.Code, l.OriginURL, nullTime(l.ExpiresAt), nullInt64(l.MaxClicks), nullString(l.PasswordHash), l.TenantID, nullInt64(l.DomainID), l.CreatedBy, formatTime(l.CreatedAt))
 	if isUniqueViolation(err) {
 		return link.Link{}, link.ErrCodeTaken
 	}
@@ -35,7 +35,7 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 	return l, nil
 }
 
-const linkColumns = `id, code, origin_url, expires_at, max_clicks, click_count, password_hash, tenant_id, created_by, updated_by, created_at, updated_at`
+const linkColumns = `id, code, origin_url, expires_at, max_clicks, click_count, password_hash, tenant_id, domain_id, created_by, updated_by, created_at, updated_at`
 
 // scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
 func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
@@ -45,14 +45,18 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		passwordHash     sql.NullString
 		updatedBy        sql.NullInt64
 		maxClicks        sql.NullInt64
+		domainID         sql.NullInt64
 		createdAt        string
 	)
-	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &l.CreatedBy, &updatedBy, &createdAt, &updated)
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &l.CreatedBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
 		return link.Link{}, err
 	}
 	if maxClicks.Valid {
 		l.MaxClicks = &maxClicks.Int64
+	}
+	if domainID.Valid {
+		l.DomainID = &domainID.Int64
 	}
 	l.PasswordHash = passwordHash.String
 	if updatedBy.Valid {

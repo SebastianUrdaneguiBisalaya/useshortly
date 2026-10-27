@@ -5,7 +5,7 @@ let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
 });
-afterAll(() => h.db.close());
+afterAll(() => h.close());
 beforeEach(() => {
   h.reset();
   h.db.prepare("delete from mcp_oauth_consent").run(); // every scenario starts without a stored consent

@@ -1,4 +1,6 @@
 import { createHash, createPublicKey, generateKeyPairSync, randomBytes, verify, type JsonWebKeyInput } from "node:crypto";
+import { serve } from "@hono/node-server";
+import { createServer } from "node:net";
 import { expect } from "vitest";
 import {
   IdentityUnavailableError,
@@ -6,7 +8,9 @@ import {
   type Identity,
   type IdentityProvider,
 } from "../api/identity.js";
+import { ApiClient } from "../api/client.js";
 import { createApp } from "../app.js";
+import { createTokenSigner } from "../api/token.js";
 import { createAuth, type Auth } from "../auth/auth.js";
 import { migrate } from "../auth/migrate.js";
 import { authOptions } from "../auth/options.js";
@@ -25,13 +29,25 @@ export const consentClient = "https://client.example/metadata.json";
  * A real Better Auth + Hono app on an in-memory database. Only the API is faked: it is the
  * one judge of credentials, so tests set who exists in `known`.
  */
+async function freePort(): Promise<number> {
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const { port } = probe.address() as { port: number };
+  await new Promise((resolve) => probe.close(resolve));
+  return port;
+}
+
 export async function createHarness() {
+  // The server listens on a real port because the access token check fetches its keys over HTTP.
+  const port = await freePort();
   const config = loadConfig({
+    PORT: String(port),
     MCP_SIGNING_KEY: generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
     AUTH_SECRET: "x".repeat(32),
     GOOGLE_CLIENT_ID: "google-client-id",
   });
   const base = config.publicUrl;
+  expect(config.publicUrl, "tests assume the default public URL").toBe("http://localhost:4001");
   const resource = `${base}/mcp`;
 
   const state = { known: {} as Record<string, { password: string; who: Identity }> };
@@ -51,11 +67,33 @@ export async function createHarness() {
     },
   };
 
+  // The useshortly API, faked: records each call (with the token's claims) and answers from `apiReplies`.
+  const apiCalls: { method: string; path: string; token: string; claims: Record<string, unknown> }[] = [];
+  const apiReplies: Record<string, () => Response> = {};
+  const apiFetch = (async (url: URL | string, init?: RequestInit) => {
+    const u = new URL(String(url));
+    const token = String((init?.headers as Record<string, string>).authorization).replace("Bearer ", "");
+    const claims = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString());
+    const method = init?.method ?? "GET";
+    const path = u.pathname.replace("/api/v1", "") + u.search;
+    apiCalls.push({ method, path, token, claims });
+    const reply = apiReplies[`${method} ${path}`];
+    return reply ? reply() : Response.json({ error: { code: "not_found", message: "no such route in the test API" } }, { status: 404 });
+  }) as typeof fetch;
+  const api = new ApiClient({ apiUrl: "http://api.test", sign: createTokenSigner(config.signingKey), fetch: apiFetch });
+  apiReplies["GET /me"] = () =>
+    Response.json({ data: { id: 7, email: "ana@example.com", email_verified: true, first_name: "Ana", last_name: "Lopez" } });
+
   const db = openLocal(":memory:");
   const options = authOptions(config, db);
   await migrate(options);
   const auth: Auth = createAuth(options);
-  const app = createApp({ config, auth, identity });
+  const app = createApp({ config, auth, identity, api });
+  const server = serve({ fetch: app.fetch, port, hostname: "127.0.0.1" });
+  const close = async () => {
+    server.close();
+    db.close();
+  };
 
   const ctx = await auth.$context;
   for (const [clientId, skipConsent] of [
@@ -147,6 +185,17 @@ export async function createHarness() {
       }),
     });
 
+  /** A real access token for the trusted client, obtained through the whole authorization flow. */
+  const accessToken = async (scope = "mcp:read") => {
+    const { verifier, challenge } = pkce();
+    const query = await startFlow(challenge, { scope });
+    const { resumed } = await signInAndResume(query);
+    const code = new URL(resumed.headers.get("location")!).searchParams.get("code")!;
+    const res = await exchange(code, verifier);
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { access_token: string }).access_token;
+  };
+
   const jwtParts = (token: string) => {
     const [h, p, s] = token.split(".") as [string, string, string];
     return {
@@ -166,8 +215,8 @@ export async function createHarness() {
   };
 
   return {
-    config, base, resource, db, auth, app, state, reset,
-    req, origin, pkce, authorizeUrl, startFlow, form, cookieOf, signInAndResume, exchange, jwtParts, signatureIsValid,
+    config, base, resource, db, auth, app, close, state, reset, api, apiCalls, apiReplies,
+    req, origin, pkce, authorizeUrl, startFlow, form, cookieOf, signInAndResume, exchange, accessToken, jwtParts, signatureIsValid,
   };
 }
 

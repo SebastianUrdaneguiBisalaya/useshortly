@@ -8,7 +8,7 @@ let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
 });
-afterAll(() => h.db.close());
+afterAll(() => h.close());
 beforeEach(() => h.reset());
 
 const creds = { email: "ana@example.com", password: "s3cret" };
@@ -147,7 +147,7 @@ describe("sign-in through the API", () => {
   });
 
   it("limits one address that tries many accounts", async () => {
-    const isolated = createApp({ config: h.config, auth: h.auth, identity: { password: async () => Promise.reject(new InvalidCredentialsError()), google: async () => ana } });
+    const isolated = createApp({ config: h.config, auth: h.auth, api: h.api, identity: { password: async () => Promise.reject(new InvalidCredentialsError()), google: async () => ana } });
     const query = await h.startFlow(h.pkce().challenge);
     const statuses: number[] = [];
     for (let i = 0; i < 22; i++) {

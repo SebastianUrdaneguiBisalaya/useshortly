@@ -1,9 +1,8 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { ThemePreference } from "~/components/ui/actions-controls/switch-theme/switch-theme";
-
-/** Key read by the inline script in `root.tsx` to set `data-theme` before first paint. */
-export const THEME_STORAGE_KEY = "ui-theme";
+import { cookieStorage } from "~/lib/cookie-storage";
+import { THEME_COOKIE } from "~/lib/theme";
 
 /** Sets (or removes, for `"system"`) `data-theme` on `<html>`, which the CSS tokens key off. */
 function applyTheme(preference: ThemePreference) {
@@ -16,16 +15,20 @@ function applyTheme(preference: ThemePreference) {
 
 interface ThemeState {
   preference: ThemePreference;
+  /** `true` once the persisted value has been read; until then `preference` is only the default. */
+  hydrated: boolean;
   setPreference: (preference: ThemePreference) => void;
 }
 
 /**
- * Persisted theme preference. `skipHydration` keeps the first client render
- * equal to the server's; `useTheme` rehydrates after mount.
+ * Persisted theme preference, stored in a cookie so the server renders
+ * `data-theme` on `<html>` from the first byte (see `root.tsx`).
+ * `useTheme` rehydrates the store after mount.
  */
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
+      hydrated: false,
       preference: "system",
       setPreference: (preference) => {
         applyTheme(preference);
@@ -35,14 +38,18 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: THEME_STORAGE_KEY,
+      name: THEME_COOKIE,
       onRehydrateStorage: () => (state) => {
         applyTheme(state?.preference ?? "system");
+        useThemeStore.setState({
+          hydrated: true,
+        });
       },
       partialize: (state) => ({
         preference: state.preference,
       }),
       skipHydration: true,
+      storage: createJSONStorage(() => cookieStorage),
     },
   ),
 );

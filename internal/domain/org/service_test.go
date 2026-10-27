@@ -382,3 +382,12 @@ func TestClockAdvancesAndIsUTC(t *testing.T) {
 	assert.True(t, b.After(a), "the clock must keep moving")
 	assert.Equal(t, time.UTC, a.Location())
 }
+
+func TestNameIsPublicAndOnlyTheName(t *testing.T) {
+	svc, _, o := setup(t)
+	name, err := svc.Name(ctx, o.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Acme", name, "no membership needed: it is shown to visitors")
+	_, err = svc.Name(ctx, 9999)
+	assert.ErrorIs(t, err, ErrNotFound)
+}

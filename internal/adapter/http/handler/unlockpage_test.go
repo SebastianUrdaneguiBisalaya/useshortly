@@ -85,8 +85,10 @@ func protectedFixture(t *testing.T, pages UnlockPages) (*LinkHandler, *fakeClick
 // allowAll is a link.AttemptLimiter that never refuses.
 type allowAll struct{}
 
-func (allowAll) Take(context.Context, string, int, time.Duration) (bool, error) { return true, nil }
-func (allowAll) Reset(context.Context, string) error                            { return nil }
+func (allowAll) Take(context.Context, string, link.Backoff) (bool, time.Duration, error) {
+	return true, 0, nil
+}
+func (allowAll) Reset(context.Context, string) error { return nil }
 
 func visit(h *LinkHandler, accept string) *httptest.ResponseRecorder {
 	req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/locked-1", nil), map[string]string{"code": "locked-1"})
@@ -170,4 +172,95 @@ func TestUnlockShowsMessagesOnThePage(t *testing.T) {
 	assert.Equal(t, "https://example.com/s", right.Header().Get("Location"))
 	require.Len(t, clicks.got, 1)
 	assert.Empty(t, clicks.got[0].Referrer, "the unlock page is not where the visitor came from")
+}
+
+type fakeOrgs struct {
+	name string
+	err  error
+}
+
+func (f fakeOrgs) Name(context.Context, int64) (string, error) { return f.name, f.err }
+
+func TestUnlockPagesAreSandboxed(t *testing.T) {
+	h, _ := protectedFixture(t, nil)
+	csp := visit(h, "text/html").Header().Get("Content-Security-Policy")
+	assert.Contains(t, csp, "sandbox allow-forms", "an opaque origin that can still send the form")
+	assert.NotContains(t, csp, "allow-scripts")
+	assert.NotContains(t, csp, "allow-same-origin")
+	assert.Contains(t, csp, "default-src 'none'")
+}
+
+func TestUnlockPageFooter(t *testing.T) {
+	t.Run("names the organization and offers a report link", func(t *testing.T) {
+		h, _ := protectedFixture(t, nil)
+		h.WithUnlockFooter(fakeOrgs{name: "Acme"}, "abuse@useshortly.test")
+		body := visit(h, "text/html").Body.String()
+		assert.Contains(t, body, "data-app-footer")
+		assert.Contains(t, body, "<strong>Acme</strong>")
+		assert.Contains(t, body, `href="mailto:abuse@useshortly.test?subject=Report%20link%20%2Flocked-1"`)
+		assert.Less(t, strings.Index(body, `action="/locked-1/unlock"`), strings.Index(body, "data-app-footer"), "after the form")
+		assert.Less(t, strings.Index(body, "data-app-footer"), strings.Index(body, "</body>"), "inside the body")
+	})
+
+	t.Run("no abuse address, no report link", func(t *testing.T) {
+		h, _ := protectedFixture(t, nil)
+		h.WithUnlockFooter(fakeOrgs{name: "Acme"}, "")
+		body := visit(h, "text/html").Body.String()
+		assert.Contains(t, body, "data-app-footer")
+		assert.NotContains(t, body, "Report abuse")
+	})
+
+	t.Run("escapes the organization's name", func(t *testing.T) {
+		h, _ := protectedFixture(t, nil)
+		h.WithUnlockFooter(fakeOrgs{name: `<script>alert(1)</script>`}, "")
+		body := visit(h, "text/html").Body.String()
+		assert.NotContains(t, body, "<script>alert(1)")
+		assert.Contains(t, body, "&lt;script&gt;")
+	})
+
+	t.Run("an unknown organization still gets a footer", func(t *testing.T) {
+		h, _ := protectedFixture(t, nil)
+		h.WithUnlockFooter(fakeOrgs{err: assert.AnError}, "")
+		assert.Contains(t, visit(h, "text/html").Body.String(), "the owner of this link")
+	})
+
+	t.Run("a custom page cannot hide it with a stylesheet", func(t *testing.T) {
+		h, _ := protectedFixture(t, fakePages{html: `<html><head><style>[data-app-footer], div { display: none !important; }</style></head>` +
+			`<body><form method="post" action="{{.Action}}"></form></body></html>`})
+		h.WithUnlockFooter(fakeOrgs{name: "Acme"}, "")
+		body := visit(h, "text/html").Body.String()
+		footer := body[strings.Index(body, "<div data-app-footer"):]
+		footer = footer[:strings.Index(footer, "</div>")]
+		assert.Contains(t, footer, "display:block!important", "inline !important wins over the page's own rules")
+		assert.Contains(t, footer, "visibility:visible!important")
+	})
+
+	t.Run("a page without a body tag still gets it at the end", func(t *testing.T) {
+		h, _ := protectedFixture(t, fakePages{html: `<form method="post" action="{{.Action}}"></form>`})
+		h.WithUnlockFooter(fakeOrgs{name: "Acme"}, "")
+		body := visit(h, "text/html").Body.String()
+		assert.True(t, strings.HasSuffix(body, "</div>"), body)
+	})
+
+	t.Run("the JSON answer has no footer", func(t *testing.T) {
+		h, _ := protectedFixture(t, nil)
+		h.WithUnlockFooter(fakeOrgs{name: "Acme"}, "")
+		assert.NotContains(t, visit(h, "application/json").Body.String(), "data-app-footer")
+	})
+}
+
+func TestHumanWait(t *testing.T) {
+	tests := map[time.Duration]string{
+		time.Millisecond:                      "1 second",
+		30 * time.Second:                      "30 seconds",
+		59*time.Second + 400*time.Millisecond: "60 seconds",
+		time.Minute:                           "1 minute",
+		90 * time.Second:                      "2 minutes",
+		2 * time.Minute:                       "2 minutes",
+		time.Hour:                             "1 hour",
+		time.Hour + time.Second:               "2 hours",
+	}
+	for d, want := range tests {
+		assert.Equal(t, want, humanWait(d), d.String())
+	}
 }

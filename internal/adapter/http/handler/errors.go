@@ -73,7 +73,7 @@ var httpErrors = []struct {
 	{link.ErrInvalidPassword, apiError{http.StatusBadRequest, "invalid_password", "the password must be 4 to 64 characters"}},
 	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
 	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},
-	{link.ErrTooManyAttempts, apiError{http.StatusTooManyRequests, "too_many_attempts", "too many attempts, try again in 15 minutes"}},
+	{link.ErrTooManyAttempts, apiError{http.StatusTooManyRequests, "too_many_attempts", "too many attempts, wait before trying again (see the Retry-After header)"}},
 	{link.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{link.ErrExpired, apiError{http.StatusGone, "link_expired", "the link expired"}},
 	{link.ErrCodeTaken, apiError{http.StatusServiceUnavailable, "code_unavailable", "could not allocate a short code, try again"}},

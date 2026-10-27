@@ -79,6 +79,7 @@ func NewRouter(h Handlers) http.Handler {
 		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Put))).Methods(http.MethodPut)
 		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Delete))).Methods(http.MethodDelete)
 	}
+	eitherOrg.Handle("/unlock-page/history", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.History))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 

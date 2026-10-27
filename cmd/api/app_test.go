@@ -23,6 +23,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/platform/database"
@@ -106,6 +107,8 @@ type env struct {
 	app    *app
 	outbox *outbox
 	sql    *sql.DB
+	// attempts is the unlock limiter; its clock can be moved to skip a wait.
+	attempts *memAttempts
 }
 
 func newEnv(t *testing.T, withGoogle bool) *env {
@@ -118,23 +121,44 @@ func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env
 	return newEnvFull(t, withGoogle, linkCache, nil, false)
 }
 
-// memAttempts is an in-memory link.AttemptLimiter that never lets a window expire.
+// memAttempts is an in-memory link.AttemptLimiter with the same backoff as the Redis one and a
+// clock the tests can move.
 type memAttempts struct {
-	mu     sync.Mutex
-	counts map[string]int
+	mu           sync.Mutex
+	now          time.Time
+	counts       map[string]int
+	blockedUntil map[string]time.Time
 }
 
-func (m *memAttempts) Take(_ context.Context, key string, limit int, _ time.Duration) (bool, error) {
+func newMemAttempts() *memAttempts {
+	return &memAttempts{now: time.Now(), counts: map[string]int{}, blockedUntil: map[string]time.Time{}}
+}
+
+func (m *memAttempts) advance(d time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.now = m.now.Add(d)
+}
+
+func (m *memAttempts) Take(_ context.Context, key string, p link.Backoff) (bool, time.Duration, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if until := m.blockedUntil[key]; until.After(m.now) {
+		return false, until.Sub(m.now), nil
+	}
 	m.counts[key]++
-	return m.counts[key] <= limit, nil
+	wait := p.DelayAfter(m.counts[key])
+	if wait > 0 {
+		m.blockedUntil[key] = m.now.Add(wait)
+	}
+	return true, wait, nil
 }
 
 func (m *memAttempts) Reset(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.counts, key)
+	delete(m.blockedUntil, key)
 	return nil
 }
 
@@ -163,13 +187,14 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 	}
 
 	box := &outbox{}
+	attempts := newMemAttempts()
 	a := adapters{
 		codes:  &memCodes{entries: map[string]*memCode{}, cooldown: map[string]bool{}},
 		sender: box,
 
 		linkCache: linkCache,
 		countries: countries,
-		attempts:  &memAttempts{counts: map[string]int{}},
+		attempts:  attempts,
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -182,9 +207,10 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 		RefreshTTL: 24 * time.Hour,
 
 		LinkCacheTTL: time.Minute,
+		AbuseEmail:   "abuse@useshortly.test",
 		TrustProxy:   trustProxy,
 	}
-	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB}
+	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB, attempts: attempts}
 	t.Cleanup(e.app.mail.Wait)
 	// Registered after the database cleanup, so queued clicks are written before it closes.
 	t.Cleanup(func() { _ = e.app.clicks.Close(context.Background()) })
@@ -787,15 +813,46 @@ func TestUnlockProtectedLink(t *testing.T) {
 		assert.Empty(t, rec.Header().Get("Location"))
 	})
 
-	t.Run("three tries, then 429 even with the right password; others are unaffected", func(t *testing.T) {
+	t.Run("three free tries, then a growing wait with Retry-After; others are unaffected", func(t *testing.T) {
 		const bad = "198.51.100.5:1"
 		for range 3 {
 			assert.Equal(t, http.StatusUnauthorized, send(http.MethodPost, "/locked-01/unlock", form, "password=nope", bad).Code)
 		}
 		rec := send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", bad)
-		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code, "even the right password has to wait")
 		assert.Contains(t, rec.Body.String(), "too_many_attempts")
+		retry, err := strconv.Atoi(rec.Header().Get("Retry-After"))
+		require.NoError(t, err)
+		assert.InDelta(t, 30, retry, 1)
 		assert.Equal(t, http.StatusFound, send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", "198.51.100.6:1").Code, "another visitor")
+
+		// After the wait one more try is allowed, and a wrong one doubles the next wait.
+		e.attempts.advance(31 * time.Second)
+		assert.Equal(t, http.StatusUnauthorized, send(http.MethodPost, "/locked-01/unlock", form, "password=nope", bad).Code)
+		rec = send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", bad)
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+		retry, _ = strconv.Atoi(rec.Header().Get("Retry-After"))
+		assert.InDelta(t, 60, retry, 1, "the second wait is a minute")
+
+		// Waiting it out and getting it right lets the visitor in and clears the penalty.
+		e.attempts.advance(61 * time.Second)
+		assert.Equal(t, http.StatusFound, send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", bad).Code)
+		assert.Equal(t, http.StatusUnauthorized, send(http.MethodPost, "/locked-01/unlock", form, "password=nope", bad).Code, "free tries again")
+	})
+
+	t.Run("the page says how long to wait", func(t *testing.T) {
+		const bad = "198.51.100.9:1"
+		for range 3 {
+			send(http.MethodPost, "/locked-01/unlock", form, "password=nope", bad)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/locked-01/unlock", strings.NewReader("password=nope"))
+		req.Header.Set("Content-Type", form)
+		req.Header.Set("Accept", "text/html")
+		req.RemoteAddr = bad
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Try again in 30 seconds.")
 	})
 
 	t.Run("an unknown link is a 404 and a bad body a 400", func(t *testing.T) {
@@ -814,7 +871,7 @@ func TestUnlockProtectedLink(t *testing.T) {
 		require.NoError(t, e.app.clicks.Close(context.Background()))
 		var n int
 		require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM clicks WHERE link_id = ?`, res.id()).Scan(&n))
-		assert.Equal(t, 3, n, "the three successful unlocks of this link")
+		assert.Equal(t, 4, n, "the four successful unlocks of this link")
 	})
 
 	t.Run("the password is only in the database as a hash", func(t *testing.T) {
@@ -934,6 +991,38 @@ func TestUnlockPagesPerOrganizationAndLink(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, res.status)
 		assert.Equal(t, "insufficient_scope", res.errCode())
 		assert.Equal(t, http.StatusOK, e.do("PUT", orgPage, writeKey, page("Keyed")).status)
+	})
+
+	t.Run("every page says whose it is and how to report it, and is sandboxed", func(t *testing.T) {
+		rec := browse("plain-link")
+		body := rec.Body.String()
+		assert.Contains(t, body, "<strong>Acme</strong>", "the organization's name, from the database")
+		assert.Contains(t, body, "mailto:abuse@useshortly.test")
+		assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "sandbox allow-forms")
+		assert.NotContains(t, body, "Bobs", "only its own organization")
+	})
+
+	t.Run("who changed what is on record", func(t *testing.T) {
+		me := e.do("GET", "/api/v1/me", ana, nil)
+		anaID := int64(me.body["id"].(float64))
+		page := e.do("GET", orgPage, ana, nil)
+		assert.EqualValues(t, anaID, page.body["updated_by"])
+
+		res := e.do("GET", "/api/v1/orgs/"+acme+"/unlock-page/history?limit=3", ana, nil)
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		events := res.body["data"].([]any)
+		require.Len(t, events, 3)
+		newest := events[0].(map[string]any)
+		assert.Equal(t, "set", newest["action"], "the write key's last change")
+		assert.NotEmpty(t, newest["at"])
+		assert.GreaterOrEqual(t, res.body["meta"].(map[string]any)["total"], float64(5))
+		var actions []string
+		for _, ev := range e.do("GET", "/api/v1/orgs/"+acme+"/unlock-page/history", ana, nil).body["data"].([]any) {
+			actions = append(actions, ev.(map[string]any)["action"].(string))
+		}
+		assert.Contains(t, actions, "delete", "a deleted page stays in the trail")
+		assert.Equal(t, "not_member", e.do("GET", "/api/v1/orgs/"+acme+"/unlock-page/history", bob, nil).errCode())
+		assert.Equal(t, "invalid_pagination", e.do("GET", "/api/v1/orgs/"+acme+"/unlock-page/history?limit=0", ana, nil).errCode())
 	})
 
 	t.Run("deleting a link removes its page", func(t *testing.T) {

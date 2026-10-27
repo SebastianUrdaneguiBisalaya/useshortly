@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS unlock_pages (
     tenant_id INTEGER NOT NULL,
     link_id INTEGER,
     html TEXT NOT NULL CHECK (length(html) > 0 AND length(CAST(html AS BLOB)) <= 65536),
+    updated_by INTEGER NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (tenant_id) REFERENCES organizations(id) ON DELETE CASCADE,
     FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE

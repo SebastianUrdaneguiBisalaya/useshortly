@@ -37,13 +37,23 @@ func NewLinkRepository(next link.Repository, store Store, ttl time.Duration) *Li
 	return &LinkRepository{next: next, store: store, ttl: ttl}
 }
 
-func codeKey(code string) string { return "link:code:" + code }
+// scope names a code inside its domain: the code alone on the default host, "<domain id>:<code>"
+// on a custom domain (codes never contain ':'), so the same code on two domains never collides.
+func scope(domainID *int64, code string) string {
+	if domainID == nil {
+		return code
+	}
+	return strconv.FormatInt(*domainID, 10) + ":" + code
+}
 
-// idKey maps a link id to its code, so Delete (which only knows the id) can find the entry.
+func codeKey(scope string) string { return "link:code:" + scope }
+
+// idKey maps a link id to its scope, so Delete (which only knows the id) can find the entry.
 func idKey(id int64) string { return "link:id:" + strconv.FormatInt(id, 10) }
 
-func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link, error) {
-	raw, found, err := r.store.Get(ctx, codeKey(code))
+func (r *LinkRepository) FindByCode(ctx context.Context, domainID *int64, code string) (link.Link, error) {
+	sc := scope(domainID, code)
+	raw, found, err := r.store.Get(ctx, codeKey(sc))
 	if err != nil {
 		slog.Warn("link cache: get", "code", code, "error", err)
 	}
@@ -55,7 +65,7 @@ func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link
 		slog.Warn("link cache: undecodable entry, reading the database", "code", code)
 	}
 
-	l, err := r.next.FindByCode(ctx, code)
+	l, err := r.next.FindByCode(ctx, domainID, code)
 	if err != nil {
 		return link.Link{}, err
 	}
@@ -69,11 +79,12 @@ func (r *LinkRepository) fill(ctx context.Context, l link.Link) {
 		slog.Warn("link cache: encode", "code", l.Code, "error", err)
 		return
 	}
-	if err := r.store.Set(ctx, codeKey(l.Code), raw, r.ttl); err != nil {
+	sc := scope(l.DomainID, l.Code)
+	if err := r.store.Set(ctx, codeKey(sc), raw, r.ttl); err != nil {
 		slog.Warn("link cache: set", "code", l.Code, "error", err)
 		return
 	}
-	if err := r.store.Set(ctx, idKey(l.ID), []byte(l.Code), r.ttl); err != nil {
+	if err := r.store.Set(ctx, idKey(l.ID), []byte(sc), r.ttl); err != nil {
 		slog.Warn("link cache: set", "code", l.Code, "error", err)
 	}
 }
@@ -84,7 +95,7 @@ func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	if err := r.next.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	code, found, err := r.store.Get(ctx, idKey(id))
+	sc, found, err := r.store.Get(ctx, idKey(id))
 	if err != nil {
 		slog.Warn("link cache: stale entry after delete", "link_id", id, "error", err)
 		return nil
@@ -92,7 +103,7 @@ func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	if !found {
 		return nil
 	}
-	if err := r.store.Del(ctx, codeKey(string(code)), idKey(id)); err != nil {
+	if err := r.store.Del(ctx, codeKey(string(sc)), idKey(id)); err != nil {
 		slog.Warn("link cache: stale entry after delete", "link_id", id, "error", err)
 	}
 	return nil
@@ -110,8 +121,8 @@ func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p pag
 	return r.next.ListByTenant(ctx, tenantID, p)
 }
 
-func (r *LinkRepository) ConsumeClick(ctx context.Context, code string) error {
-	return r.next.ConsumeClick(ctx, code)
+func (r *LinkRepository) ConsumeClick(ctx context.Context, id int64) error {
+	return r.next.ConsumeClick(ctx, id)
 }
 
 // cachedLink is the stored form of a link. It has its own JSON tags so the domain entity does
@@ -122,6 +133,8 @@ type cachedLink struct {
 	OriginURL  string     `json:"origin_url"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 	TenantID   int64      `json:"tenant_id"`
+	DomainID   *int64     `json:"domain_id,omitempty"`
+	DomainHost string     `json:"domain_host,omitempty"`
 	MaxClicks  *int64     `json:"max_clicks,omitempty"`
 	ClickCount int64      `json:"click_count"`
 	// PasswordHash is cached too: a cached copy that lost it would serve a protected link openly.
@@ -135,7 +148,7 @@ type cachedLink struct {
 func newCachedLink(l link.Link) cachedLink {
 	return cachedLink{
 		ID: l.ID, Code: l.Code, OriginURL: l.OriginURL, ExpiresAt: l.ExpiresAt, TenantID: l.TenantID,
-		MaxClicks: l.MaxClicks, ClickCount: l.ClickCount, PasswordHash: l.PasswordHash, CreatedBy: l.CreatedBy,
+		DomainID: l.DomainID, DomainHost: l.DomainHost, MaxClicks: l.MaxClicks, ClickCount: l.ClickCount, PasswordHash: l.PasswordHash, CreatedBy: l.CreatedBy,
 		UpdatedBy: l.UpdatedBy, CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt,
 	}
 }
@@ -143,7 +156,7 @@ func newCachedLink(l link.Link) cachedLink {
 func (c cachedLink) link() link.Link {
 	return link.Link{
 		ID: c.ID, Code: c.Code, OriginURL: c.OriginURL, ExpiresAt: c.ExpiresAt, TenantID: c.TenantID,
-		MaxClicks: c.MaxClicks, ClickCount: c.ClickCount, PasswordHash: c.PasswordHash, CreatedBy: c.CreatedBy,
+		DomainID: c.DomainID, DomainHost: c.DomainHost, MaxClicks: c.MaxClicks, ClickCount: c.ClickCount, PasswordHash: c.PasswordHash, CreatedBy: c.CreatedBy,
 		UpdatedBy: c.UpdatedBy, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	}
 }

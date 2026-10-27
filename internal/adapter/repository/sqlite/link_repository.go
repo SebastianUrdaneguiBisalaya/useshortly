@@ -32,10 +32,18 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 	if l.ID, err = res.LastInsertId(); err != nil {
 		return link.Link{}, fmt.Errorf("link repo: id: %w", err)
 	}
+	if l.DomainID != nil {
+		if err := r.db.QueryRowContext(ctx, `SELECT host FROM domains WHERE id = ?`, *l.DomainID).Scan(&l.DomainHost); err != nil {
+			return link.Link{}, fmt.Errorf("link repo: domain host: %w", err)
+		}
+	}
 	return l, nil
 }
 
-const linkColumns = `id, code, origin_url, expires_at, max_clicks, click_count, password_hash, tenant_id, domain_id, created_by, updated_by, created_at, updated_at`
+// linkSelect reads a link with the host of its domain, if it has one.
+const linkSelect = `SELECT l.id, l.code, l.origin_url, l.expires_at, l.max_clicks, l.click_count, l.password_hash,
+	l.tenant_id, l.domain_id, d.host, l.created_by, l.updated_by, l.created_at, l.updated_at
+	FROM links l LEFT JOIN domains d ON d.id = l.domain_id `
 
 // scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
 func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
@@ -46,9 +54,10 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		updatedBy        sql.NullInt64
 		maxClicks        sql.NullInt64
 		domainID         sql.NullInt64
+		domainHost       sql.NullString
 		createdAt        string
 	)
-	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &l.CreatedBy, &updatedBy, &createdAt, &updated)
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &l.CreatedBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
 		return link.Link{}, err
 	}
@@ -58,6 +67,7 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 	if domainID.Valid {
 		l.DomainID = &domainID.Int64
 	}
+	l.DomainHost = domainHost.String
 	l.PasswordHash = passwordHash.String
 	if updatedBy.Valid {
 		l.UpdatedBy = &updatedBy.Int64
@@ -74,8 +84,8 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 	return l, nil
 }
 
-func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link, error) {
-	l, err := scanLink(r.db.QueryRowContext(ctx, `SELECT `+linkColumns+` FROM links WHERE code = ?`, code))
+func (r *LinkRepository) FindByCode(ctx context.Context, domainID *int64, code string) (link.Link, error) {
+	l, err := scanLink(r.db.QueryRowContext(ctx, linkSelect+`WHERE l.code = ? AND COALESCE(l.domain_id, 0) = ?`, code, domainKey(domainID)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return link.Link{}, link.ErrNotFound
 	}
@@ -86,7 +96,7 @@ func (r *LinkRepository) FindByCode(ctx context.Context, code string) (link.Link
 }
 
 func (r *LinkRepository) FindByID(ctx context.Context, tenantID, id int64) (link.Link, error) {
-	l, err := scanLink(r.db.QueryRowContext(ctx, `SELECT `+linkColumns+` FROM links WHERE id = ? AND tenant_id = ?`, id, tenantID))
+	l, err := scanLink(r.db.QueryRowContext(ctx, linkSelect+`WHERE l.id = ? AND l.tenant_id = ?`, id, tenantID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return link.Link{}, link.ErrNotFound
 	}
@@ -102,7 +112,7 @@ func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p pag
 		return nil, 0, fmt.Errorf("link repo: count: %w", err)
 	}
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+linkColumns+` FROM links WHERE tenant_id = ? ORDER BY id DESC LIMIT ? OFFSET ?`,
+		linkSelect+`WHERE l.tenant_id = ? ORDER BY l.id DESC LIMIT ? OFFSET ?`,
 		tenantID, p.Limit, p.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("link repo: list: %w", err)
@@ -137,10 +147,10 @@ func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
 
 // ConsumeClick increments click_count only while the link is under its limit. One statement
 // keeps the check and the increment atomic, so concurrent clicks never exceed max_clicks.
-func (r *LinkRepository) ConsumeClick(ctx context.Context, code string) error {
+func (r *LinkRepository) ConsumeClick(ctx context.Context, id int64) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE links SET click_count = click_count + 1
-		 WHERE code = ? AND (max_clicks IS NULL OR click_count < max_clicks)`, code)
+		 WHERE id = ? AND (max_clicks IS NULL OR click_count < max_clicks)`, id)
 	if err != nil {
 		return fmt.Errorf("link repo: consume click: %w", err)
 	}
@@ -152,4 +162,12 @@ func (r *LinkRepository) ConsumeClick(ctx context.Context, code string) error {
 		return link.ErrExpired
 	}
 	return nil
+}
+
+// domainKey is how a nil domain (the default host) matches the COALESCE in the unique index.
+func domainKey(id *int64) int64 {
+	if id == nil {
+		return 0
+	}
+	return *id
 }

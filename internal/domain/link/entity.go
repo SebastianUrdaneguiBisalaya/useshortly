@@ -10,7 +10,9 @@ type Link struct {
 	ExpiresAt *time.Time
 	TenantID  int64
 	// DomainID is the custom domain the link is served from; nil is the default host.
-	DomainID   *int64
+	DomainID *int64
+	// DomainHost is the host of that domain; the repository fills it on reads, it is ignored on Create.
+	DomainHost string
 	MaxClicks  *int64
 	ClickCount int64
 	// PasswordHash is set for a password-protected link; it never leaves the server.

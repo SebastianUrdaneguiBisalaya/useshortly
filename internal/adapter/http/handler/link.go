@@ -1,12 +1,17 @@
 package handler
 
 import (
+	"context"
+	"errors"
 	"mime"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/gorilla/mux"
 )
@@ -16,25 +21,71 @@ type ClickRecorder interface {
 	Record(c analytics.Click)
 }
 
+// DomainFinder finds the verified custom domain that serves a host.
+type DomainFinder interface {
+	// FindVerified returns domain.ErrNotFound for an unknown or unverified host.
+	FindVerified(ctx context.Context, host string) (domain.Domain, error)
+}
+
 type LinkHandler struct {
 	links   *link.Service
 	clicks  ClickRecorder // nil records nothing
 	baseURL string        // public URL short links are served from
 	// trustProxy reads the visitor's address from X-Forwarded-For; see clientIP.
 	trustProxy bool
-	pages      UnlockPages // nil shows the default unlock page
-	orgs       OrgNames    // names the organization in the unlock page footer
-	abuseEmail string      // where visitors report a link; empty shows no report link
+	pages      UnlockPages  // nil shows the default unlock page
+	orgs       OrgNames     // names the organization in the unlock page footer
+	abuseEmail string       // where visitors report a link; empty shows no report link
+	domains    DomainFinder // nil serves every host as the default one
 }
 
 func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string, trustProxy bool) *LinkHandler {
 	return &LinkHandler{links: links, clicks: clicks, baseURL: strings.TrimRight(baseURL, "/"), trustProxy: trustProxy}
 }
 
+// WithDomains serves links of custom domains: the Host of a request picks the domain whose links
+// are looked up. Unknown hosts, and the instance's own, use the default links.
+func (h *LinkHandler) WithDomains(d DomainFinder) *LinkHandler {
+	h.domains = d
+	return h
+}
+
+// shortURL is the public address of a link: its domain's host if it has one, else the instance's.
+func shortURL(baseURL string, l link.Link) string {
+	if l.DomainHost == "" {
+		return baseURL + "/" + l.Code
+	}
+	scheme := "https"
+	if u, err := url.Parse(baseURL); err == nil && u.Scheme != "" {
+		scheme = u.Scheme
+	}
+	return scheme + "://" + l.DomainHost + "/" + l.Code
+}
+
+// domainID is the custom domain the request was made to, or nil for the default host.
+func (h *LinkHandler) domainID(r *http.Request) (*int64, error) {
+	if h.domains == nil {
+		return nil, nil
+	}
+	host := r.Host
+	if hostOnly, _, err := net.SplitHostPort(host); err == nil {
+		host = hostOnly
+	}
+	d, err := h.domains.FindVerified(r.Context(), host)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &d.ID, nil
+}
+
 type linkBody struct {
 	ID        int64   `json:"id"`
 	Code      string  `json:"code"`
 	ShortURL  string  `json:"short_url"`
+	DomainID  *int64  `json:"domain_id"`
 	OriginURL string  `json:"origin_url"`
 	ExpiresAt *string `json:"expires_at"`
 	MaxClicks *int64  `json:"max_clicks"`
@@ -53,6 +104,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		URL       string     `json:"url"`
 		ExpiresAt *time.Time `json:"expires_at"`
 		Alias     string     `json:"alias"`
+		DomainID  *int64     `json:"domain_id"`
 		MaxClicks *int64     `json:"max_clicks"`
 		Password  string     `json:"password"`
 	}
@@ -61,7 +113,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := h.links.Shorten(r.Context(), link.ShortenInput{
 		TenantID: tenant.ID, UserID: PrincipalFrom(r).UserID,
-		URL: in.URL, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
+		URL: in.URL, DomainID: in.DomainID, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
 	})
 	if err != nil {
 		WriteError(w, r, err)
@@ -72,7 +124,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
-		ID: l.ID, Code: l.Code, ShortURL: h.baseURL + "/" + l.Code, OriginURL: l.OriginURL,
+		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, OriginURL: l.OriginURL,
 		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), CreatedAt: formatTime(l.CreatedAt),
 	}
 }
@@ -127,8 +179,13 @@ func (h *LinkHandler) Unlock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	domainID, err := h.domainID(r)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
 	ip := clientIP(r, h.trustProxy)
-	l, err := h.links.Unlock(r.Context(), mux.Vars(r)["code"], password, ip.String())
+	l, err := h.links.Unlock(r.Context(), domainID, mux.Vars(r)["code"], password, ip.String())
 	if err != nil {
 		h.writeLocked(w, r, l, err)
 		return
@@ -162,7 +219,12 @@ func readPassword(w http.ResponseWriter, r *http.Request) (string, bool) {
 
 // Redirect answers 302 (not 301) so every click reaches the server.
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
-	l, err := h.links.Resolve(r.Context(), mux.Vars(r)["code"])
+	domainID, err := h.domainID(r)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	l, err := h.links.Resolve(r.Context(), domainID, mux.Vars(r)["code"])
 	if err != nil {
 		h.writeLocked(w, r, l, err)
 		return

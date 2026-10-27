@@ -7,6 +7,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
@@ -62,6 +63,13 @@ var httpErrors = []struct {
 	{qr.ErrInvalidFormat, apiError{http.StatusBadRequest, "invalid_format", "the format must be png or svg"}},
 	{qr.ErrInvalidSize, apiError{http.StatusBadRequest, "invalid_size", "the size must be a number of pixels between 64 and 1024"}},
 
+	{domain.ErrNotFound, apiError{http.StatusNotFound, "not_found", "domain not found"}},
+	{domain.ErrInvalidHost, apiError{http.StatusBadRequest, "invalid_host", "the host must be a domain name such as go.example.com, without scheme, port or path"}},
+	{domain.ErrHostTaken, apiError{http.StatusConflict, "host_taken", "the host is already registered"}},
+	{domain.ErrNotVerified, apiError{http.StatusConflict, "domain_not_verified", "the domain must be verified first"}},
+	{domain.ErrVerificationFailed, apiError{http.StatusUnprocessableEntity, "verification_failed", "the DNS TXT record was not found, check its name and value (DNS changes can take a while)"}},
+	{domain.ErrLookupFailed, apiError{http.StatusServiceUnavailable, "dns_unavailable", "the DNS lookup failed, try again"}},
+
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},
 	{link.ErrInvalidAlias, apiError{http.StatusBadRequest, "invalid_alias", "the alias must be 3 to 15 letters, digits, - or _, not 7 characters long and not a reserved word"}},
 	{link.ErrAliasTaken, apiError{http.StatusConflict, "alias_taken", "the alias is already in use"}},
@@ -74,6 +82,7 @@ var httpErrors = []struct {
 	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
 	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},
 	{link.ErrTooManyAttempts, apiError{http.StatusTooManyRequests, "too_many_attempts", "too many attempts, wait before trying again (see the Retry-After header)"}},
+	{link.ErrDomainsDisabled, apiError{http.StatusBadRequest, "domains_disabled", "custom domains are not enabled"}},
 	{link.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{link.ErrExpired, apiError{http.StatusGone, "link_expired", "the link expired"}},
 	{link.ErrCodeTaken, apiError{http.StatusServiceUnavailable, "code_unavailable", "could not allocate a short code, try again"}},

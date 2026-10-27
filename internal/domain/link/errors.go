@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrNotFound         = errors.New("link: not found")
+	ErrDomainsDisabled  = errors.New("link: custom domains are not enabled")
 	ErrExpired          = errors.New("link: expired")
 	ErrInvalidURL       = errors.New("link: invalid URL")
 	ErrCodeTaken        = errors.New("link: code taken")

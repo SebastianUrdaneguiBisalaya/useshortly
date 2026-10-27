@@ -65,10 +65,10 @@ func (r *countingRepo) Create(_ context.Context, l link.Link) (link.Link, error)
 	return l, nil
 }
 
-func (r *countingRepo) FindByCode(_ context.Context, code string) (link.Link, error) {
+func (r *countingRepo) FindByCode(_ context.Context, domainID *int64, code string) (link.Link, error) {
 	r.finds++
 	l, ok := r.links[code]
-	if !ok {
+	if !ok || !sameDomain(l.DomainID, domainID) {
 		return link.Link{}, link.ErrNotFound
 	}
 	return l, nil
@@ -97,7 +97,11 @@ func (r *countingRepo) Delete(_ context.Context, tenantID, id int64) error {
 	return link.ErrNotFound
 }
 
-func (r *countingRepo) ConsumeClick(context.Context, string) error {
+func sameDomain(a, b *int64) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
+}
+
+func (r *countingRepo) ConsumeClick(context.Context, int64) error {
 	r.consumes++
 	return nil
 }
@@ -119,13 +123,13 @@ func fixture() (*LinkRepository, *countingRepo, *memStore, link.Link) {
 func TestFindByCodeCachesTheLink(t *testing.T) {
 	repo, next, store, want := fixture()
 
-	first, err := repo.FindByCode(ctx, "abc1234")
+	first, err := repo.FindByCode(ctx, nil, "abc1234")
 	require.NoError(t, err)
 	assert.Equal(t, want, first)
 	assert.Equal(t, 1, next.finds)
 	assert.Equal(t, time.Minute, store.ttls["link:code:abc1234"], "entries expire after the configured ttl")
 
-	second, err := repo.FindByCode(ctx, "abc1234")
+	second, err := repo.FindByCode(ctx, nil, "abc1234")
 	require.NoError(t, err)
 	assert.Equal(t, want, second, "a cached link comes back whole, with every field")
 	assert.Equal(t, 1, next.finds, "the second read does not reach the repository")
@@ -137,9 +141,9 @@ func TestACachedProtectedLinkStaysProtected(t *testing.T) {
 	l.PasswordHash = "$argon2id$v=19$secret"
 	next.links["abc1234"] = l
 
-	_, err := repo.FindByCode(ctx, "abc1234") // fills the cache
+	_, err := repo.FindByCode(ctx, nil, "abc1234") // fills the cache
 	require.NoError(t, err)
-	got, err := repo.FindByCode(ctx, "abc1234") // served from it
+	got, err := repo.FindByCode(ctx, nil, "abc1234") // served from it
 	require.NoError(t, err)
 	assert.Equal(t, 1, next.finds)
 	assert.True(t, got.Protected(), "the cached copy must not lose the password")
@@ -148,13 +152,13 @@ func TestACachedProtectedLinkStaysProtected(t *testing.T) {
 
 func TestFindByCodeDoesNotCacheMisses(t *testing.T) {
 	repo, next, store, _ := fixture()
-	_, err := repo.FindByCode(ctx, "nope000")
+	_, err := repo.FindByCode(ctx, nil, "nope000")
 	assert.ErrorIs(t, err, link.ErrNotFound)
 	assert.Empty(t, store.data["link:code:nope000"])
 
 	// A code claimed later must be found at once, not hidden behind a cached "not found".
 	next.links["nope000"] = link.Link{ID: 5, Code: "nope000", OriginURL: "https://example.com/new"}
-	got, err := repo.FindByCode(ctx, "nope000")
+	got, err := repo.FindByCode(ctx, nil, "nope000")
 	require.NoError(t, err)
 	assert.Equal(t, "https://example.com/new", got.OriginURL)
 }
@@ -163,7 +167,7 @@ func TestCacheFailuresFallBackToTheRepository(t *testing.T) {
 	t.Run("get fails", func(t *testing.T) {
 		repo, next, store, want := fixture()
 		store.failGet = true
-		got, err := repo.FindByCode(ctx, "abc1234")
+		got, err := repo.FindByCode(ctx, nil, "abc1234")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 		assert.Equal(t, 1, next.finds)
@@ -171,20 +175,20 @@ func TestCacheFailuresFallBackToTheRepository(t *testing.T) {
 	t.Run("set fails", func(t *testing.T) {
 		repo, next, store, want := fixture()
 		store.failSet = true
-		got, err := repo.FindByCode(ctx, "abc1234")
+		got, err := repo.FindByCode(ctx, nil, "abc1234")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
-		_, _ = repo.FindByCode(ctx, "abc1234")
+		_, _ = repo.FindByCode(ctx, nil, "abc1234")
 		assert.Equal(t, 2, next.finds, "nothing was cached, so both reads hit the repository")
 	})
 	t.Run("garbage in the cache", func(t *testing.T) {
 		repo, next, store, want := fixture()
 		store.data["link:code:abc1234"] = []byte("{not json")
-		got, err := repo.FindByCode(ctx, "abc1234")
+		got, err := repo.FindByCode(ctx, nil, "abc1234")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 		assert.Equal(t, 1, next.finds)
-		again, err := repo.FindByCode(ctx, "abc1234")
+		again, err := repo.FindByCode(ctx, nil, "abc1234")
 		require.NoError(t, err)
 		assert.Equal(t, want, again)
 		assert.Equal(t, 1, next.finds, "the bad entry was overwritten with a good one")
@@ -193,7 +197,7 @@ func TestCacheFailuresFallBackToTheRepository(t *testing.T) {
 
 func TestDeleteDropsTheCacheEntry(t *testing.T) {
 	repo, next, store, _ := fixture()
-	_, err := repo.FindByCode(ctx, "abc1234")
+	_, err := repo.FindByCode(ctx, nil, "abc1234")
 	require.NoError(t, err)
 	require.Contains(t, store.data, "link:code:abc1234")
 
@@ -202,14 +206,14 @@ func TestDeleteDropsTheCacheEntry(t *testing.T) {
 
 	require.NoError(t, repo.Delete(ctx, 1, 4))
 	assert.Empty(t, store.data, "both keys are gone")
-	_, err = repo.FindByCode(ctx, "abc1234")
+	_, err = repo.FindByCode(ctx, nil, "abc1234")
 	assert.ErrorIs(t, err, link.ErrNotFound, "a deleted link stops redirecting")
 	assert.Equal(t, 2, next.finds)
 }
 
 func TestDeleteSucceedsEvenIfTheCacheCannotBeCleared(t *testing.T) {
 	repo, next, store, _ := fixture()
-	_, err := repo.FindByCode(ctx, "abc1234")
+	_, err := repo.FindByCode(ctx, nil, "abc1234")
 	require.NoError(t, err)
 	store.failDel = true
 	require.NoError(t, repo.Delete(ctx, 1, 4))
@@ -218,7 +222,7 @@ func TestDeleteSucceedsEvenIfTheCacheCannotBeCleared(t *testing.T) {
 
 func TestOtherCallsPassThrough(t *testing.T) {
 	repo, next, store, _ := fixture()
-	require.NoError(t, repo.ConsumeClick(ctx, "abc1234"))
+	require.NoError(t, repo.ConsumeClick(ctx, 4))
 	assert.Equal(t, 1, next.consumes, "ConsumeClick always reaches the database, it enforces max_clicks")
 
 	_, total, err := repo.ListByTenant(ctx, 1, page.Params{})

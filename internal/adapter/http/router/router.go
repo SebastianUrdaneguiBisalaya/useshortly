@@ -20,6 +20,7 @@ type Handlers struct {
 	Stats    *handler.StatsHandler
 	QR       *handler.QRHandler
 	Pages    *handler.UnlockPageHandler
+	Domains  *handler.DomainHandler
 	// Limits protects the endpoints from floods and guessing; nil limits nothing.
 	Limits *middlewares.RateLimits
 }
@@ -88,6 +89,11 @@ func NewRouter(h Handlers) http.Handler {
 		eitherOrg.Handle(prefix, middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Pages.Delete))).Methods(http.MethodDelete)
 	}
 	eitherOrg.Handle("/unlock-page/history", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.History))).Methods(http.MethodGet)
+	eitherOrg.Handle("/domains", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Create))).Methods(http.MethodPost)
+	eitherOrg.Handle("/domains", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Domains.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Domains.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/domains/{domainID}/verify", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Verify))).Methods(http.MethodPost)
+	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Delete))).Methods(http.MethodDelete)
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 

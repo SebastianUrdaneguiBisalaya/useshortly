@@ -44,7 +44,7 @@ func (h *QRHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	img, format, err := h.qr.Render(h.baseURL+"/"+l.Code, qr.Format(r.URL.Query().Get("format")), size)
+	img, format, err := h.qr.Render(shortURL(h.baseURL, l), qr.Format(r.URL.Query().Get("format")), size)
 	if err != nil {
 		WriteError(w, r, err)
 		return

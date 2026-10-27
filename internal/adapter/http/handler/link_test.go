@@ -64,19 +64,24 @@ func (r *fakeLinkRepo) Delete(_ context.Context, tenantID, id int64) error {
 	return link.ErrNotFound
 }
 
-func (r *fakeLinkRepo) ConsumeClick(_ context.Context, code string) error {
-	l := r.links[code]
-	if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
-		return link.ErrExpired
+func (r *fakeLinkRepo) ConsumeClick(_ context.Context, id int64) error {
+	for code, l := range r.links {
+		if l.ID != id {
+			continue
+		}
+		if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
+			return link.ErrExpired
+		}
+		l.ClickCount++
+		r.links[code] = l
+		return nil
 	}
-	l.ClickCount++
-	r.links[code] = l
-	return nil
+	return link.ErrNotFound
 }
 
-func (r *fakeLinkRepo) FindByCode(_ context.Context, code string) (link.Link, error) {
+func (r *fakeLinkRepo) FindByCode(_ context.Context, domainID *int64, code string) (link.Link, error) {
 	l, ok := r.links[code]
-	if !ok {
+	if !ok || (l.DomainID == nil) != (domainID == nil) || (domainID != nil && *l.DomainID != *domainID) {
 		return link.Link{}, link.ErrNotFound
 	}
 	return l, nil

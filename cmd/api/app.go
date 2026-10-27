@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/jwt"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/codegen"
@@ -18,6 +20,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
@@ -41,6 +44,8 @@ type adapters struct {
 	countries analytics.CountryResolver
 	// attempts limits the password tries of protected links.
 	attempts link.AttemptLimiter
+	// dns reads the TXT records that verify custom domains.
+	dns domain.DNSResolver
 	// limits caps how fast one caller can hit the endpoints; nil limits nothing.
 	limits *middlewares.RateLimits
 }
@@ -87,7 +92,8 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	}
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
-	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts)
+	domains := domain.NewService(sqlite.NewDomainRepository(db), a.dns, cfg.JWTSecret, appHost(cfg.AppURL))
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)
@@ -102,11 +108,21 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
 			Stats:    handler.NewStatsHandler(stats),
 			Pages:    handler.NewUnlockPageHandler(pages),
+			Domains:  handler.NewDomainHandler(domains),
 			Limits:   a.limits,
 			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}
+}
+
+// appHost is the host of the instance's own URL, which no custom domain can claim.
+func appHost(appURL string) string {
+	u, err := url.Parse(appURL)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
 }

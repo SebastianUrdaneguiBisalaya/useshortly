@@ -1,86 +1,46 @@
-// import { Hono } from "hono";
-// import { cors } from "hono/cors";
-// import { HTTPException } from "hono/http-exception";
-// import { failure, success } from "./lib/response.js";
-// import { requireAuth } from "./middleware/auth.js";
-// import type { RpcContext } from "./router.js";
-// import { router } from "./router.js";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import type { ApiClient } from "./api/client.js";
+import type { IdentityProvider } from "./api/identity.js";
+import type { Auth } from "./auth/auth.js";
+import { basePath, resourcePath } from "./auth/options.js";
+import type { Config } from "./config.js";
+import { consentRoutes } from "./http/consent.js";
+import { signInRoutes } from "./http/sign-in.js";
+import { mcpRoute } from "./mcp/route.js";
 
-// const trustedOrigins = (process.env.AUTH_TRUSTED_ORIGINS ?? "")
-//   .split(",")
-//   .map((origin) => origin.trim())
-//   .filter(Boolean);
+// Endpoints MCP clients call from any origin, with no cookies: discovery, keys and the token endpoint.
+const publicPaths = [/^\/\.well-known\//, new RegExp(`^${resourcePath}$`), new RegExp(`^${basePath}/jwks$`), new RegExp(`^${basePath}/oauth2/token$`)];
 
-// const app = new Hono();
+// No allowHeaders list: the browser's own Access-Control-Request-Headers are echoed, so the MCP
+// protocol's extra headers work without this file knowing them. No cookies are ever involved.
+const openCors = cors({
+  origin: "*",
+  allowMethods: ["GET", "HEAD", "POST", "OPTIONS"],
+  exposeHeaders: ["WWW-Authenticate", "MCP-Protocol-Version"],
+  maxAge: 600,
+});
 
-// app.use(
-//   "*",
-//   cors({
-//     credentials: true,
-//     origin: trustedOrigins,
-//   }),
-// );
+export function createApp(deps: { config: Config; auth: Auth; identity: IdentityProvider; api: ApiClient }) {
+  const { auth } = deps;
+  const app = new Hono();
 
-// app.onError((err, c) => {
-//   const locale = resolveLocale(c.req.header("accept-language") ?? null);
+  app.use("*", (c, next) => (publicPaths.some((p) => p.test(c.req.path)) ? openCors(c, next) : next()));
 
-//   if (err instanceof HTTPException) {
-//     return c.json(
-//       failure(err.constructor.name, err.message, err.status),
-//       err.status,
-//     );
-//   }
+  app.get("/health", (c) => c.json({ status: "ok" }));
 
-//   console.error(err);
-//   return c.json(
-//     failure("INTERNAL_SERVER_ERROR", t(locale, "error.internal"), 500),
-//     500,
-//   );
-// });
+  app.route("/", signInRoutes(deps));
+  app.route("/", consentRoutes(deps));
 
-// app.notFound((c) => {
-//   const locale = resolveLocale(c.req.header("accept-language") ?? null);
-//   return c.json(failure("NOT_FOUND", t(locale, "error.notFound"), 404), 404);
-// });
+  // The MCP endpoint takes POST only: GET and DELETE are the sessions of the 2025 protocol.
+  const mcp = mcpRoute(deps);
+  app.post(resourcePath, (c) => mcp(c.req.raw));
+  app.all(resourcePath, (c) => c.text("Method not allowed", 405, { Allow: "POST" }));
 
-// app.on(
-//   [
-//     "GET",
-//     "POST",
-//   ],
-//   "/api/auth/**",
-//   (c) => auth.handler(c.req.raw),
-// );
+  // Better Auth answers its own endpoints and the OAuth discovery documents.
+  const betterAuth = (c: { req: { raw: Request } }) => auth.handler(c.req.raw);
+  app.on(["GET", "HEAD", "POST", "OPTIONS"], "/.well-known/*", betterAuth);
+  app.on(["GET", "HEAD", "POST", "OPTIONS"], `${basePath}/*`, betterAuth);
 
-// app.get("/", (c) =>
-//   c.json(
-//     success({
-//       status: "ok",
-//     }),
-//   ),
-// );
-
-// app.get("/me", requireAuth, (c) => c.json(success(c.get("user"))));
-
-// // Type-safe RPC layer (packages/contracts + apps/web/app/lib/rpc.ts). This has
-// // its own response envelope (oRPC's), separate from the REST routes above.
-// const rpc = new RPCHandler(router);
-
-// app.use("/rpc/*", async (c, next) => {
-//   const session = await auth.api.getSession({
-//     headers: c.req.raw.headers,
-//   });
-//   const context: RpcContext = {
-//     user: session?.user ?? null,
-//   };
-
-//   const { matched, response } = await rpc.handle(c.req.raw, {
-//     context,
-//     prefix: "/rpc",
-//   });
-
-//   if (matched) return c.newResponse(response.body, response);
-//   await next();
-// });
-
-// export { app };
+  return app;
+}

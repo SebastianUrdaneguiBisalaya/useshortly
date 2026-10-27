@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/mcptoken"
 	dnsadapter "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/dns"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/geoip"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
@@ -97,6 +99,15 @@ func run() error {
 		ad.countries = geo
 	} else {
 		log.Println("GEOIP_DB_PATH is not set: the country of clicks is not recorded")
+	}
+	if cfg.MCPPublicKey != "" {
+		key, err := mcptoken.ParsePublicKey(cfg.MCPPublicKey)
+		if err != nil {
+			return fmt.Errorf("MCP_PUBLIC_KEY: %w", err)
+		}
+		ad.mcp = mcptoken.NewVerifier(key)
+	} else {
+		log.Println("MCP_PUBLIC_KEY is not set: MCP access is disabled")
 	}
 	if cfg.RateLimit {
 		ad.limits = middlewares.DefaultRateLimits(cfg.TrustProxy)

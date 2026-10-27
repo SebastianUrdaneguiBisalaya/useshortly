@@ -47,6 +47,8 @@ type adapters struct {
 	attempts link.AttemptLimiter
 	// dns reads the TXT records that verify custom domains.
 	dns domain.DNSResolver
+	// mcp verifies the tokens of the MCP server; nil refuses MCP access.
+	mcp auth.MCPTokenVerifier
 	// limits caps how fast one caller can hit the endpoints; nil limits nothing.
 	limits *middlewares.RateLimits
 }
@@ -117,7 +119,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 		clicks: clicks,
 		purger: purger,
 		handler: router.NewRouter(router.Handlers{
-			Auth:     middlewares.NewAuth(users, keys),
+			Auth:     newAuthMiddleware(users, keys, a.mcp),
 			Tenant:   middlewares.NewTenant(orgs),
 			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion),
 			Orgs:     handler.NewOrgHandler(orgs),
@@ -139,4 +141,13 @@ func appHost(appURL string) string {
 		return ""
 	}
 	return strings.ToLower(u.Hostname())
+}
+
+// newAuthMiddleware enables MCP tokens only when a verifier is configured.
+func newAuthMiddleware(users *user.Service, keys *apikey.Service, mcp auth.MCPTokenVerifier) *middlewares.Auth {
+	a := middlewares.NewAuth(users, keys)
+	if mcp != nil {
+		a.WithMCP(mcp)
+	}
+	return a
 }

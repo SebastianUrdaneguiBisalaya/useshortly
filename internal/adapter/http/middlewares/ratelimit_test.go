@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 )
 
 var ok200 = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -131,4 +132,23 @@ func TestNoLimitsLimitsNothing(t *testing.T) {
 			require.Equal(t, http.StatusOK, call(h, "203.0.113.7:1", nil).Code)
 		}
 	}
+}
+
+func TestPerPrincipalGivesMCPCallsTheirOwnBudget(t *testing.T) {
+	h := limits(false).PerPrincipal()(ok200)
+	as := func(p handler.Principal) int {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.RemoteAddr = "203.0.113.7:1"
+		r = r.WithContext(handler.WithPrincipal(r.Context(), p))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec.Code
+	}
+	ana := handler.Principal{UserID: 1}
+	anaMCP := handler.Principal{UserID: 1, MCPScope: apikey.ScopeRead}
+
+	assert.Equal(t, http.StatusOK, as(anaMCP))
+	assert.Equal(t, http.StatusOK, as(anaMCP))
+	assert.Equal(t, http.StatusTooManyRequests, as(anaMCP))
+	assert.Equal(t, http.StatusOK, as(ana), "an AI client does not use up Ana's own budget")
 }

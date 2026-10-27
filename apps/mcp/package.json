@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
   },
   "author": {
     "name": "Sebastian Marat Urdanegui Bisalaya",
@@ -21,5 +24,19 @@
     }
   },
   "packageManager": "pnpm@12.15.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@better-auth/cimd": "1.7.13",
+    "@better-auth/mcp": "1.7.13",
+    "@hono/node-server": "2.1.5",
+    "@modelcontextprotocol/server": "2.4.0",
+    "hono": "4.13.14",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
 }

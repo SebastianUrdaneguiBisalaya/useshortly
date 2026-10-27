@@ -1,21 +1,32 @@
 import { useMemo } from "react";
-import { Link as RouterLink, useSearchParams } from "react-router";
+import {
+  Link as RouterLink,
+  Navigate,
+  useNavigate,
+  useSearchParams,
+} from "react-router";
+import { toast } from "sonner";
+import { useResetPassword } from "~/api/endpoints/auth/auth";
 import { Form } from "~/components/ui/forms-inputs/form/form";
 import { Input } from "~/components/ui/forms-inputs/input/input";
 import { InputOtp } from "~/components/ui/forms-inputs/input-otp/input-otp";
 import { Layout } from "~/components/ui/layout/layout/layout";
 import { Link } from "~/components/ui/foundations/link/link";
 import { Typography } from "~/components/ui/foundations/typography/typography";
-import { createResetPasswordSchema, OTP_LENGTH } from "~/features/auth/schemas";
+import { createResetPasswordSchema, OTP_LENGTH } from "./schemas";
 import { useTranslate } from "~/hooks/use-translate";
 
 export default function ResetPasswordPage() {
   const t = useTranslate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email");
+  const navigate = useNavigate();
+  const resetPassword = useResetPassword();
   const schema = useMemo(() => createResetPasswordSchema(t), [
     t,
   ]);
+
+  if (!email) return <Navigate replace to="/auth/forgot-password" />;
 
   return (
     <>
@@ -27,11 +38,9 @@ export default function ResetPasswordPage() {
           {t("auth.resetPassword.title")}
         </Typography.H2>
         <Typography.Span className="text-foreground-secondary">
-          {email
-            ? t("auth.resetPassword.description", {
-                email,
-              })
-            : t("auth.resetPassword.descriptionNoEmail")}
+          {t("auth.resetPassword.description", {
+            email,
+          })}
         </Typography.Span>
       </Layout.Stack>
       <Form
@@ -42,10 +51,28 @@ export default function ResetPasswordPage() {
           new_password: "",
         }}
         mode="onSubmit"
-        onSubmit={() => {}}
+        onSubmit={(data) =>
+          resetPassword.mutate(
+            {
+              data: {
+                code: data.code,
+                email,
+                new_password: data.new_password,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success(t("auth.resetPassword.success"));
+                void navigate("/auth/sign-in", {
+                  replace: true,
+                });
+              },
+            },
+          )
+        }
         schema={schema}
       >
-        {({ Field, form }) => (
+        {({ Field }) => (
           <Layout.Stack>
             <Field name="code">
               {(field) => (
@@ -99,20 +126,13 @@ export default function ResetPasswordPage() {
             </Field>
             <Form.Submit
               className="self-center w-full py-3"
-              disabled={form.formState.isSubmitting}
+              loading={resetPassword.isPending}
+              lang={{
+                loadingText: t("auth.resetPassword.submitting"),
+              }}
             >
-              {form.formState.isSubmitting
-                ? t("auth.resetPassword.submitting")
-                : t("auth.resetPassword.submit")}
+              {t("auth.resetPassword.submit")}
             </Form.Submit>
-            {form.formState.errors.root?.message && (
-              <Typography.Span
-                className="text-xs text-destructive"
-                role="alert"
-              >
-                {form.formState.errors.root.message}
-              </Typography.Span>
-            )}
           </Layout.Stack>
         )}
       </Form>

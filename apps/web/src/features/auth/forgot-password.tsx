@@ -1,16 +1,18 @@
 import { useMemo } from "react";
 import { Link as RouterLink, useNavigate } from "react-router";
+import { useForgotPassword } from "~/api/endpoints/auth/auth";
 import { Form } from "~/components/ui/forms-inputs/form/form";
 import { Input } from "~/components/ui/forms-inputs/input/input";
 import { Layout } from "~/components/ui/layout/layout/layout";
 import { Link } from "~/components/ui/foundations/link/link";
 import { Typography } from "~/components/ui/foundations/typography/typography";
-import { createForgotPasswordSchema } from "~/features/auth/schemas";
+import { createForgotPasswordSchema } from "./schemas";
 import { useTranslate } from "~/hooks/use-translate";
 
 export default function ForgotPasswordPage() {
   const t = useTranslate();
   const navigate = useNavigate();
+  const forgotPassword = useForgotPassword();
   const schema = useMemo(() => createForgotPasswordSchema(t), [
     t,
   ]);
@@ -34,14 +36,23 @@ export default function ForgotPasswordPage() {
           email: "",
         }}
         mode="onSubmit"
-        onSubmit={async (data) => {
-          await navigate(
-            `/auth/reset-password?email=${encodeURIComponent(data.email)}`,
-          );
-        }}
+        onSubmit={(data) =>
+          forgotPassword.mutate(
+            {
+              data,
+            },
+            {
+              onSuccess: () => {
+                void navigate(
+                  `/auth/reset-password?email=${encodeURIComponent(data.email)}`,
+                );
+              },
+            },
+          )
+        }
         schema={schema}
       >
-        {({ Field, form }) => (
+        {({ Field }) => (
           <Layout.Stack>
             <Field name="email">
               {(field) => (
@@ -58,20 +69,13 @@ export default function ForgotPasswordPage() {
             </Field>
             <Form.Submit
               className="self-center w-full py-3"
-              disabled={form.formState.isSubmitting}
+              loading={forgotPassword.isPending}
+              lang={{
+                loadingText: t("auth.forgotPassword.submitting"),
+              }}
             >
-              {form.formState.isSubmitting
-                ? t("auth.forgotPassword.submitting")
-                : t("auth.forgotPassword.submit")}
+              {t("auth.forgotPassword.submit")}
             </Form.Submit>
-            {form.formState.errors.root?.message && (
-              <Typography.Span
-                className="text-xs text-destructive"
-                role="alert"
-              >
-                {form.formState.errors.root.message}
-              </Typography.Span>
-            )}
           </Layout.Stack>
         )}
       </Form>

@@ -4,6 +4,7 @@ import {
   LoginBody,
   RegisterBody,
   ResetPasswordBody,
+  VerifyRegistrationBody,
 } from "~/api/zod/index.zod";
 import type { Translate } from "~/i18n";
 
@@ -12,11 +13,20 @@ import type { Translate } from "~/i18n";
 // overrides the fields with the validation rules and translated messages the form needs.
 
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 100;
+export const PASSWORD_MAX_LENGTH = 128;
 export const OTP_LENGTH = 6;
 
 function emailField(t: Translate) {
   return z.email(t("auth.validation.emailInvalid"));
+}
+
+function codeField(t: Translate) {
+  return z.string().length(
+    OTP_LENGTH,
+    t("auth.validation.codeInvalid", {
+      length: OTP_LENGTH,
+    }),
+  );
 }
 
 function newPasswordField(t: Translate) {
@@ -59,6 +69,17 @@ export function createForgotPasswordSchema(t: Translate) {
   });
 }
 
+/** The signup confirmation form only asks for the code; the email comes from the query string. */
+export function createVerifyEmailSchema(t: Translate) {
+  return VerifyRegistrationBody.pick({
+    code: true,
+  })
+    .required()
+    .extend({
+      code: codeField(t),
+    });
+}
+
 /**
  * Custom: the API body is `{ email, code, new_password }`, but the form adds a
  * confirmation field and has no email input (it comes from the query string
@@ -71,12 +92,7 @@ export function createResetPasswordSchema(t: Translate) {
   })
     .required()
     .extend({
-      code: z.string().length(
-        OTP_LENGTH,
-        t("auth.validation.codeInvalid", {
-          length: OTP_LENGTH,
-        }),
-      ),
+      code: codeField(t),
       confirm_password: z
         .string()
         .min(1, t("auth.validation.passwordRequired")),

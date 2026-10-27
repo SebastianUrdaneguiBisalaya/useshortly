@@ -1,0 +1,39 @@
+{
+  "name": "www",
+  "version": "0.1.0",
+  "private": false,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check",
+    "format": "biome format --write",
+    "type-check": "tsc --noEmit"
+  },
+  "author": {
+    "name": "Sebastian Marat Urdanegui Bisalaya",
+    "url": "https://www.sebastianurdanegui.com/"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "dependencies": {
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.46.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-merge": "3.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.2",
+    "@tailwindcss/turbopack": "4",
+    "@types/node": "20",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "4",
+    "typescript": "5"
+  },
+  "packageManager": "pnpm@12.3.4"
+}

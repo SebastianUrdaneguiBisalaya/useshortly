@@ -98,5 +98,6 @@ func NewRouter(h Handlers) http.Handler {
 	unlocks := r.NewRoute().Subrouter()
 	unlocks.Use(h.Limits.UnlockPerIP())
 	unlocks.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}/unlock", h.Links.Unlock).Methods(http.MethodPost)
-	return r
+	// Outermost, so the log sees the 500 that Recover writes and nothing escapes either.
+	return middlewares.RequestLog(middlewares.Recover(r))
 }

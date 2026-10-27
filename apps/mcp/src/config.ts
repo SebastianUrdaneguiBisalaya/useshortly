@@ -24,6 +24,10 @@ const schema = z
     MCP_TURSO_AUTH_TOKEN: z.string().default(""),
     // Seconds between pull/push rounds with Turso Cloud.
     MCP_SYNC_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(30),
+    // Same Google OAuth client the API uses; empty hides "Continue with Google" on the sign-in page.
+    GOOGLE_CLIENT_ID: z.string().default(""),
+    // Read the visitor's address from X-Forwarded-For (set it behind a reverse proxy).
+    TRUST_PROXY: z.enum(["true", "false"]).default("false"),
     // Comma separated origins allowed to call the OAuth endpoints from a browser.
     TRUSTED_ORIGINS: z.string().default(""),
   })
@@ -45,6 +49,8 @@ export type Config = {
   authSecret: string;
   database: { path: string; tursoUrl: string; tursoAuthToken: string; syncIntervalMs: number };
   trustedOrigins: string[];
+  googleClientId: string;
+  trustProxy: boolean;
 };
 
 /** Reads an Ed25519 private key from a PKCS8 PEM, or from the base64 of that PEM. */
@@ -91,6 +97,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       tursoAuthToken: e.MCP_TURSO_AUTH_TOKEN,
       syncIntervalMs: e.MCP_SYNC_INTERVAL_SECONDS * 1000,
     },
+    googleClientId: e.GOOGLE_CLIENT_ID,
+    trustProxy: e.TRUST_PROXY === "true",
     trustedOrigins: e.TRUSTED_ORIGINS.split(",")
       .map((o) => o.trim())
       .filter(Boolean),

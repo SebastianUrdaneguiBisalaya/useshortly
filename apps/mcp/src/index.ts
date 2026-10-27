@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { createIdentityClient } from "./api/identity.js";
 import { createApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
 import { migrate } from "./auth/migrate.js";
@@ -17,7 +18,7 @@ if (created.length || added.length) {
 }
 
 const auth = createAuth(options);
-const server = serve({ fetch: createApp({ auth }).fetch, port: config.port }, (info) => {
+const server = serve({ fetch: createApp({ config, auth, identity: createIdentityClient({ apiUrl: config.apiUrl }) }).fetch, port: config.port }, (info) => {
   console.log(`useshortly MCP (${config.environment}) listening on :${info.port}, public URL ${config.publicUrl}`);
 });
 

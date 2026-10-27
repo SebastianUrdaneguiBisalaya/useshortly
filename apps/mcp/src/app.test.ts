@@ -20,7 +20,7 @@ let app: ReturnType<typeof createApp>;
 beforeAll(async () => {
   const options = authOptions(config, db);
   await migrate(options);
-  app = createApp({ auth: createAuth(options) });
+  app = createApp({ config, auth: createAuth(options), identity: {} as never });
 });
 afterAll(() => db.close());
 

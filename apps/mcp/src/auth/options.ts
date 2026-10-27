@@ -5,6 +5,7 @@ import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import type { Config } from "../config.js";
 import type { AuthDatabase } from "../db/index.js";
+import { delegatedSession } from "./delegated-session.js";
 import { supportedScopes } from "./scopes.js";
 
 /** Path Better Auth is mounted on; its issuer is the public URL plus this. */
@@ -55,10 +56,12 @@ export function authOptions(config: Config, database: AuthDatabase["database"]) 
         apiUserId: { type: "number", required: true, unique: true, input: false, fieldName: "user_id" },
       },
     },
-    session: { modelName: tableNames.session },
+    // The session only carries the user through authorization; the tokens it yields outlive it.
+    session: { modelName: tableNames.session, expiresIn: 8 * 60 * 60 },
     account: { modelName: tableNames.account },
     verification: { modelName: tableNames.verification },
     plugins: [
+      delegatedSession(),
       jwt({
         jwks: { keyPairConfig: { alg: "EdDSA" } },
         schema: { jwks: { modelName: tableNames.jwks } },

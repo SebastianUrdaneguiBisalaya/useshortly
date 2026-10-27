@@ -1,0 +1,216 @@
+import { Hono } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
+import {
+  IdentityUnavailableError,
+  InvalidCredentialsError,
+  RateLimitedError,
+  type Identity,
+  type IdentityProvider,
+} from "../api/identity.js";
+import type { Auth } from "../auth/auth.js";
+import { basePath } from "../auth/options.js";
+import type { Config } from "../config.js";
+import { clientIp } from "./client-ip.js";
+import { Layout } from "./layout.js";
+import { AttemptLimiter } from "./rate-limit.js";
+
+const googleScript = "https://accounts.google.com/gsi/client";
+
+type Deps = { config: Config; auth: Auth; identity: IdentityProvider };
+
+const messages = {
+  invalid: "Incorrect email or password.",
+  limited: "Too many attempts. Try again in a few minutes.",
+  unavailable: "useshortly could not be reached. Try again shortly.",
+  google: "Google sign-in failed. Try again or use your email and password.",
+  expired: "This sign-in link is missing or expired. Start again from your MCP client.",
+} as const;
+type Problem = keyof typeof messages;
+
+/**
+ * The OAuth flow sends the user here with the authorization request, signed by Better Auth,
+ * in the query string. It is carried through the form untouched and handed back to the
+ * authorize endpoint, which checks the signature: nothing here can change what is authorized.
+ */
+const validQuery = (q: string | undefined): q is string =>
+  !!q && q.length <= 4096 && new URLSearchParams(q).has("sig") && new URLSearchParams(q).has("client_id");
+
+const resumeUrl = (query: string) => `${basePath}/oauth2/authorize?${query}`;
+
+export function signInRoutes({ config, auth, identity }: Deps) {
+  const app = new Hono();
+  const origin = new URL(config.publicUrl).origin;
+  const googleEnabled = config.googleClientId !== "";
+  const perIp = new AttemptLimiter(20, 10 * 60_000);
+  const perAccount = new AttemptLimiter(8, 10 * 60_000);
+
+  // A browser always sends Origin on a POST. Anything else is not our own page: refuse it.
+  const sameOrigin: MiddlewareHandler = async (c, next) => {
+    if (c.req.header("origin") !== origin) return c.text("Forbidden", 403);
+    await next();
+  };
+
+  const secure = (c: Context, nonce: string) => {
+    c.header("Cache-Control", "no-store");
+    c.header("Referrer-Policy", "no-referrer");
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header(
+      "Content-Security-Policy",
+      [
+        "default-src 'none'",
+        `style-src 'nonce-${nonce}'${googleEnabled ? " https://accounts.google.com/gsi/style" : ""}`,
+        `script-src 'nonce-${nonce}'${googleEnabled ? ` ${googleScript}` : ""}`,
+        `connect-src 'self'${googleEnabled ? " https://accounts.google.com" : ""}`,
+        googleEnabled ? "frame-src https://accounts.google.com" : "",
+        "img-src 'self' data:",
+        "base-uri 'none'",
+        "frame-ancestors 'none'",
+      ]
+        .filter(Boolean)
+        .join("; "),
+    );
+  };
+
+  const page = (c: Context, query: string | undefined, problem?: Problem, status: 200 | 401 | 429 | 503 = 200) => {
+    const nonce = btoa(crypto.randomUUID());
+    secure(c, nonce);
+    c.status(status);
+    return c.html(
+      <Layout title="Sign in · useshortly" nonce={nonce}>
+        <h1>Sign in to useshortly</h1>
+        {validQuery(query) ? (
+          <>
+            <p>An MCP client wants to use your account.</p>
+            <form method="post" action="/sign-in">
+              <input type="hidden" name="oauth_query" value={query} />
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="username" required maxlength={255} />
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required maxlength={1024} />
+              <button type="submit">Sign in</button>
+            </form>
+            {googleEnabled && (
+              <>
+                <hr />
+                <button id="google" class="secondary" type="button" data-client-id={config.googleClientId} data-query={query}>
+                  Continue with Google
+                </button>
+                <script src={googleScript} nonce={nonce} async defer></script>
+                <script nonce={nonce} dangerouslySetInnerHTML={{ __html: googleButton }} />
+              </>
+            )}
+          </>
+        ) : (
+          <p>{messages.expired}</p>
+        )}
+        <div id="problem" class="error" role="alert" hidden={!problem}>
+          {problem ? messages[problem] : ""}
+        </div>
+      </Layout>,
+    );
+  };
+
+  /** Starts the Better Auth session for an identity the API vouched for. */
+  const startSession = async (c: Context, who: Identity, query: string) => {
+    const created = await auth.api.createDelegatedSession({
+      body: {
+        apiUserId: who.apiUserId,
+        email: who.email,
+        emailVerified: who.emailVerified,
+        name: who.name,
+        image: who.imageUrl,
+      },
+      headers: c.req.raw.headers,
+      asResponse: true,
+    });
+    const headers = new Headers({ Location: resumeUrl(query), "Cache-Control": "no-store" });
+    for (const cookie of created.headers.getSetCookie()) headers.append("Set-Cookie", cookie);
+    return headers;
+  };
+
+  const problemOf = (error: unknown): { problem: Problem; status: 401 | 429 | 503 } => {
+    if (error instanceof InvalidCredentialsError) return { problem: "invalid", status: 401 };
+    if (error instanceof RateLimitedError) return { problem: "limited", status: 429 };
+    if (error instanceof IdentityUnavailableError) return { problem: "unavailable", status: 503 };
+    throw error;
+  };
+
+  app.get("/sign-in", (c) => page(c, new URL(c.req.url).search.slice(1)));
+
+  app.post("/sign-in", sameOrigin, async (c) => {
+    const form = await c.req.parseBody();
+    const query = typeof form.oauth_query === "string" ? form.oauth_query : undefined;
+    const email = typeof form.email === "string" ? form.email.trim().toLowerCase() : "";
+    const password = typeof form.password === "string" ? form.password : "";
+    if (!validQuery(query)) return page(c, undefined);
+    if (!email || email.length > 255 || !password || password.length > 1024) return page(c, query, "invalid", 401);
+
+    const ip = clientIp(c, config.trustProxy);
+    if (!perIp.allow(ip) || !perAccount.allow(email)) return page(c, query, "limited", 429);
+
+    try {
+      const who = await identity.password(email, password, ip);
+      return new Response(null, { status: 303, headers: await startSession(c, who, query) });
+    } catch (error) {
+      const { problem, status } = problemOf(error);
+      return page(c, query, problem, status);
+    }
+  });
+
+  if (googleEnabled) {
+    app.post("/sign-in/google", sameOrigin, async (c) => {
+      const body = await c.req.json().catch(() => null);
+      const code = typeof body?.code === "string" ? body.code : "";
+      const query = typeof body?.oauth_query === "string" ? body.oauth_query : undefined;
+      if (!code || code.length > 2048 || !validQuery(query)) return c.json({ error: messages.expired }, 400);
+
+      const ip = clientIp(c, config.trustProxy);
+      if (!perIp.allow(ip)) return c.json({ error: messages.limited }, 429);
+
+      try {
+        const who = await identity.google(code, ip);
+        const headers = await startSession(c, who, query);
+        headers.delete("Location");
+        headers.set("Content-Type", "application/json");
+        return new Response(JSON.stringify({ redirect: resumeUrl(query) }), { status: 200, headers });
+      } catch (error) {
+        try {
+          const { problem, status } = problemOf(error);
+          return c.json({ error: problem === "invalid" ? messages.google : messages[problem] }, status);
+        } catch {
+          throw error;
+        }
+      }
+    });
+  }
+
+  return app;
+}
+
+// Runs under the page's nonce. Reads its inputs from data attributes: nothing is interpolated.
+const googleButton = `
+(function () {
+  var btn = document.getElementById("google");
+  var box = document.getElementById("problem");
+  function fail(text) { box.textContent = text; box.hidden = false; }
+  btn.addEventListener("click", function () {
+    if (!window.google || !google.accounts) return fail("Google sign-in is still loading. Try again.");
+    google.accounts.oauth2.initCodeClient({
+      client_id: btn.dataset.clientId,
+      scope: "openid email profile",
+      ux_mode: "popup",
+      callback: function (r) {
+        if (!r.code) return fail("Google sign-in was cancelled.");
+        fetch("/sign-in/google", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code: r.code, oauth_query: btn.dataset.query }),
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (j) { if (j.redirect) location.assign(j.redirect); else fail(j.error || "Google sign-in failed."); })
+          .catch(function () { fail("Google sign-in failed."); });
+      },
+    }).requestCode();
+  });
+})();
+`;

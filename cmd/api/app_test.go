@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/mcptoken"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/config"
@@ -206,6 +207,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 		attempts:  attempts,
 		limits:    limits,
 		dns:       dns,
+		mcp:       mcptoken.NewVerifier(mcpKey.pub),
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}

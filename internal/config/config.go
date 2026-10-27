@@ -34,6 +34,9 @@ type Config struct {
 	TrustProxy bool
 	// AbuseEmail is where visitors report a link from the unlock page; empty shows no report link.
 	AbuseEmail string
+	// MCPPublicKey is the Ed25519 public key (PEM or base64) of the MCP server; empty disables MCP
+	// access. The API only verifies with it, so it can never mint those tokens.
+	MCPPublicKey string
 	// RateLimit turns the request limits on (the default); only switch it off behind something that already limits.
 	RateLimit bool
 }
@@ -57,6 +60,7 @@ func Load() (*Config, error) {
 		GoogleRedirect:   getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
 		GeoIPPath:        getEnv("GEOIP_DB_PATH", ""),
 		AbuseEmail:       getEnv("ABUSE_EMAIL", ""),
+		MCPPublicKey:     getEnv("MCP_PUBLIC_KEY", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {

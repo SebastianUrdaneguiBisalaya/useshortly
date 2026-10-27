@@ -22,6 +22,8 @@ const schema = z
     MCP_DATABASE_PATH: z.string().min(1).default("data/mcp.db"),
     MCP_TURSO_DATABASE_URL: z.string().default(""),
     MCP_TURSO_AUTH_TOKEN: z.string().default(""),
+    // Seconds between pull/push rounds with Turso Cloud.
+    MCP_SYNC_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(30),
     // Comma separated origins allowed to call the OAuth endpoints from a browser.
     TRUSTED_ORIGINS: z.string().default(""),
   })
@@ -41,7 +43,7 @@ export type Config = {
   apiUrl: string;
   signingKey: KeyObject;
   authSecret: string;
-  database: { path: string; tursoUrl: string; tursoAuthToken: string };
+  database: { path: string; tursoUrl: string; tursoAuthToken: string; syncIntervalMs: number };
   trustedOrigins: string[];
 };
 
@@ -87,6 +89,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       path: e.MCP_DATABASE_PATH,
       tursoUrl: e.MCP_TURSO_DATABASE_URL,
       tursoAuthToken: e.MCP_TURSO_AUTH_TOKEN,
+      syncIntervalMs: e.MCP_SYNC_INTERVAL_SECONDS * 1000,
     },
     trustedOrigins: e.TRUSTED_ORIGINS.split(",")
       .map((o) => o.trim())

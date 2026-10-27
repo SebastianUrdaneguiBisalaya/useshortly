@@ -68,7 +68,7 @@ export async function createHarness() {
   };
 
   // The useshortly API, faked: records each call (with the token's claims) and answers from `apiReplies`.
-  const apiCalls: { method: string; path: string; token: string; claims: Record<string, unknown> }[] = [];
+  const apiCalls: { method: string; path: string; token: string; claims: Record<string, unknown>; body?: any }[] = [];
   const apiReplies: Record<string, () => Response> = {};
   const apiFetch = (async (url: URL | string, init?: RequestInit) => {
     const u = new URL(String(url));
@@ -76,7 +76,7 @@ export async function createHarness() {
     const claims = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString());
     const method = init?.method ?? "GET";
     const path = u.pathname.replace("/api/v1", "") + u.search;
-    apiCalls.push({ method, path, token, claims });
+    apiCalls.push({ method, path, token, claims, body: init?.body ? JSON.parse(String(init.body)) : undefined });
     const reply = apiReplies[`${method} ${path}`];
     return reply ? reply() : Response.json({ error: { code: "not_found", message: "no such route in the test API" } }, { status: 404 });
   }) as typeof fetch;

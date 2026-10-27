@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import type { UserApi } from "../api/client.js";
 import { registerListLinks } from "./tools/links.js";
 import { registerListOrganizations } from "./tools/organizations.js";
+import { registerCreateLink, registerDeleteLink } from "./tools/write-links.js";
 import { registerWhoami } from "./tools/whoami.js";
 
 const instructions = `useshortly is a URL shortener. These tools act on the signed-in user's account.
@@ -15,5 +16,12 @@ export function createMcpServer(api: UserApi): McpServer {
   registerWhoami(server, context);
   registerListOrganizations(server, context);
   registerListLinks(server, context);
+
+  // Tools that change things exist only for connections the user granted write access: a
+  // read-only connection does not even see them, and the API would refuse them anyway.
+  if (api.principal.scope === "write") {
+    registerCreateLink(server, context);
+    registerDeleteLink(server, context);
+  }
   return server;
 }

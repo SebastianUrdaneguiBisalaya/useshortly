@@ -29,7 +29,7 @@ type dataBody struct {
 }
 
 // pageMeta tells a client which window of a list it got and how big the whole list is.
-type pageMeta struct {
+type pageMeta struct { // @name PageMeta
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 	Total  int `json:"total"`
@@ -39,7 +39,7 @@ type pageMeta struct {
 type FieldError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
-}
+} // @name FieldError
 
 type errorBody struct {
 	Error struct {
@@ -47,7 +47,7 @@ type errorBody struct {
 		Message string       `json:"message"`
 		Details []FieldError `json:"details,omitempty"`
 	} `json:"error"`
-}
+} // @name ErrorResponse
 
 // writeJSON encodes before writing anything, so an encoding failure can still become a clean 500
 // instead of a truncated body under an already-sent status.

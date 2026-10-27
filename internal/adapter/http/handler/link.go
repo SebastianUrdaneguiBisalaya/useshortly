@@ -91,23 +91,42 @@ type linkBody struct {
 	MaxClicks *int64  `json:"max_clicks"`
 	Protected bool    `json:"protected"`
 	CreatedAt string  `json:"created_at"`
-}
+} // @name Link
+
+type CreateLinkRequest struct {
+	URL       string     `json:"url"`
+	ExpiresAt *time.Time `json:"expires_at"`
+	Alias     string     `json:"alias"`
+	DomainID  *int64     `json:"domain_id"`
+	MaxClicks *int64     `json:"max_clicks"`
+	Password  string     `json:"password"`
+} // @name CreateLinkRequest
 
 // Create shortens a URL for the organization the Tenant middleware already checked: a JWT
 // caller belongs to it, an API key was issued for it.
+//
+//	@Summary		Create a short link
+//	@Description	Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
+//	@Tags			links
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			body	body		CreateLinkRequest	true	"Link to create"
+//	@Success		201		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/links [post]
 func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
 		return
 	}
-	var in struct {
-		URL       string     `json:"url"`
-		ExpiresAt *time.Time `json:"expires_at"`
-		Alias     string     `json:"alias"`
-		DomainID  *int64     `json:"domain_id"`
-		MaxClicks *int64     `json:"max_clicks"`
-		Password  string     `json:"password"`
-	}
+	var in CreateLinkRequest
 	if !decode(w, r, &in) {
 		return
 	}
@@ -130,6 +149,22 @@ func (h *LinkHandler) body(l link.Link) linkBody {
 }
 
 // List answers one page of the organization's links, newest first.
+//
+//	@Summary		List links
+//	@Description	Needs a JWT or an API key with the read scope.
+//	@Tags			links
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int	true	"Organization id"
+//	@Param			limit	query		int	false	"Page size"
+//	@Param			offset	query		int	false	"Items to skip"
+//	@Success		200		{object}	LinkListResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/links [get]
 func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -152,6 +187,20 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delete removes a link of the organization; one of another organization is a 404.
+//
+//	@Summary		Delete a link
+//	@Description	Needs a JWT or an API key with the write scope.
+//	@Tags			links
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path	int	true	"Organization id"
+//	@Param			linkID	path	int	true	"Link id"
+//	@Success		204
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		403	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		429	{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/links/{linkID} [delete]
 func (h *LinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

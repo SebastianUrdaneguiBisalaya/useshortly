@@ -171,14 +171,18 @@ type unlockPageBody struct {
 	HTML      string `json:"html"`
 	UpdatedBy int64  `json:"updated_by"`
 	UpdatedAt string `json:"updated_at"`
-}
+} // @name UnlockPage
 
 type unlockPageEventBody struct {
 	LinkID *int64 `json:"link_id"`
 	UserID int64  `json:"user_id"`
 	Action string `json:"action"`
 	At     string `json:"at"`
-}
+} // @name UnlockPageEvent
+
+type SetUnlockPageRequest struct {
+	HTML string `json:"html"`
+} // @name SetUnlockPageRequest
 
 // scope reads the optional {linkID} of the route: none is the organization's page.
 func scope(w http.ResponseWriter, r *http.Request) (*int64, bool) {
@@ -194,6 +198,24 @@ func scope(w http.ResponseWriter, r *http.Request) (*int64, bool) {
 
 // Put sets the page. The HTML must be a template that uses {{.Action}} for the form target, or the
 // visitor could never submit the password.
+//
+//	@Summary		Set an unlock page
+//	@Description	Without a link in the path it is the organization's page, used by all its protected links; with one it is that link's own page. The HTML must post its form to {{.Action}}. Needs a JWT or an API key with the write scope.
+//	@Tags			unlock-page
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int						true	"Organization id"
+//	@Param			linkID	path		int						false	"Link id, for a page of one link"
+//	@Param			body	body		SetUnlockPageRequest	true	"Page HTML"
+//	@Success		200		{object}	UnlockPageResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/unlock-page [put]
+//	@Router			/orgs/{orgID}/links/{linkID}/unlock-page [put]
 func (h *UnlockPageHandler) Put(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -203,9 +225,7 @@ func (h *UnlockPageHandler) Put(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var in struct {
-		HTML string `json:"html"`
-	}
+	var in SetUnlockPageRequest
 	if !decode(w, r, &in) {
 		return
 	}
@@ -222,6 +242,22 @@ func (h *UnlockPageHandler) Put(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newUnlockPageBody(p))
 }
 
+// Get returns the page of the organization or of one of its links.
+//
+//	@Summary		Get an unlock page
+//	@Description	Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the read scope.
+//	@Tags			unlock-page
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int	true	"Organization id"
+//	@Param			linkID	path		int	false	"Link id, for a page of one link"
+//	@Success		200		{object}	UnlockPageResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/unlock-page [get]
+//	@Router			/orgs/{orgID}/links/{linkID}/unlock-page [get]
 func (h *UnlockPageHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -239,6 +275,22 @@ func (h *UnlockPageHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newUnlockPageBody(p))
 }
 
+// Delete removes the page, going back to the default one.
+//
+//	@Summary		Delete an unlock page
+//	@Description	Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the write scope.
+//	@Tags			unlock-page
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path	int	true	"Organization id"
+//	@Param			linkID	path	int	false	"Link id, for a page of one link"
+//	@Success		204
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		403	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		429	{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/unlock-page [delete]
+//	@Router			/orgs/{orgID}/links/{linkID}/unlock-page [delete]
 func (h *UnlockPageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -256,6 +308,22 @@ func (h *UnlockPageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 // History answers who changed the organization's unlock pages, newest first, paginated.
+//
+//	@Summary		Unlock page history
+//	@Description	Needs a JWT or an API key with the read scope.
+//	@Tags			unlock-page
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int	true	"Organization id"
+//	@Param			limit	query		int	false	"Page size"
+//	@Param			offset	query		int	false	"Items to skip"
+//	@Success		200		{object}	UnlockPageHistoryResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/unlock-page/history [get]
 func (h *UnlockPageHandler) History(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

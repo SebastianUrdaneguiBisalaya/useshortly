@@ -8,7 +8,7 @@ import { loadConfig } from "../config.js";
 import { openLocal } from "../db/local.js";
 import { TursoDialect } from "../db/turso-dialect.js";
 import { migrate } from "./migrate.js";
-import { baseAuthOptions, tableNames } from "./options.js";
+import { authOptions, tableNames } from "./options.js";
 
 const config = loadConfig({
   MCP_SIGNING_KEY: generateKeyPairSync("ed25519")
@@ -18,7 +18,7 @@ const config = loadConfig({
 });
 
 type Backend = {
-  database: Parameters<typeof baseAuthOptions>[1];
+  database: Parameters<typeof authOptions>[1];
   rows(sql: string, ...params: unknown[]): Promise<Record<string, unknown>[]>;
   run(sql: string, ...params: unknown[]): Promise<void>;
   close(): Promise<void>;
@@ -66,7 +66,7 @@ describe.each(Object.entries(backends))("migrate on %s", (_name, open) => {
       .filter((n) => !n.startsWith("sqlite_"));
 
   it("creates only mcp_ tables, with a user_id column on mcp_user", async () => {
-    const result = await migrate(baseAuthOptions(config, b.database));
+    const result = await migrate(authOptions(config, b.database));
     expect(result.created.sort()).toEqual(Object.values(tableNames).sort());
     expect((await tables()).every((t) => t.startsWith("mcp_"))).toBe(true);
 
@@ -75,13 +75,13 @@ describe.each(Object.entries(backends))("migrate on %s", (_name, open) => {
   });
 
   it("is a no-op when already up to date", async () => {
-    await migrate(baseAuthOptions(config, b.database));
-    const again = await migrate(baseAuthOptions(config, b.database));
+    await migrate(authOptions(config, b.database));
+    const again = await migrate(authOptions(config, b.database));
     expect(again).toEqual({ created: [], added: [] });
   });
 
   it("keeps user_id unique so one API user maps to one mcp_user", async () => {
-    await migrate(baseAuthOptions(config, b.database));
+    await migrate(authOptions(config, b.database));
     const insert = (id: string, email: string) =>
       b.run(
         "insert into mcp_user (id, name, email, emailVerified, createdAt, updatedAt, user_id) values (?, 'n', ?, 1, 0, 0, 7)",

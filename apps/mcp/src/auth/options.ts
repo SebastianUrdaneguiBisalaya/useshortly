@@ -1,6 +1,21 @@
 import type { BetterAuthOptions } from "better-auth";
+import { jwt } from "better-auth/plugins";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { mcp } from "@better-auth/mcp";
 import type { Config } from "../config.js";
 import type { AuthDatabase } from "../db/index.js";
+import { supportedScopes } from "./scopes.js";
+
+/** Path Better Auth is mounted on; its issuer is the public URL plus this. */
+export const basePath = "/api/auth";
+
+/** Pages the OAuth flow sends the user to. Served by this app (see http/). */
+export const loginPage = "/sign-in";
+export const consentPage = "/consent";
+
+/** The MCP endpoint: also the resource identifier access tokens are bound to. */
+export const resourcePath = "/mcp";
 
 /**
  * Better Auth's tables live in the MCP server's own database and all start with mcp_, so
@@ -12,15 +27,27 @@ export const tableNames = {
   session: "mcp_session",
   account: "mcp_account",
   verification: "mcp_verification",
+  jwks: "mcp_jwks",
+  oauthClient: "mcp_oauth_client",
+  oauthRefreshToken: "mcp_oauth_refresh_token",
+  oauthAccessToken: "mcp_oauth_access_token",
+  oauthConsent: "mcp_oauth_consent",
+  oauthClientAssertion: "mcp_oauth_client_assertion",
+  oauthClientResource: "mcp_oauth_client_resource",
+  oauthResource: "mcp_oauth_resource",
 } as const;
 
-export function baseAuthOptions(config: Config, database: AuthDatabase["database"]) {
+export function authOptions(config: Config, database: AuthDatabase["database"]) {
+  const resource = `${config.publicUrl}${resourcePath}`;
   return {
     appName: "useshortly",
-    baseURL: config.publicUrl,
+    baseURL: `${config.publicUrl}${basePath}`,
+    basePath,
     secret: config.authSecret,
     trustedOrigins: config.trustedOrigins,
     database,
+    // The jwt plugin's /token would turn any session into a JWT; only the OAuth token endpoint may issue.
+    disabledPaths: ["/token"],
     user: {
       modelName: tableNames.user,
       additionalFields: {
@@ -31,5 +58,36 @@ export function baseAuthOptions(config: Config, database: AuthDatabase["database
     session: { modelName: tableNames.session },
     account: { modelName: tableNames.account },
     verification: { modelName: tableNames.verification },
+    plugins: [
+      jwt({
+        jwks: { keyPairConfig: { alg: "EdDSA" } },
+        schema: { jwks: { modelName: tableNames.jwks } },
+      }),
+      mcp({
+        loginPage,
+        consentPage,
+        resource,
+        scopes: supportedScopes,
+        // Short-lived access tokens; the refresh token renews them without another consent.
+        accessTokenExpiresIn: 15 * 60,
+        refreshTokenExpiresIn: 14 * 24 * 60 * 60,
+        // The API identifies the user by its own id, not by Better Auth's.
+        customAccessTokenClaims: ({ user }) => {
+          const apiUserId = user?.apiUserId;
+          return typeof apiUserId === "number" ? { api_user_id: apiUserId } : {};
+        },
+        schema: {
+          oauthClient: { modelName: tableNames.oauthClient },
+          oauthRefreshToken: { modelName: tableNames.oauthRefreshToken },
+          oauthAccessToken: { modelName: tableNames.oauthAccessToken },
+          oauthConsent: { modelName: tableNames.oauthConsent },
+          oauthClientAssertion: { modelName: tableNames.oauthClientAssertion },
+          oauthClientResource: { modelName: tableNames.oauthClientResource },
+          oauthResource: { modelName: tableNames.oauthResource },
+        },
+      }),
+      // Clients identify themselves with a metadata document (the MCP-recommended way); no DCR.
+      cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+    ],
   } satisfies BetterAuthOptions;
 }

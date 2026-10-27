@@ -23,6 +23,14 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/platform/server"
 )
 
+// @title                      useshortly API
+// @version                    1.0
+// @description                Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
+// @BasePath                   /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in                         header
+// @name                       Authorization
+// @description                "Bearer <token>": a JWT access token, or an API key where the route allows it.
 func main() {
 	if err := run(); err != nil {
 		log.Fatal(err)

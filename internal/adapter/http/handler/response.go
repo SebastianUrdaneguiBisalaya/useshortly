@@ -39,7 +39,7 @@ type pageMeta struct {
 type FieldError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
-}
+} // @name FieldError
 
 type errorBody struct {
 	Error struct {
@@ -47,7 +47,7 @@ type errorBody struct {
 		Message string       `json:"message"`
 		Details []FieldError `json:"details,omitempty"`
 	} `json:"error"`
-}
+} // @name ErrorResponse
 
 // writeJSON encodes before writing anything, so an encoding failure can still become a clean 500
 // instead of a truncated body under an already-sent status.

@@ -1,4 +1,4 @@
-import type { Child } from "hono/jsx";
+import type { Child } from 'hono/jsx';
 
 const css = `
 :root{color-scheme:light dark;--bg:#fafafa;--fg:#18181b;--muted:#71717a;--card:#fff;--line:#e4e4e7;--accent:#18181b;--accent-fg:#fff;--danger:#b91c1c}
@@ -25,18 +25,18 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0 4px}
 `;
 
 export function Layout(props: { title: string; nonce: string; children?: Child }) {
-  return (
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="robots" content="noindex" />
-        <title>{props.title}</title>
-        <style nonce={props.nonce} dangerouslySetInnerHTML={{ __html: css }} />
-      </head>
-      <body>
-        <main>{props.children}</main>
-      </body>
-    </html>
-  );
+	return (
+		<html lang='en'>
+			<head>
+				<meta charset='utf-8' />
+				<meta name='viewport' content='width=device-width, initial-scale=1' />
+				<meta name='robots' content='noindex' />
+				<title>{props.title}</title>
+				<style nonce={props.nonce} dangerouslySetInnerHTML={{ __html: css }} />
+			</head>
+			<body>
+				<main>{props.children}</main>
+			</body>
+		</html>
+	);
 }

@@ -1,14 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "types": ["node"]
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx",
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"types": ["node"]
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist"]
 }

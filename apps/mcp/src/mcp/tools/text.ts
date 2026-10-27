@@ -4,6 +4,6 @@
  * paragraph addressed to the model. The structured result keeps the full value.
  */
 export function oneLine(value: string, max = 200): string {
-  const flat = value.replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
+	const flat = value.replace(/\s+/g, ' ').trim();
+	return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }

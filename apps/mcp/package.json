@@ -1,51 +1,54 @@
 {
-  "name": "@useshortly/mcp",
-  "version": "1.0.0",
-  "description": "MCP server for useshortly with OAuth 2.1 (Better Auth + Hono)",
-  "main": "src/index.ts",
-  "scripts": {
-    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node --env-file-if-exists=.env dist/index.js",
-    "keygen": "tsx scripts/keygen.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
-  },
-  "author": {
-    "name": "Sebastian Marat Urdanegui Bisalaya",
-    "url": "https://www.sebastianurdanegui.com/"
-  },
-  "keywords": [],
-  "license": "ISC",
-  "private": false,
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.15.0",
-      "onFail": "download"
-    }
-  },
-  "packageManager": "pnpm@12.15.0",
-  "type": "module",
-  "dependencies": {
-    "@better-auth/cimd": "1.7.13",
-    "@better-auth/mcp": "1.7.13",
-    "@hono/node-server": "2.1.5",
-    "@modelcontextprotocol/server": "2.4.0",
-    "@tursodatabase/database": "0.8.3",
-    "@tursodatabase/sync": "0.8.3",
-    "better-auth": "1.7.13",
-    "better-sqlite3": "13.0.3",
-    "hono": "4.13.14",
-    "hono-rate-limiter": "0.5.4",
-    "kysely": "0.29.7",
-    "zod": "4.6.7"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "9.6.0",
-    "@types/node": "26.6.5",
-    "tsx": "4.23.15",
-    "typescript": "7.0.2",
-    "vitest": "5.0.5"
-  }
+	"name": "@useshortly/mcp",
+	"version": "1.0.0",
+	"description": "MCP server for useshortly with OAuth 2.1 (Better Auth + Hono)",
+	"main": "src/index.ts",
+	"scripts": {
+		"dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+		"build": "tsc -p tsconfig.build.json",
+		"start": "node --env-file-if-exists=.env dist/index.js",
+		"keygen": "tsx scripts/keygen.ts",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests",
+		"lint": "biome check",
+		"format": "biome format --write"
+	},
+	"author": {
+		"name": "Sebastian Marat Urdanegui Bisalaya",
+		"url": "https://www.sebastianurdanegui.com/"
+	},
+	"keywords": [],
+	"license": "ISC",
+	"private": false,
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.15.0",
+			"onFail": "download"
+		}
+	},
+	"packageManager": "pnpm@12.15.0",
+	"type": "module",
+	"dependencies": {
+		"@better-auth/cimd": "1.7.13",
+		"@better-auth/mcp": "1.7.13",
+		"@hono/node-server": "2.1.5",
+		"@modelcontextprotocol/server": "2.4.0",
+		"@tursodatabase/database": "0.8.3",
+		"@tursodatabase/sync": "0.8.3",
+		"better-auth": "1.7.13",
+		"better-sqlite3": "13.0.3",
+		"hono": "4.13.14",
+		"hono-rate-limiter": "0.5.4",
+		"kysely": "0.29.7",
+		"zod": "4.6.7"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.3",
+		"@types/better-sqlite3": "9.6.0",
+		"@types/node": "26.6.5",
+		"tsx": "4.23.15",
+		"typescript": "7.0.2",
+		"vitest": "5.0.5"
+	}
 }

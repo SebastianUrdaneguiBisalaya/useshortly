@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
+import type { BetterAuthOptions } from 'better-auth';
+import { getMigrations } from 'better-auth/db/migration';
 
 export type MigrationResult = { created: string[]; added: string[] };
 
@@ -9,10 +9,10 @@ export type MigrationResult = { created: string[]; added: string[] };
  * required column without default on a populated table, instead of guessing.
  */
 export async function migrate(options: BetterAuthOptions): Promise<MigrationResult> {
-  const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(options);
-  await runMigrations();
-  return {
-    created: toBeCreated.map((t) => t.table),
-    added: toBeAdded.map((t) => t.table),
-  };
+	const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(options);
+	await runMigrations();
+	return {
+		created: toBeCreated.map(t => t.table),
+		added: toBeAdded.map(t => t.table),
+	};
 }

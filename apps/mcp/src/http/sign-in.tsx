@@ -13,8 +13,7 @@ import { basePath } from "../auth/options.js";
 import type { Config } from "../config.js";
 import { clientIp } from "./client-ip.js";
 import { Layout } from "./layout.js";
-
-const googleScript = "https://accounts.google.com/gsi/client";
+import { googleScript, newNonce, pageSecurity, sameOrigin } from "./security.js";
 
 type Deps = { config: Config; auth: Auth; identity: IdentityProvider };
 
@@ -39,7 +38,6 @@ const resumeUrl = (query: string) => `${basePath}/oauth2/authorize?${query}`;
 
 export function signInRoutes({ config, auth, identity }: Deps) {
   const app = new Hono();
-  const origin = new URL(config.publicUrl).origin;
   const googleEnabled = config.googleClientId !== "";
 
   // Guessing limits on top of the API's own. Only failed credentials count (a 401): a good
@@ -71,36 +69,9 @@ export function signInRoutes({ config, auth, identity }: Deps) {
   ];
   const googleLimits = [limiter(20, ipKey, (c) => c.json({ error: messages.limited }, 429))];
 
-  // A browser always sends Origin on a POST. Anything else is not our own page: refuse it.
-  const sameOrigin: MiddlewareHandler = async (c, next) => {
-    if (c.req.header("origin") !== origin) return c.text("Forbidden", 403);
-    await next();
-  };
-
-  const secure = (c: Context, nonce: string) => {
-    c.header("Cache-Control", "no-store");
-    c.header("Referrer-Policy", "no-referrer");
-    c.header("X-Content-Type-Options", "nosniff");
-    c.header(
-      "Content-Security-Policy",
-      [
-        "default-src 'none'",
-        `style-src 'nonce-${nonce}'${googleEnabled ? " https://accounts.google.com/gsi/style" : ""}`,
-        `script-src 'nonce-${nonce}'${googleEnabled ? ` ${googleScript}` : ""}`,
-        `connect-src 'self'${googleEnabled ? " https://accounts.google.com" : ""}`,
-        googleEnabled ? "frame-src https://accounts.google.com" : "",
-        "img-src 'self' data:",
-        "base-uri 'none'",
-        "frame-ancestors 'none'",
-      ]
-        .filter(Boolean)
-        .join("; "),
-    );
-  };
-
   const page = (c: Context, query: string | undefined, problem?: Problem, status: 200 | 401 | 429 | 503 = 200) => {
-    const nonce = btoa(crypto.randomUUID());
-    secure(c, nonce);
+    const nonce = newNonce();
+    pageSecurity(c, nonce, { google: googleEnabled });
     c.status(status);
     return c.html(
       <Layout title="Sign in · useshortly" nonce={nonce}>
@@ -164,7 +135,7 @@ export function signInRoutes({ config, auth, identity }: Deps) {
 
   app.get("/sign-in", (c) => page(c, new URL(c.req.url).search.slice(1)));
 
-  app.post("/sign-in", sameOrigin, ...passwordLimits, async (c) => {
+  app.post("/sign-in", sameOrigin(config.publicUrl), ...passwordLimits, async (c) => {
     const form = await c.req.parseBody();
     const query = typeof form.oauth_query === "string" ? form.oauth_query : undefined;
     const email = typeof form.email === "string" ? form.email.trim().toLowerCase() : "";
@@ -183,7 +154,7 @@ export function signInRoutes({ config, auth, identity }: Deps) {
   });
 
   if (googleEnabled) {
-    app.post("/sign-in/google", sameOrigin, ...googleLimits, async (c) => {
+    app.post("/sign-in/google", sameOrigin(config.publicUrl), ...googleLimits, async (c) => {
       const body = await c.req.json().catch(() => null);
       const code = typeof body?.code === "string" ? body.code : "";
       const query = typeof body?.oauth_query === "string" ? body.oauth_query : undefined;

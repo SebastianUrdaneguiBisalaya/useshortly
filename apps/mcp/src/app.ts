@@ -4,6 +4,7 @@ import type { IdentityProvider } from "./api/identity.js";
 import type { Auth } from "./auth/auth.js";
 import { basePath } from "./auth/options.js";
 import type { Config } from "./config.js";
+import { consentRoutes } from "./http/consent.js";
 import { signInRoutes } from "./http/sign-in.js";
 
 // Endpoints MCP clients call from any origin, with no cookies: discovery, keys and the token endpoint.
@@ -25,6 +26,7 @@ export function createApp(deps: { config: Config; auth: Auth; identity: Identity
   app.get("/health", (c) => c.json({ status: "ok" }));
 
   app.route("/", signInRoutes(deps));
+  app.route("/", consentRoutes(deps));
 
   // Better Auth answers its own endpoints and the OAuth discovery documents.
   const betterAuth = (c: { req: { raw: Request } }) => auth.handler(c.req.raw);

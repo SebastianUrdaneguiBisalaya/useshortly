@@ -11,6 +11,8 @@ type Repository interface {
 	// Returns ErrCodeTaken if the code already exists.
 	Create(ctx context.Context, l Link) (Link, error)
 	FindByCode(ctx context.Context, code string) (Link, error)
+	// FindByID returns the tenant's link, or ErrNotFound if it does not exist or is another tenant's.
+	FindByID(ctx context.Context, tenantID, id int64) (Link, error)
 	// ConsumeClick counts one click atomically, so concurrent clicks never exceed max_clicks.
 	// Returns ErrExpired if the link already used all its clicks.
 	// ListByTenant returns one page of the tenant's links, newest first, and how many it has in total.

@@ -9,6 +9,8 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -57,11 +59,21 @@ var httpErrors = []struct {
 	{analytics.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{analytics.ErrInvalidRange, apiError{http.StatusBadRequest, "invalid_range", "from must not be after to, and the range is at most 366 days"}},
 
+	{qr.ErrInvalidFormat, apiError{http.StatusBadRequest, "invalid_format", "the format must be png or svg"}},
+	{qr.ErrInvalidSize, apiError{http.StatusBadRequest, "invalid_size", "the size must be a number of pixels between 64 and 1024"}},
+
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},
 	{link.ErrInvalidAlias, apiError{http.StatusBadRequest, "invalid_alias", "the alias must be 3 to 15 letters, digits, - or _, not 7 characters long and not a reserved word"}},
 	{link.ErrAliasTaken, apiError{http.StatusConflict, "alias_taken", "the alias is already in use"}},
 	{link.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "expires_at must be in the future"}},
 	{link.ErrInvalidMaxClicks, apiError{http.StatusBadRequest, "invalid_max_clicks", "max_clicks must be greater than 0"}},
+	{unlockpage.ErrNotFound, apiError{http.StatusNotFound, "not_found", "unlock page not found"}},
+	{unlockpage.ErrInvalidHTML, apiError{http.StatusBadRequest, "invalid_html", "the page is empty or larger than 64 KB"}},
+
+	{link.ErrInvalidPassword, apiError{http.StatusBadRequest, "invalid_password", "the password must be 4 to 64 characters"}},
+	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
+	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},
+	{link.ErrTooManyAttempts, apiError{http.StatusTooManyRequests, "too_many_attempts", "too many attempts, try again in 15 minutes"}},
 	{link.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{link.ErrExpired, apiError{http.StatusGone, "link_expired", "the link expired"}},
 	{link.ErrCodeTaken, apiError{http.StatusServiceUnavailable, "code_unavailable", "could not allocate a short code, try again"}},

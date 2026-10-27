@@ -10,6 +10,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/handler"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/middlewares"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/http/router"
+	qradapter "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/qr"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/cached"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/repository/sqlite"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/useragent"
@@ -20,6 +21,8 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/qr"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -36,6 +39,8 @@ type adapters struct {
 	linkCache cached.Store
 	// countries finds the country of a click's address; nil leaves the country empty.
 	countries analytics.CountryResolver
+	// attempts limits the password tries of protected links.
+	attempts link.AttemptLimiter
 }
 
 type app struct {
@@ -80,10 +85,11 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	}
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
-	links := link.NewService(linkRepo, codegen.NewBase62())
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)
+	pages := unlockpage.NewService(sqlite.NewUnlockPageRepository(db))
 
 	return &app{
 		mail:   mail,
@@ -94,8 +100,10 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages),
 			Stats:    handler.NewStatsHandler(stats),
+			Pages:    handler.NewUnlockPageHandler(pages),
+			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}
 }

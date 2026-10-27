@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS links (
     expires_at TEXT,
     max_clicks INTEGER CHECK (max_clicks IS NULL OR max_clicks > 0),
     click_count INTEGER NOT NULL DEFAULT 0,
+    password_hash TEXT,
     tenant_id INTEGER NOT NULL,
     created_by INTEGER NOT NULL,
     updated_by INTEGER,

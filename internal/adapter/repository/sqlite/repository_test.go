@@ -13,6 +13,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/platform/database"
 	"github.com/stretchr/testify/assert"
@@ -268,6 +269,14 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	assert.Equal(t, "aaaaaaa", list[0].Code)
 	assert.Equal(t, &two, list[0].MaxClicks, "list rows carry every column")
 
+	byID, err := repo.FindByID(ctx, 1, ids[1])
+	require.NoError(t, err)
+	assert.Equal(t, "bbbbbbb", byID.Code)
+	_, err = repo.FindByID(ctx, 2, ids[1])
+	assert.ErrorIs(t, err, link.ErrNotFound, "another tenant's link is not found")
+	_, err = repo.FindByID(ctx, 1, 9999)
+	assert.ErrorIs(t, err, link.ErrNotFound)
+
 	list, total, err = repo.ListByTenant(ctx, 3, page.Params{Limit: 10})
 	require.NoError(t, err)
 	assert.Empty(t, list)
@@ -380,6 +389,113 @@ func mustDuration(t *testing.T, s string) time.Duration {
 	d, err := time.ParseDuration(s)
 	require.NoError(t, err)
 	return d
+}
+
+func TestLinkRepositoryPasswordHash(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	_, err = repo.Create(ctx, link.Link{Code: "locked0", OriginURL: "https://example.com", PasswordHash: "$argon2id$x", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+	_, err = repo.Create(ctx, link.Link{Code: "open000", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	locked, err := repo.FindByCode(ctx, "locked0")
+	require.NoError(t, err)
+	assert.Equal(t, "$argon2id$x", locked.PasswordHash)
+	assert.True(t, locked.Protected())
+	open, err := repo.FindByCode(ctx, "open000")
+	require.NoError(t, err)
+	assert.False(t, open.Protected())
+
+	list, _, err := repo.ListByTenant(ctx, 1, page.Params{Limit: 10})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	assert.True(t, list[1].Protected(), "lists carry the flag too")
+	byID, err := repo.FindByID(ctx, 1, locked.ID)
+	require.NoError(t, err)
+	assert.True(t, byID.Protected())
+}
+
+func TestUnlockPageRepository(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	links := NewLinkRepository(db)
+	pages := NewUnlockPageRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	for _, name := range []string{"acme", "other"} {
+		_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES (?)`, name)
+		require.NoError(t, err)
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	mk := func(code string, tenant int64) link.Link {
+		l, err := links.Create(ctx, link.Link{Code: code, OriginURL: "https://example.com", TenantID: tenant, CreatedBy: u.ID, CreatedAt: now})
+		require.NoError(t, err)
+		return l
+	}
+	one, two, foreign := mk("one0000", 1), mk("two0000", 1), mk("for0000", 2)
+	page := func(tenant int64, linkID *int64, html string) unlockpage.Page {
+		return unlockpage.Page{TenantID: tenant, LinkID: linkID, HTML: html, UpdatedAt: now}
+	}
+
+	_, err := pages.Find(ctx, 1, one.ID)
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound)
+
+	org, err := pages.Upsert(ctx, page(1, nil, "<p>org v1</p>"))
+	require.NoError(t, err)
+	assert.Nil(t, org.LinkID)
+	assert.True(t, org.UpdatedAt.Equal(now))
+	again, err := pages.Upsert(ctx, page(1, nil, "<p>org v2</p>"))
+	require.NoError(t, err)
+	assert.Equal(t, org.ID, again.ID, "replaced, not duplicated")
+	assert.Equal(t, "<p>org v2</p>", again.HTML)
+
+	own, err := pages.Upsert(ctx, page(1, &one.ID, "<p>one</p>"))
+	require.NoError(t, err)
+	require.NotNil(t, own.LinkID)
+	assert.Equal(t, one.ID, *own.LinkID)
+	again, err = pages.Upsert(ctx, page(1, &one.ID, "<p>one v2</p>"))
+	require.NoError(t, err)
+	assert.Equal(t, own.ID, again.ID)
+
+	got, err := pages.Find(ctx, 1, one.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "<p>one v2</p>", got.HTML, "the link's own page wins")
+	got, err = pages.Find(ctx, 1, two.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "<p>org v2</p>", got.HTML, "other links use the organization's")
+	_, err = pages.Find(ctx, 2, foreign.ID)
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "another organization has no page")
+
+	_, err = pages.Upsert(ctx, page(1, &foreign.ID, "<p>x</p>"))
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "a page for another organization's link is refused")
+	_, err = pages.Upsert(ctx, page(1, new(int64), "<p>x</p>"))
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "and for a link that does not exist")
+
+	exact, err := pages.Get(ctx, 1, nil)
+	require.NoError(t, err)
+	assert.Equal(t, org.ID, exact.ID)
+	_, err = pages.Get(ctx, 1, &two.ID)
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "Get is exact: no fallback")
+
+	assert.ErrorIs(t, pages.Delete(ctx, 2, nil), unlockpage.ErrNotFound)
+	require.NoError(t, pages.Delete(ctx, 1, &one.ID))
+	got, err = pages.Find(ctx, 1, one.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "<p>org v2</p>", got.HTML, "back to the organization's page")
+
+	_, err = pages.Upsert(ctx, page(1, &two.ID, "<p>two</p>"))
+	require.NoError(t, err)
+	require.NoError(t, links.Delete(ctx, 1, two.ID))
+	_, err = pages.Get(ctx, 1, &two.ID)
+	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "a link's page goes with the link")
+
+	_, err = db.ExecContext(ctx, `INSERT INTO unlock_pages (tenant_id, html, updated_at) VALUES (1, '', 'x')`)
+	assert.Error(t, err, "the database refuses an empty page")
 }
 
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {

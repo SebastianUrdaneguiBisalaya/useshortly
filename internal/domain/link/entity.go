@@ -11,11 +11,16 @@ type Link struct {
 	TenantID   int64
 	MaxClicks  *int64
 	ClickCount int64
-	CreatedBy  int64
-	UpdatedBy  *int64
-	CreatedAt  time.Time
-	UpdatedAt  *time.Time
+	// PasswordHash is set for a password-protected link; it never leaves the server.
+	PasswordHash string
+	CreatedBy    int64
+	UpdatedBy    *int64
+	CreatedAt    time.Time
+	UpdatedAt    *time.Time
 }
+
+// Protected reports whether visitors must unlock the link with a password.
+func (l Link) Protected() bool { return l.PasswordHash != "" }
 
 // IsExpired reports whether the link passed its expiration date or used all its clicks.
 func (l Link) IsExpired(now time.Time) bool {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/geoip"
+	limiterredis "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/limiter/redis"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/logsender"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/resend"
 	otpredis "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/otp/redis"
@@ -76,7 +77,7 @@ func run() error {
 		log.Println("GOOGLE_CLIENT_ID is not set: Google sign-in is disabled")
 	}
 
-	ad := adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient)}
+	ad := adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient), attempts: limiterredis.NewLimiter(redisClient)}
 	if cfg.GeoIPPath != "" {
 		geo, err := geoip.Open(cfg.GeoIPPath)
 		if err != nil {

@@ -1,6 +1,11 @@
 import { createHash, createPublicKey, type JsonWebKeyInput, generateKeyPairSync, randomBytes, verify } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { InvalidCredentialsError, type Identity, type IdentityProvider } from "../api/identity.js";
+import {
+  IdentityUnavailableError,
+  InvalidCredentialsError,
+  type Identity,
+  type IdentityProvider,
+} from "../api/identity.js";
 import { createApp } from "../app.js";
 import { createAuth, type Auth } from "../auth/auth.js";
 import { migrate } from "../auth/migrate.js";
@@ -25,6 +30,7 @@ const ana: Identity = { apiUserId: 7, email: "ana@example.com", emailVerified: t
 let known: Record<string, { password: string; who: Identity }>;
 const identity: IdentityProvider = {
   async password(email, password) {
+    if (email === "down@example.com") throw new IdentityUnavailableError();
     const u = known[email];
     if (!u || u.password !== password) throw new InvalidCredentialsError();
     return u.who;
@@ -248,13 +254,46 @@ describe("sign-in through the API", () => {
     expect(crossSite.status).toBe(403);
   });
 
-  it("limits repeated attempts on one account", async () => {
+  it("limits repeated failures on one account and keeps the form usable", async () => {
     const query = await startFlow(pkce().challenge);
     const attempt = () => req("/sign-in", form({ oauth_query: query, email: "victim@example.com", password: "guess" }));
-    const statuses = [];
-    for (let i = 0; i < 10; i++) statuses.push((await attempt()).status);
-    expect(statuses.slice(0, 8).every((s) => s === 401)).toBe(true);
-    expect(statuses.slice(8)).toEqual([429, 429]);
+    const responses = [];
+    for (let i = 0; i < 10; i++) responses.push(await attempt());
+    expect(responses.slice(0, 8).map((r) => r.status)).toEqual(Array(8).fill(401));
+    expect(responses.slice(8).map((r) => r.status)).toEqual([429, 429]);
+
+    const limited = responses[8]!;
+    expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+    const html = await limited.text();
+    expect(html).toContain("Too many attempts");
+    expect(html).toContain('name="password"');
+  });
+
+  it("does not spend attempts on successful sign-ins or on an unreachable API", async () => {
+    const query = await startFlow(pkce().challenge);
+    for (let i = 0; i < 12; i++) {
+      const ok = await req("/sign-in", form({ oauth_query: query, email: "ana@example.com", password: "s3cret" }));
+      expect(ok.status).toBe(303);
+    }
+    for (let i = 0; i < 12; i++) {
+      const down = await req("/sign-in", form({ oauth_query: query, email: "down@example.com", password: "x" }));
+      expect(down.status).toBe(503);
+    }
+  });
+
+  it("limits one address that tries many accounts", async () => {
+    const isolated = createApp({ config, auth, identity }); // its own counters
+    const query = await startFlow(pkce().challenge);
+    const statuses: number[] = [];
+    for (let i = 0; i < 22; i++) {
+      const res = await isolated.request(`${base}/sign-in`, {
+        redirect: "manual",
+        ...form({ oauth_query: query, email: `guess${i}@example.com`, password: "x" }),
+      });
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 20).every((s) => s === 401)).toBe(true);
+    expect(statuses.slice(20)).toEqual([429, 429]);
   });
 });
 

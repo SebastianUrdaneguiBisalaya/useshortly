@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { rateLimiter } from "hono-rate-limiter";
 import type { Context, MiddlewareHandler } from "hono";
 import {
   IdentityUnavailableError,
@@ -12,7 +13,6 @@ import { basePath } from "../auth/options.js";
 import type { Config } from "../config.js";
 import { clientIp } from "./client-ip.js";
 import { Layout } from "./layout.js";
-import { AttemptLimiter } from "./rate-limit.js";
 
 const googleScript = "https://accounts.google.com/gsi/client";
 
@@ -41,8 +41,35 @@ export function signInRoutes({ config, auth, identity }: Deps) {
   const app = new Hono();
   const origin = new URL(config.publicUrl).origin;
   const googleEnabled = config.googleClientId !== "";
-  const perIp = new AttemptLimiter(20, 10 * 60_000);
-  const perAccount = new AttemptLimiter(8, 10 * 60_000);
+
+  // Guessing limits on top of the API's own. Only failed credentials count (a 401): a good
+  // sign-in, or the API being down, never uses up anyone's attempts. In memory, which is
+  // enough for one instance; a restart only ever lets a few extra attempts through.
+  const limiter = (limit: number, key: (c: Context) => string | Promise<string>, tooMany: (c: Context) => Response | Promise<Response>) =>
+    rateLimiter({
+      windowMs: 10 * 60_000,
+      limit,
+      standardHeaders: "draft-7",
+      keyGenerator: key,
+      skipSuccessfulRequests: true,
+      requestWasSuccessful: (c) => c.res.status !== 401,
+      handler: async (c) => tooMany(c) as never,
+    });
+  const ipKey = (c: Context) => `ip:${clientIp(c, config.trustProxy)}`;
+  const formEmail = async (c: Context) => {
+    const form = await c.req.parseBody();
+    return typeof form.email === "string" ? form.email.trim().toLowerCase() : "";
+  };
+  const formQuery = async (c: Context) => {
+    const form = await c.req.parseBody();
+    return typeof form.oauth_query === "string" ? form.oauth_query : undefined;
+  };
+  const passwordLimits = [
+    limiter(20, ipKey, async (c) => page(c, await formQuery(c), "limited", 429)),
+    // An empty email has no account to protect: it falls back to the address.
+    limiter(8, async (c) => `account:${(await formEmail(c)) || ipKey(c)}`, async (c) => page(c, await formQuery(c), "limited", 429)),
+  ];
+  const googleLimits = [limiter(20, ipKey, (c) => c.json({ error: messages.limited }, 429))];
 
   // A browser always sends Origin on a POST. Anything else is not our own page: refuse it.
   const sameOrigin: MiddlewareHandler = async (c, next) => {
@@ -137,7 +164,7 @@ export function signInRoutes({ config, auth, identity }: Deps) {
 
   app.get("/sign-in", (c) => page(c, new URL(c.req.url).search.slice(1)));
 
-  app.post("/sign-in", sameOrigin, async (c) => {
+  app.post("/sign-in", sameOrigin, ...passwordLimits, async (c) => {
     const form = await c.req.parseBody();
     const query = typeof form.oauth_query === "string" ? form.oauth_query : undefined;
     const email = typeof form.email === "string" ? form.email.trim().toLowerCase() : "";
@@ -146,8 +173,6 @@ export function signInRoutes({ config, auth, identity }: Deps) {
     if (!email || email.length > 255 || !password || password.length > 1024) return page(c, query, "invalid", 401);
 
     const ip = clientIp(c, config.trustProxy);
-    if (!perIp.allow(ip) || !perAccount.allow(email)) return page(c, query, "limited", 429);
-
     try {
       const who = await identity.password(email, password, ip);
       return new Response(null, { status: 303, headers: await startSession(c, who, query) });
@@ -158,15 +183,13 @@ export function signInRoutes({ config, auth, identity }: Deps) {
   });
 
   if (googleEnabled) {
-    app.post("/sign-in/google", sameOrigin, async (c) => {
+    app.post("/sign-in/google", sameOrigin, ...googleLimits, async (c) => {
       const body = await c.req.json().catch(() => null);
       const code = typeof body?.code === "string" ? body.code : "";
       const query = typeof body?.oauth_query === "string" ? body.oauth_query : undefined;
       if (!code || code.length > 2048 || !validQuery(query)) return c.json({ error: messages.expired }, 400);
 
       const ip = clientIp(c, config.trustProxy);
-      if (!perIp.allow(ip)) return c.json({ error: messages.limited }, 429);
-
       try {
         const who = await identity.google(code, ip);
         const headers = await startSession(c, who, query);

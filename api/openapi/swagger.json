@@ -80,7 +80,7 @@
                         "uniqueItems": false
                     },
                     "meta": {
-                        "$ref": "#/components/schemas/handler.pageMeta"
+                        "$ref": "#/components/schemas/PageMeta"
                     }
                 },
                 "type": "object"
@@ -223,7 +223,7 @@
                         "uniqueItems": false
                     },
                     "meta": {
-                        "$ref": "#/components/schemas/handler.pageMeta"
+                        "$ref": "#/components/schemas/PageMeta"
                     }
                 },
                 "type": "object"
@@ -396,7 +396,7 @@
                         "uniqueItems": false
                     },
                     "meta": {
-                        "$ref": "#/components/schemas/handler.pageMeta"
+                        "$ref": "#/components/schemas/PageMeta"
                     }
                 },
                 "type": "object"
@@ -563,6 +563,20 @@
                 },
                 "type": "object"
             },
+            "PageMeta": {
+                "properties": {
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
             "RefreshTokenRequest": {
                 "properties": {
                     "refresh_token": {
@@ -682,7 +696,7 @@
                         "uniqueItems": false
                     },
                     "meta": {
-                        "$ref": "#/components/schemas/handler.pageMeta"
+                        "$ref": "#/components/schemas/PageMeta"
                     }
                 },
                 "type": "object"
@@ -742,20 +756,6 @@
                     }
                 },
                 "type": "object"
-            },
-            "handler.pageMeta": {
-                "properties": {
-                    "limit": {
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "type": "integer"
-                    },
-                    "total": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
             }
         },
         "securitySchemes": {
@@ -779,6 +779,7 @@
     "paths": {
         "/auth/forgot-password": {
             "post": {
+                "operationId": "forgotPassword",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -833,6 +834,7 @@
         "/auth/google": {
             "post": {
                 "description": "Only available when Google sign-in is configured on the server.",
+                "operationId": "loginWithGoogle",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -896,6 +898,7 @@
         },
         "/auth/login": {
             "post": {
+                "operationId": "login",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -959,6 +962,7 @@
         },
         "/auth/logout": {
             "post": {
+                "operationId": "logout",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1005,6 +1009,7 @@
         },
         "/auth/refresh": {
             "post": {
+                "operationId": "refreshSession",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1068,6 +1073,7 @@
         },
         "/auth/register": {
             "post": {
+                "operationId": "register",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1131,6 +1137,7 @@
         },
         "/auth/register/verify": {
             "post": {
+                "operationId": "verifyRegistration",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1184,6 +1191,7 @@
         },
         "/auth/reset-password": {
             "post": {
+                "operationId": "resetPassword",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1230,6 +1238,7 @@
         },
         "/invitations/{invitationID}/accept": {
             "post": {
+                "operationId": "acceptInvitation",
                 "parameters": [
                     {
                         "description": "Invitation id",
@@ -1306,6 +1315,7 @@
         },
         "/invitations/{invitationID}/reject": {
             "post": {
+                "operationId": "rejectInvitation",
                 "parameters": [
                     {
                         "description": "Invitation id",
@@ -1376,6 +1386,7 @@
         "/me": {
             "delete": {
                 "description": "Deletes the user, every organization they own and what is in them. It cannot be undone.",
+                "operationId": "deleteAccount",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1435,6 +1446,7 @@
                 ]
             },
             "get": {
+                "operationId": "getMe",
                 "responses": {
                     "200": {
                         "content": {
@@ -1481,6 +1493,7 @@
         "/me/delete-code": {
             "post": {
                 "description": "Only available when account deletion is enabled on the server.",
+                "operationId": "requestAccountDeletion",
                 "responses": {
                     "202": {
                         "content": {
@@ -1526,6 +1539,7 @@
         },
         "/orgs": {
             "get": {
+                "operationId": "listMyOrganizations",
                 "responses": {
                     "200": {
                         "content": {
@@ -1569,6 +1583,7 @@
                 ]
             },
             "post": {
+                "operationId": "createOrganization",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1637,6 +1652,7 @@
         },
         "/orgs/{orgID}": {
             "delete": {
+                "operationId": "deleteOrganization",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -1704,6 +1720,7 @@
                 ]
             },
             "get": {
+                "operationId": "getOrganization",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -1780,6 +1797,7 @@
         },
         "/orgs/{orgID}/api-keys": {
             "get": {
+                "operationId": "listApiKeys",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -1881,6 +1899,7 @@
             },
             "post": {
                 "description": "The secret is returned once and cannot be read again. The scope cannot be changed afterwards.",
+                "operationId": "createApiKey",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -1980,6 +1999,7 @@
         },
         "/orgs/{orgID}/api-keys/{keyID}": {
             "delete": {
+                "operationId": "deleteApiKey",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2059,6 +2079,7 @@
         "/orgs/{orgID}/domains": {
             "get": {
                 "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "listDomains",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2160,6 +2181,7 @@
             },
             "post": {
                 "description": "Answers with the DNS TXT record to create; verify it afterwards. Needs a JWT or an API key with the write scope.",
+                "operationId": "createDomain",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2270,6 +2292,7 @@
         "/orgs/{orgID}/domains/{domainID}": {
             "delete": {
                 "description": "Also deletes the links served from it. Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteDomain",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2347,6 +2370,7 @@
             },
             "get": {
                 "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getDomain",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2433,6 +2457,7 @@
         "/orgs/{orgID}/domains/{domainID}/verify": {
             "post": {
                 "description": "Checks the DNS TXT record. Needs a JWT or an API key with the write scope.",
+                "operationId": "verifyDomain",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2528,6 +2553,7 @@
         },
         "/orgs/{orgID}/invitations": {
             "get": {
+                "operationId": "listInvitations",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2602,6 +2628,7 @@
                 ]
             },
             "post": {
+                "operationId": "inviteMember",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2702,6 +2729,7 @@
         "/orgs/{orgID}/links": {
             "get": {
                 "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "listLinks",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2803,6 +2831,7 @@
             },
             "post": {
                 "description": "Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.",
+                "operationId": "createLink",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2913,6 +2942,7 @@
         "/orgs/{orgID}/links/{linkID}": {
             "delete": {
                 "description": "Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteLink",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -2992,6 +3022,7 @@
         "/orgs/{orgID}/links/{linkID}/qr": {
             "get": {
                 "description": "An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.",
+                "operationId": "getLinkQr",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3142,6 +3173,7 @@
         "/orgs/{orgID}/links/{linkID}/stats": {
             "get": {
                 "description": "Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "operationId": "getLinkStats",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3253,7 +3285,8 @@
         },
         "/orgs/{orgID}/links/{linkID}/unlock-page": {
             "delete": {
-                "description": "Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the write scope.",
+                "description": "The link goes back to the organization's page. Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteLinkUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3265,9 +3298,10 @@
                         }
                     },
                     {
-                        "description": "Link id, for a page of one link",
+                        "description": "Link id",
                         "in": "path",
                         "name": "linkID",
+                        "required": true,
                         "schema": {
                             "type": "integer"
                         }
@@ -3323,13 +3357,14 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Delete an unlock page",
+                "summary": "Delete a link's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
             },
             "get": {
-                "description": "Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the read scope.",
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getLinkUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3341,9 +3376,10 @@
                         }
                     },
                     {
-                        "description": "Link id, for a page of one link",
+                        "description": "Link id",
                         "in": "path",
                         "name": "linkID",
+                        "required": true,
                         "schema": {
                             "type": "integer"
                         }
@@ -3406,13 +3442,14 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Get an unlock page",
+                "summary": "Get a link's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
             },
             "put": {
-                "description": "Without a link in the path it is the organization's page, used by all its protected links; with one it is that link's own page. The HTML must post its form to {{.Action}}. Needs a JWT or an API key with the write scope.",
+                "description": "The page that link shows instead of the organization's. The HTML must post its form to {{.Action}}. Needs a JWT or an API key with the write scope.",
+                "operationId": "setLinkUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3424,9 +3461,10 @@
                         }
                     },
                     {
-                        "description": "Link id, for a page of one link",
+                        "description": "Link id",
                         "in": "path",
                         "name": "linkID",
+                        "required": true,
                         "schema": {
                             "type": "integer"
                         }
@@ -3512,7 +3550,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Set an unlock page",
+                "summary": "Set a link's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
@@ -3520,6 +3558,7 @@
         },
         "/orgs/{orgID}/members": {
             "get": {
+                "operationId": "listMembers",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3596,6 +3635,7 @@
         },
         "/orgs/{orgID}/members/{userID}": {
             "delete": {
+                "operationId": "removeMember",
                 "parameters": [
                     {
                         "description": "Organization id",
@@ -3674,21 +3714,14 @@
         },
         "/orgs/{orgID}/unlock-page": {
             "delete": {
-                "description": "Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the write scope.",
+                "description": "Goes back to the default page. Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteOrganizationUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
                         "in": "path",
                         "name": "orgID",
                         "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "description": "Link id, for a page of one link",
-                        "in": "path",
-                        "name": "linkID",
                         "schema": {
                             "type": "integer"
                         }
@@ -3744,27 +3777,20 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Delete an unlock page",
+                "summary": "Delete the organization's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
             },
             "get": {
-                "description": "Without a link in the path it is the organization's page; with one it is that link's own page. Needs a JWT or an API key with the read scope.",
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getOrganizationUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
                         "in": "path",
                         "name": "orgID",
                         "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "description": "Link id, for a page of one link",
-                        "in": "path",
-                        "name": "linkID",
                         "schema": {
                             "type": "integer"
                         }
@@ -3827,27 +3853,20 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Get an unlock page",
+                "summary": "Get the organization's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
             },
             "put": {
-                "description": "Without a link in the path it is the organization's page, used by all its protected links; with one it is that link's own page. The HTML must post its form to {{.Action}}. Needs a JWT or an API key with the write scope.",
+                "description": "The page all the organization's protected links show, unless a link has its own. The HTML must post its form to {{.Action}}. Needs a JWT or an API key with the write scope.",
+                "operationId": "setOrganizationUnlockPage",
                 "parameters": [
                     {
                         "description": "Organization id",
                         "in": "path",
                         "name": "orgID",
                         "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "description": "Link id, for a page of one link",
-                        "in": "path",
-                        "name": "linkID",
                         "schema": {
                             "type": "integer"
                         }
@@ -3933,7 +3952,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "summary": "Set an unlock page",
+                "summary": "Set the organization's unlock page",
                 "tags": [
                     "unlock-page"
                 ]
@@ -3942,6 +3961,7 @@
         "/orgs/{orgID}/unlock-page/history": {
             "get": {
                 "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getUnlockPageHistory",
                 "parameters": [
                     {
                         "description": "Organization id",

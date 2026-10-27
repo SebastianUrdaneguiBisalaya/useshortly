@@ -60,6 +60,7 @@ func (h *DomainHandler) body(d domain.Domain) domainBody {
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	409	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	createDomain
 //	@Router			/orgs/{orgID}/domains [post]
 func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -94,6 +95,7 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	listDomains
 //	@Router			/orgs/{orgID}/domains [get]
 func (h *DomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -130,6 +132,7 @@ func (h *DomainHandler) List(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	getDomain
 //	@Router			/orgs/{orgID}/domains/{domainID} [get]
 func (h *DomainHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -163,6 +166,7 @@ func (h *DomainHandler) Get(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	verifyDomain
 //	@Router			/orgs/{orgID}/domains/{domainID}/verify [post]
 func (h *DomainHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -195,6 +199,7 @@ func (h *DomainHandler) Verify(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	deleteDomain
 //	@Router			/orgs/{orgID}/domains/{domainID} [delete]
 func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)

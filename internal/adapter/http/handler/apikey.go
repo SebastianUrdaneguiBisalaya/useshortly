@@ -62,6 +62,7 @@ type CreateAPIKeyRequest struct {
 //	@Failure		403		{object}	ErrorResponse
 //	@Failure		404		{object}	ErrorResponse
 //	@Failure		429		{object}	ErrorResponse
+//	@ID	createApiKey
 //	@Router			/orgs/{orgID}/api-keys [post]
 func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -95,6 +96,7 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403		{object}	ErrorResponse
 //	@Failure	404		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	listApiKeys
 //	@Router		/orgs/{orgID}/api-keys [get]
 func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -130,6 +132,7 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	deleteApiKey
 //	@Router		/orgs/{orgID}/api-keys/{keyID} [delete]
 func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)

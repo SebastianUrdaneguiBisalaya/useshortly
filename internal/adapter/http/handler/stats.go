@@ -56,6 +56,7 @@ const dateLayout = "2006-01-02"
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	getLinkStats
 //	@Router			/orgs/{orgID}/links/{linkID}/stats [get]
 func (h *StatsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)

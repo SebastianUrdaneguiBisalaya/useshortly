@@ -114,6 +114,7 @@ type ConfirmationCodeRequest struct {
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	409		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	register
 //	@Router		/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var in RegisterRequest
@@ -140,6 +141,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 //	@Success	201		{object}	SessionResponse
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	verifyRegistration
 //	@Router		/auth/register/verify [post]
 func (h *AuthHandler) VerifyRegistration(w http.ResponseWriter, r *http.Request) {
 	var in VerifyRegistrationRequest
@@ -165,6 +167,7 @@ func (h *AuthHandler) VerifyRegistration(w http.ResponseWriter, r *http.Request)
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	401		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	login
 //	@Router		/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var in LoginRequest
@@ -192,6 +195,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
 //	@Failure		429		{object}	ErrorResponse
+//	@ID	loginWithGoogle
 //	@Router			/auth/google [post]
 func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 	var in GoogleLoginRequest
@@ -217,6 +221,7 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	401		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	refreshSession
 //	@Router		/auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var in RefreshTokenRequest
@@ -240,6 +245,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 //	@Success	204
 //	@Failure	400	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	logout
 //	@Router		/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	var in RefreshTokenRequest
@@ -263,6 +269,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 //	@Success	202		{object}	MessageResponse
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	forgotPassword
 //	@Router		/auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var in ForgotPasswordRequest
@@ -285,6 +292,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 //	@Success	204
 //	@Failure	400	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	resetPassword
 //	@Router		/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var in ResetPasswordRequest
@@ -308,6 +316,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 //	@Success		202	{object}	MessageResponse
 //	@Failure		401	{object}	ErrorResponse
 //	@Failure		429	{object}	ErrorResponse
+//	@ID	requestAccountDeletion
 //	@Router			/me/delete-code [post]
 func (h *AuthHandler) RequestDeletion(w http.ResponseWriter, r *http.Request) {
 	if err := h.delete.RequestCode(r.Context(), PrincipalFrom(r).UserID); err != nil {
@@ -330,6 +339,7 @@ func (h *AuthHandler) RequestDeletion(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		401	{object}	ErrorResponse
 //	@Failure		429	{object}	ErrorResponse
+//	@ID	deleteAccount
 //	@Router			/me [delete]
 func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	var in ConfirmationCodeRequest
@@ -352,6 +362,7 @@ func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 //	@Success	200	{object}	UserResponse
 //	@Failure	401	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	getMe
 //	@Router		/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))

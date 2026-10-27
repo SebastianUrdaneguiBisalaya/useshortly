@@ -73,6 +73,7 @@ type InviteRequest struct {
 //	@Failure	400		{object}	ErrorResponse
 //	@Failure	401		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	createOrganization
 //	@Router		/orgs [post]
 func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var in CreateOrganizationRequest
@@ -96,6 +97,7 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Success	200	{object}	OrganizationListResponse
 //	@Failure	401	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	listMyOrganizations
 //	@Router		/orgs [get]
 func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 	list, err := h.orgs.ListMine(r.Context(), PrincipalFrom(r).UserID)
@@ -122,6 +124,7 @@ func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403		{object}	ErrorResponse
 //	@Failure	404		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	getOrganization
 //	@Router		/orgs/{orgID} [get]
 func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -149,6 +152,7 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	deleteOrganization
 //	@Router		/orgs/{orgID} [delete]
 func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -174,6 +178,7 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403		{object}	ErrorResponse
 //	@Failure	404		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	listMembers
 //	@Router		/orgs/{orgID}/members [get]
 func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -205,6 +210,7 @@ func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	removeMember
 //	@Router		/orgs/{orgID}/members/{userID} [delete]
 func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -237,6 +243,7 @@ func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403		{object}	ErrorResponse
 //	@Failure	404		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	inviteMember
 //	@Router		/orgs/{orgID}/invitations [post]
 func (h *OrgHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
@@ -269,6 +276,7 @@ func (h *OrgHandler) Invite(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403		{object}	ErrorResponse
 //	@Failure	404		{object}	ErrorResponse
 //	@Failure	429		{object}	ErrorResponse
+//	@ID	listInvitations
 //	@Router		/orgs/{orgID}/invitations [get]
 func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	orgID, ok := idParam(w, r, "orgID")
@@ -299,6 +307,7 @@ func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403				{object}	ErrorResponse
 //	@Failure	404				{object}	ErrorResponse
 //	@Failure	429				{object}	ErrorResponse
+//	@ID	acceptInvitation
 //	@Router		/invitations/{invitationID}/accept [post]
 func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 	id, ok := idParam(w, r, "invitationID")
@@ -326,6 +335,7 @@ func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 //	@Failure	403	{object}	ErrorResponse
 //	@Failure	404	{object}	ErrorResponse
 //	@Failure	429	{object}	ErrorResponse
+//	@ID	rejectInvitation
 //	@Router		/invitations/{invitationID}/reject [post]
 func (h *OrgHandler) RejectInvitation(w http.ResponseWriter, r *http.Request) {
 	id, ok := idParam(w, r, "invitationID")

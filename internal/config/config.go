@@ -32,6 +32,8 @@ type Config struct {
 	GeoIPPath string
 	// TrustProxy reads the visitor's address from X-Forwarded-For (set it behind a reverse proxy).
 	TrustProxy bool
+	// AbuseEmail is where visitors report a link from the unlock page; empty shows no report link.
+	AbuseEmail string
 }
 
 func Load() (*Config, error) {
@@ -52,6 +54,7 @@ func Load() (*Config, error) {
 		GoogleSecret:     getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirect:   getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
 		GeoIPPath:        getEnv("GEOIP_DB_PATH", ""),
+		AbuseEmail:       getEnv("ABUSE_EMAIL", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {

@@ -23,6 +23,8 @@ type LinkHandler struct {
 	// trustProxy reads the visitor's address from X-Forwarded-For; see clientIP.
 	trustProxy bool
 	pages      UnlockPages // nil shows the default unlock page
+	orgs       OrgNames    // names the organization in the unlock page footer
+	abuseEmail string      // where visitors report a link; empty shows no report link
 }
 
 func NewLinkHandler(links *link.Service, clicks ClickRecorder, baseURL string, trustProxy bool) *LinkHandler {

@@ -100,7 +100,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 			Accounts: handler.NewAuthHandler(users, google, reset),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages),
+			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
 			Stats:    handler.NewStatsHandler(stats),
 			Pages:    handler.NewUnlockPageHandler(pages),
 			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),

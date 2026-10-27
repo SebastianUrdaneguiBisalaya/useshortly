@@ -54,6 +54,16 @@ func (s *Service) Get(ctx context.Context, actorID, tenantID int64) (Organizatio
 	return s.repo.FindByID(ctx, tenantID)
 }
 
+// Name is the display name of an organization, for pages any visitor can see (no membership
+// check: it must never return anything else about the organization).
+func (s *Service) Name(ctx context.Context, tenantID int64) (string, error) {
+	o, err := s.repo.FindByID(ctx, tenantID)
+	if err != nil {
+		return "", err
+	}
+	return o.Name, nil
+}
+
 // ListMine returns the organizations the user belongs to.
 func (s *Service) ListMine(ctx context.Context, userID int64) ([]Organization, error) {
 	return s.repo.ListByUser(ctx, userID)

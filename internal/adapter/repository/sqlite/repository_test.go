@@ -438,27 +438,27 @@ func TestUnlockPageRepository(t *testing.T) {
 		return l
 	}
 	one, two, foreign := mk("one0000", 1), mk("two0000", 1), mk("for0000", 2)
-	page := func(tenant int64, linkID *int64, html string) unlockpage.Page {
-		return unlockpage.Page{TenantID: tenant, LinkID: linkID, HTML: html, UpdatedAt: now}
+	mkPage := func(tenant int64, linkID *int64, html string) unlockpage.Page {
+		return unlockpage.Page{TenantID: tenant, LinkID: linkID, HTML: html, UpdatedBy: u.ID, UpdatedAt: now}
 	}
 
 	_, err := pages.Find(ctx, 1, one.ID)
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound)
 
-	org, err := pages.Upsert(ctx, page(1, nil, "<p>org v1</p>"))
+	org, err := pages.Upsert(ctx, mkPage(1, nil, "<p>org v1</p>"))
 	require.NoError(t, err)
 	assert.Nil(t, org.LinkID)
 	assert.True(t, org.UpdatedAt.Equal(now))
-	again, err := pages.Upsert(ctx, page(1, nil, "<p>org v2</p>"))
+	again, err := pages.Upsert(ctx, mkPage(1, nil, "<p>org v2</p>"))
 	require.NoError(t, err)
 	assert.Equal(t, org.ID, again.ID, "replaced, not duplicated")
 	assert.Equal(t, "<p>org v2</p>", again.HTML)
 
-	own, err := pages.Upsert(ctx, page(1, &one.ID, "<p>one</p>"))
+	own, err := pages.Upsert(ctx, mkPage(1, &one.ID, "<p>one</p>"))
 	require.NoError(t, err)
 	require.NotNil(t, own.LinkID)
 	assert.Equal(t, one.ID, *own.LinkID)
-	again, err = pages.Upsert(ctx, page(1, &one.ID, "<p>one v2</p>"))
+	again, err = pages.Upsert(ctx, mkPage(1, &one.ID, "<p>one v2</p>"))
 	require.NoError(t, err)
 	assert.Equal(t, own.ID, again.ID)
 
@@ -471,9 +471,9 @@ func TestUnlockPageRepository(t *testing.T) {
 	_, err = pages.Find(ctx, 2, foreign.ID)
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "another organization has no page")
 
-	_, err = pages.Upsert(ctx, page(1, &foreign.ID, "<p>x</p>"))
+	_, err = pages.Upsert(ctx, mkPage(1, &foreign.ID, "<p>x</p>"))
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "a page for another organization's link is refused")
-	_, err = pages.Upsert(ctx, page(1, new(int64), "<p>x</p>"))
+	_, err = pages.Upsert(ctx, mkPage(1, new(int64), "<p>x</p>"))
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "and for a link that does not exist")
 
 	exact, err := pages.Get(ctx, 1, nil)
@@ -482,20 +482,40 @@ func TestUnlockPageRepository(t *testing.T) {
 	_, err = pages.Get(ctx, 1, &two.ID)
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "Get is exact: no fallback")
 
-	assert.ErrorIs(t, pages.Delete(ctx, 2, nil), unlockpage.ErrNotFound)
-	require.NoError(t, pages.Delete(ctx, 1, &one.ID))
+	assert.ErrorIs(t, pages.Delete(ctx, 2, u.ID, nil, now), unlockpage.ErrNotFound)
+	require.NoError(t, pages.Delete(ctx, 1, u.ID, &one.ID, now))
 	got, err = pages.Find(ctx, 1, one.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "<p>org v2</p>", got.HTML, "back to the organization's page")
 
-	_, err = pages.Upsert(ctx, page(1, &two.ID, "<p>two</p>"))
+	_, err = pages.Upsert(ctx, mkPage(1, &two.ID, "<p>two</p>"))
 	require.NoError(t, err)
 	require.NoError(t, links.Delete(ctx, 1, two.ID))
 	_, err = pages.Get(ctx, 1, &two.ID)
 	assert.ErrorIs(t, err, unlockpage.ErrNotFound, "a link's page goes with the link")
 
-	_, err = db.ExecContext(ctx, `INSERT INTO unlock_pages (tenant_id, html, updated_at) VALUES (1, '', 'x')`)
+	_, err = db.ExecContext(ctx, `INSERT INTO unlock_pages (tenant_id, html, updated_by, updated_at) VALUES (1, '', 1, 'x')`)
 	assert.Error(t, err, "the database refuses an empty page")
+
+	assert.EqualValues(t, u.ID, org.UpdatedBy)
+	events, total, err := pages.History(ctx, 1, page.Params{Limit: 3})
+	require.NoError(t, err)
+	assert.Equal(t, 6, total, "two org sets, two link sets, two deletes; failed ones leave nothing")
+	require.Len(t, events, 3)
+	assert.Equal(t, unlockpage.ActionSet, events[0].Action, "newest first: the link two's page")
+	require.NotNil(t, events[0].LinkID)
+	assert.Equal(t, two.ID, *events[0].LinkID)
+	assert.Equal(t, unlockpage.ActionDelete, events[1].Action)
+	assert.EqualValues(t, u.ID, events[1].UserID)
+	assert.True(t, events[1].At.Equal(now))
+	_, total, err = pages.History(ctx, 2, page.Params{Limit: 10})
+	require.NoError(t, err)
+	assert.Zero(t, total)
+
+	// The trail stays after the link and its page are gone.
+	var n int
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT count(*) FROM unlock_page_events WHERE link_id = ?`, two.ID).Scan(&n))
+	assert.Equal(t, 1, n)
 }
 
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {

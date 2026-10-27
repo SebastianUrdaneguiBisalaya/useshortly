@@ -63,10 +63,10 @@ func (a *Auth) UserOrMCP(next http.Handler) http.Handler { return a.require(next
 
 func (a *Auth) require(next http.Handler, allow allowed) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, ok := bearer(r)
+		token, fromCookie, ok := credentials(r)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="useshortly"`)
-			handler.WriteAPIError(w, http.StatusUnauthorized, "unauthorized", "missing bearer token")
+			handler.WriteAPIError(w, http.StatusUnauthorized, "unauthorized", "missing bearer token or session cookie")
 			return
 		}
 		var (
@@ -74,6 +74,9 @@ func (a *Auth) require(next http.Handler, allow allowed) http.Handler {
 			err error
 		)
 		switch {
+		case fromCookie:
+			// The session cookie only ever holds a user JWT; API keys and MCP tokens must come in the header.
+			p, err = a.userToken(r.Context(), token)
 		case strings.HasPrefix(token, "usl_"):
 			if !allow.key {
 				handler.WriteAPIError(w, http.StatusForbidden, "api_key_not_allowed", "api keys cannot be used on this endpoint")
@@ -159,6 +162,18 @@ func tokenAlg(token string) string {
 		return ""
 	}
 	return h.Alg
+}
+
+// credentials finds the caller's token: the Authorization header wins (API keys, MCP clients,
+// scripts), otherwise the session cookie the web app signed in with.
+func credentials(r *http.Request) (token string, fromCookie, ok bool) {
+	if token, ok := bearer(r); ok {
+		return token, false, true
+	}
+	if c, err := r.Cookie(handler.AccessCookie); err == nil && c.Value != "" {
+		return c.Value, true, true
+	}
+	return "", false, false
 }
 
 func bearer(r *http.Request) (string, bool) {

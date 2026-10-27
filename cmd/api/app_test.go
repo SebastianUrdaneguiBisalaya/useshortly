@@ -237,6 +237,30 @@ type response struct {
 	raw    string
 }
 
+// cookie is the value a response set for a cookie ("" when it did not set it).
+func (r response) cookie(name string) string {
+	for _, c := range (&http.Response{Header: r.header}).Cookies() {
+		if c.Name == name {
+			return c.Value
+		}
+	}
+	return ""
+}
+
+// refresh calls the endpoint that takes the refresh token from its cookie.
+func (e *env) refresh(path, token string) response {
+	e.t.Helper()
+	req := httptest.NewRequest("POST", path, nil)
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: token})
+	}
+	rec := httptest.NewRecorder()
+	e.app.handler.ServeHTTP(rec, req)
+	res := response{status: rec.Code, header: rec.Header(), raw: rec.Body.String()}
+	_ = json.Unmarshal(rec.Body.Bytes(), &res.body)
+	return res
+}
+
 func (e *env) do(method, path, token string, body any) response {
 	e.t.Helper()
 	return e.doAt("", method, path, token, body)
@@ -320,7 +344,7 @@ func (e *env) signUp(email, first string) string {
 	require.Equal(e.t, http.StatusAccepted, res.status, res.raw)
 	res = e.do("POST", "/api/v1/auth/register/verify", "", map[string]string{"email": email, "code": e.lastCode(email)})
 	require.Equal(e.t, http.StatusCreated, res.status, res.raw)
-	return res.str("token")
+	return res.cookie("access_token")
 }
 
 func (e *env) createOrg(token, name string) string {
@@ -357,7 +381,7 @@ func TestSignupLoginAndProfile(t *testing.T) {
 
 	res = e.do("POST", "/api/v1/auth/register/verify", "", map[string]string{"email": "ana@example.com", "code": code})
 	require.Equal(t, http.StatusCreated, res.status, res.raw)
-	assert.NotEmpty(t, res.str("token"))
+	assert.NotEmpty(t, res.cookie("access_token"))
 	assert.NotEmpty(t, res.str("expires_at"))
 	assert.Equal(t, "ana@example.com", res.body["user"].(map[string]any)["email"])
 	assert.Equal(t, true, res.body["user"].(map[string]any)["email_verified"])
@@ -369,7 +393,7 @@ func TestSignupLoginAndProfile(t *testing.T) {
 
 	res = e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
 	require.Equal(t, http.StatusOK, res.status, res.raw)
-	token := res.str("token")
+	token := res.cookie("access_token")
 
 	me := e.do("GET", "/api/v1/me", token, nil)
 	require.Equal(t, http.StatusOK, me.status)
@@ -1304,8 +1328,8 @@ func TestGoogleSignIn(t *testing.T) {
 
 	res = e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"})
 	require.Equal(t, http.StatusOK, res.status, res.raw)
-	token := res.str("token")
-	assert.NotEmpty(t, res.str("refresh_token"))
+	token := res.cookie("access_token")
+	assert.NotEmpty(t, res.cookie("refresh_token"))
 	assert.Equal(t, "gina@example.com", e.do("GET", "/api/v1/me", token, nil).str("email"))
 	assert.Equal(t, http.StatusOK, e.do("POST", "/api/v1/auth/google", "", map[string]string{"code": "good-code"}).status)
 
@@ -1379,37 +1403,87 @@ func TestRefreshTokens(t *testing.T) {
 	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
 	require.Equal(t, http.StatusOK, login.status)
 	assert.Equal(t, "no-store", login.header.Get("Cache-Control"))
-	refresh := login.str("refresh_token")
+	refresh := login.cookie("refresh_token")
 	assert.True(t, strings.HasPrefix(refresh, "rft_"))
 	assert.True(t, strings.HasSuffix(login.str("refresh_expires_at"), "Z"), "times are UTC")
 	assert.True(t, strings.HasSuffix(login.str("expires_at"), "Z"))
 
 	// A refresh returns a working access token and a replacement refresh token.
-	res := e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	res := e.refresh("/api/v1/auth/refresh", refresh)
 	require.Equal(t, http.StatusOK, res.status, res.raw)
-	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/me", res.str("token"), nil).status)
-	next := res.str("refresh_token")
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/me", res.cookie("access_token"), nil).status)
+	next := res.cookie("refresh_token")
 	assert.NotEqual(t, refresh, next)
 
 	// Replaying the old one is theft: it fails and every session of the user dies.
-	res = e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	res = e.refresh("/api/v1/auth/refresh", refresh)
 	assert.Equal(t, http.StatusUnauthorized, res.status)
 	assert.Equal(t, "invalid_credentials", res.errCode())
-	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": next}).status)
+	assert.Equal(t, http.StatusUnauthorized, e.refresh("/api/v1/auth/refresh", next).status)
 
-	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": "rft_nope"}).status)
-	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": ""}).status)
+	assert.Equal(t, http.StatusUnauthorized, e.refresh("/api/v1/auth/refresh", "rft_nope").status)
+	assert.Equal(t, http.StatusUnauthorized, e.refresh("/api/v1/auth/refresh", "").status)
+}
+
+func setCookies(res response) map[string]*http.Cookie {
+	out := map[string]*http.Cookie{}
+	for _, c := range (&http.Response{Header: res.header}).Cookies() {
+		out[c.Name] = c
+	}
+	return out
+}
+
+func TestSessionLivesInHttpOnlyCookies(t *testing.T) {
+	e := newEnv(t, false)
+	e.signUp("ana@example.com", "Ana")
+	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
+	require.Equal(t, http.StatusOK, login.status)
+
+	// The tokens never travel in the body, only the expiry times the page needs.
+	assert.NotContains(t, login.raw, `"token"`)
+	assert.NotContains(t, login.raw, `"refresh_token"`)
+	assert.NotEmpty(t, login.str("expires_at"))
+
+	cookies := setCookies(login)
+	access, refresh := cookies["access_token"], cookies["refresh_token"]
+	require.NotNil(t, access)
+	require.NotNil(t, refresh)
+	for _, c := range cookies {
+		assert.True(t, c.HttpOnly, c.Name)
+	}
+	assert.Equal(t, http.SameSiteLaxMode, access.SameSite)
+	assert.Equal(t, "/api/v1", access.Path)
+	assert.Equal(t, http.SameSiteStrictMode, refresh.SameSite)
+	assert.Equal(t, "/api/v1/auth", refresh.Path, "the refresh token only goes to the auth endpoints")
+
+	// The access cookie alone authenticates, with no Authorization header.
+	req := httptest.NewRequest("GET", "/api/v1/me", nil)
+	req.AddCookie(access)
+	rec := httptest.NewRecorder()
+	e.app.handler.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// A refresh token that is not valid clears both cookies, so the browser stops sending them.
+	bad := e.refresh("/api/v1/auth/refresh", "rft_nope")
+	assert.Equal(t, http.StatusUnauthorized, bad.status)
+	for _, name := range []string{"access_token", "refresh_token"} {
+		c := setCookies(bad)[name]
+		require.NotNil(t, c, name)
+		assert.Negative(t, c.MaxAge, name)
+	}
 }
 
 func TestLogoutRevokesTheRefreshToken(t *testing.T) {
 	e := newEnv(t, false)
 	e.signUp("ana@example.com", "Ana")
 	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "ana@example.com", "password": "s3cretpass"})
-	refresh := login.str("refresh_token")
+	refresh := login.cookie("refresh_token")
 
-	assert.Equal(t, http.StatusNoContent, e.do("POST", "/api/v1/auth/logout", "", map[string]string{"refresh_token": refresh}).status)
-	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh}).status)
-	assert.Equal(t, http.StatusNoContent, e.do("POST", "/api/v1/auth/logout", "", map[string]string{"refresh_token": "rft_unknown"}).status)
+	logout := e.refresh("/api/v1/auth/logout", refresh)
+	assert.Equal(t, http.StatusNoContent, logout.status)
+	assert.Negative(t, setCookies(logout)["refresh_token"].MaxAge, "logout clears the cookies")
+	assert.Equal(t, http.StatusUnauthorized, e.refresh("/api/v1/auth/refresh", refresh).status)
+	assert.Equal(t, http.StatusNoContent, e.refresh("/api/v1/auth/logout", "rft_unknown").status)
 }
 
 func TestSignupAndPasswordResetEndSessions(t *testing.T) {
@@ -1418,14 +1492,14 @@ func TestSignupAndPasswordResetEndSessions(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, signup.status)
 	verified := e.do("POST", "/api/v1/auth/register/verify", "", map[string]string{"email": "ana@example.com", "code": e.lastCode("ana@example.com")})
 	require.Equal(t, http.StatusCreated, verified.status)
-	stolen := verified.str("refresh_token")
+	stolen := verified.cookie("refresh_token")
 	assert.NotEmpty(t, stolen, "signup opens a full session")
 
 	require.Equal(t, http.StatusAccepted, e.do("POST", "/api/v1/auth/forgot-password", "", map[string]string{"email": "ana@example.com"}).status)
 	res := e.do("POST", "/api/v1/auth/reset-password", "", map[string]string{"email": "ana@example.com", "code": e.lastCode("ana@example.com"), "new_password": "brand-new-pass"})
 	require.Equal(t, http.StatusNoContent, res.status, res.raw)
 
-	assert.Equal(t, http.StatusUnauthorized, e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": stolen}).status,
+	assert.Equal(t, http.StatusUnauthorized, e.refresh("/api/v1/auth/refresh", stolen).status,
 		"resetting the password kills the sessions a thief may hold")
 }
 
@@ -1439,14 +1513,14 @@ func TestRemovedMembersLoseAccessEvenWithValidTokens(t *testing.T) {
 	require.Equal(t, http.StatusOK, e.do("POST", "/api/v1/invitations/"+inv.id()+"/accept", bob, nil).status)
 
 	login := e.do("POST", "/api/v1/auth/login", "", map[string]string{"email": "bob@example.com", "password": "s3cretpass"})
-	refresh := login.str("refresh_token")
+	refresh := login.cookie("refresh_token")
 	bobMe := e.do("GET", "/api/v1/me", bob, nil)
 	require.Equal(t, http.StatusNoContent, e.do("DELETE", "/api/v1/orgs/"+acme+"/members/"+bobMe.id(), ana, nil).status)
 
 	// A fresh access token from the refresh token still cannot enter the organization.
-	res := e.do("POST", "/api/v1/auth/refresh", "", map[string]string{"refresh_token": refresh})
+	res := e.refresh("/api/v1/auth/refresh", refresh)
 	require.Equal(t, http.StatusOK, res.status)
-	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme, res.str("token"), nil).status)
+	assert.Equal(t, http.StatusForbidden, e.do("GET", "/api/v1/orgs/"+acme, res.cookie("access_token"), nil).status)
 }
 
 func TestTimesInResponsesAreUTC(t *testing.T) {

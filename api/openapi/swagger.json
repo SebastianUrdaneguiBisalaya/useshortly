@@ -577,14 +577,6 @@
                 },
                 "type": "object"
             },
-            "RefreshTokenRequest": {
-                "properties": {
-                    "refresh_token": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
             "RegisterRequest": {
                 "properties": {
                     "email": {
@@ -622,12 +614,6 @@
                         "type": "string"
                     },
                     "refresh_expires_at": {
-                        "type": "string"
-                    },
-                    "refresh_token": {
-                        "type": "string"
-                    },
-                    "token": {
                         "type": "string"
                     },
                     "user": {
@@ -963,33 +949,11 @@
         },
         "/auth/logout": {
             "post": {
+                "description": "Reads the refresh token from the refresh_token cookie; there is no body.",
                 "operationId": "logout",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "description": "Refresh token to revoke",
-                                "summary": "body"
-                            }
-                        }
-                    },
-                    "description": "Refresh token to revoke",
-                    "required": true
-                },
                 "responses": {
                     "204": {
                         "description": "No Content"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
                     },
                     "429": {
                         "content": {
@@ -1010,20 +974,8 @@
         },
         "/auth/refresh": {
             "post": {
+                "description": "Reads the refresh token from the refresh_token cookie; there is no body.",
                 "operationId": "refreshSession",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "description": "Refresh token",
-                                "summary": "body"
-                            }
-                        }
-                    },
-                    "description": "Refresh token",
-                    "required": true
-                },
                 "responses": {
                     "200": {
                         "content": {
@@ -1034,16 +986,6 @@
                             }
                         },
                         "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
                     },
                     "401": {
                         "content": {

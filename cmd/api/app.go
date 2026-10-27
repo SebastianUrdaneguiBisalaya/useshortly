@@ -121,7 +121,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 		handler: router.NewRouter(router.Handlers{
 			Auth:     newAuthMiddleware(users, keys, a.mcp),
 			Tenant:   middlewares.NewTenant(orgs),
-			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion),
+			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion).WithSecureCookies(strings.HasPrefix(cfg.AppURL, "https://")),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
 			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),

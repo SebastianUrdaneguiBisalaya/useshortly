@@ -16,7 +16,7 @@
     "name": "Sebastian Marat Urdanegui Bisalaya",
     "url": "https://www.sebastianurdanegui.com/"
   },
-  "private": true,
+  "private": false,
   "license": "ISC",
   "devEngines": {
     "packageManager": {

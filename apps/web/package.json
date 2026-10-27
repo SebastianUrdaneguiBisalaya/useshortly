@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "api:generate": "orval",
@@ -13,6 +13,7 @@
     "name": "Sebastian Marat Urdanegui Bisalaya",
     "url": "https://www.sebastianurdanegui.com/"
   },
+  "license": "ISC",
   "dependencies": {
     "@react-router/node": "8.5.0",
     "@react-router/serve": "8.5.0",

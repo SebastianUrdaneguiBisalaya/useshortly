@@ -7,8 +7,11 @@ import (
 	"errors"
 	"html/template"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -57,7 +60,9 @@ func (h *LinkHandler) writeLocked(w http.ResponseWriter, r *http.Request, l link
 	case errors.Is(err, link.ErrWrongPassword):
 		status, message = http.StatusUnauthorized, "That password is not right. Try again."
 	case errors.Is(err, link.ErrTooManyAttempts):
-		status, message = http.StatusTooManyRequests, "Too many attempts. Try again in 15 minutes."
+		wait, _ := link.RetryAfter(err)
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+		status, message = http.StatusTooManyRequests, "Too many attempts. Try again in "+humanWait(wait)+"."
 	default:
 		WriteError(w, r, err)
 		return
@@ -73,6 +78,25 @@ func (h *LinkHandler) writeLocked(w http.ResponseWriter, r *http.Request, l link
 		body, _ = renderUnlock(defaultUnlockHTML, view)
 	}
 	writeHTML(w, status, body)
+}
+
+// humanWait says a wait in the largest whole unit that does not cut it short: 30 seconds,
+// 2 minutes, 1 hour.
+func humanWait(d time.Duration) string {
+	unit := func(n int, name string) string {
+		if n == 1 {
+			return "1 " + name
+		}
+		return strconv.Itoa(n) + " " + name + "s"
+	}
+	switch {
+	case d < time.Minute:
+		return unit(max(int(math.Ceil(d.Seconds())), 1), "second")
+	case d < time.Hour:
+		return unit(int(math.Ceil(d.Minutes())), "minute")
+	default:
+		return unit(int(math.Ceil(d.Hours())), "hour")
+	}
 }
 
 // pageFor is the custom page of the link, or the default one.

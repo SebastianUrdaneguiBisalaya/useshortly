@@ -85,8 +85,10 @@ func protectedFixture(t *testing.T, pages UnlockPages) (*LinkHandler, *fakeClick
 // allowAll is a link.AttemptLimiter that never refuses.
 type allowAll struct{}
 
-func (allowAll) Take(context.Context, string, int, time.Duration) (bool, error) { return true, nil }
-func (allowAll) Reset(context.Context, string) error                            { return nil }
+func (allowAll) Take(context.Context, string, link.Backoff) (bool, time.Duration, error) {
+	return true, 0, nil
+}
+func (allowAll) Reset(context.Context, string) error { return nil }
 
 func visit(h *LinkHandler, accept string) *httptest.ResponseRecorder {
 	req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/locked-1", nil), map[string]string{"code": "locked-1"})

@@ -3,6 +3,7 @@ package link
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -125,26 +126,38 @@ func (h *fakeHasher) Verify(hash, password string) (bool, error) {
 	return hash == "hash:"+password, nil
 }
 
-// fakeLimiter counts attempts per key like the real one, without windows.
+// fakeLimiter applies the backoff policy with a clock the tests can move, like the Redis one.
 type fakeLimiter struct {
-	counts map[string]int
-	err    error
-	resets []string
+	now          time.Time
+	counts       map[string]int
+	blockedUntil map[string]time.Time
+	err          error
+	resets       []string
 }
 
-func newFakeLimiter() *fakeLimiter { return &fakeLimiter{counts: map[string]int{}} }
+func newFakeLimiter() *fakeLimiter {
+	return &fakeLimiter{now: fixedNow, counts: map[string]int{}, blockedUntil: map[string]time.Time{}}
+}
 
-func (l *fakeLimiter) Take(_ context.Context, key string, limit int, _ time.Duration) (bool, error) {
+func (l *fakeLimiter) Take(_ context.Context, key string, p Backoff) (bool, time.Duration, error) {
 	if l.err != nil {
-		return false, l.err
+		return false, 0, l.err
+	}
+	if until := l.blockedUntil[key]; until.After(l.now) {
+		return false, until.Sub(l.now), nil
 	}
 	l.counts[key]++
-	return l.counts[key] <= limit, nil
+	wait := p.DelayAfter(l.counts[key])
+	if wait > 0 {
+		l.blockedUntil[key] = l.now.Add(wait)
+	}
+	return true, wait, nil
 }
 
 func (l *fakeLimiter) Reset(_ context.Context, key string) error {
 	l.resets = append(l.resets, key)
 	delete(l.counts, key)
+	delete(l.blockedUntil, key)
 	return nil
 }
 
@@ -577,15 +590,46 @@ func TestUnlock(t *testing.T) {
 		assert.Empty(t, limiter.resets)
 	})
 
-	t.Run("three tries, then blocked even with the right password", func(t *testing.T) {
+	t.Run("three free tries, then a wait even for the right password", func(t *testing.T) {
 		s, _, hasher, _, _ := newProtected(t)
 		for range 3 {
 			_, err := s.Unlock(ctx, "abc1234", "nope", "203.0.113.7")
 			assert.ErrorIs(t, err, ErrWrongPassword)
 		}
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "203.0.113.7")
+		got, err := s.Unlock(ctx, "abc1234", "hunter22", "203.0.113.7")
 		assert.ErrorIs(t, err, ErrTooManyAttempts)
-		assert.Equal(t, 3, hasher.verifies, "the blocked attempt never looks at the password")
+		assert.Equal(t, "abc1234", got.Code, "the link comes back to render the page")
+		wait, ok := RetryAfter(err)
+		assert.True(t, ok)
+		assert.Equal(t, 30*time.Second, wait)
+		assert.Equal(t, 3, hasher.verifies, "the refused try never looks at the password")
+	})
+
+	t.Run("each wrong try after the free ones doubles the wait", func(t *testing.T) {
+		s, _, _, limiter, _ := newProtected(t)
+		for range 3 {
+			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+		}
+		for _, want := range []time.Duration{30 * time.Second, time.Minute, 2 * time.Minute} {
+			_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+			wait, ok := RetryAfter(err)
+			require.True(t, ok, "still waiting")
+			assert.Equal(t, want, wait)
+			limiter.now = limiter.now.Add(wait) // the visitor waits it out
+			_, err = s.Unlock(ctx, "abc1234", "nope", "v")
+			assert.ErrorIs(t, err, ErrWrongPassword, "and may try again")
+		}
+	})
+
+	t.Run("a visitor who waits and gets it right is let in", func(t *testing.T) {
+		s, _, _, limiter, _ := newProtected(t)
+		for range 3 {
+			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+		}
+		limiter.now = limiter.now.Add(30 * time.Second)
+		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		require.NoError(t, err)
+		assert.Empty(t, limiter.counts, "the right password clears the count")
 	})
 
 	t.Run("a right try counts too, but clears the count", func(t *testing.T) {
@@ -594,10 +638,12 @@ func TestUnlock(t *testing.T) {
 			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
 		}
 		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
-		require.NoError(t, err, "the third try is still allowed")
+		require.NoError(t, err, "the third try is still free")
 		assert.Empty(t, limiter.counts)
-		_, err = s.Unlock(ctx, "abc1234", "nope", "v")
-		assert.ErrorIs(t, err, ErrWrongPassword, "a fresh window after a success")
+		for range 3 {
+			_, err = s.Unlock(ctx, "abc1234", "nope", "v")
+			assert.ErrorIs(t, err, ErrWrongPassword, "three more free tries after a success")
+		}
 	})
 
 	t.Run("each visitor and each link has its own tries", func(t *testing.T) {
@@ -663,4 +709,27 @@ func TestUnlock(t *testing.T) {
 		assert.Error(t, err)
 		assert.NotErrorIs(t, err, ErrWrongPassword)
 	})
+}
+
+func TestBackoffDelayAfter(t *testing.T) {
+	p := Backoff{Free: 3, Base: 30 * time.Second, Max: 5 * time.Minute}
+	tests := map[int]time.Duration{
+		1: 0, 2: 0,
+		3: 30 * time.Second, 4: time.Minute, 5: 2 * time.Minute, 6: 4 * time.Minute,
+		7: 5 * time.Minute, 8: 5 * time.Minute, 100: 5 * time.Minute,
+	}
+	for n, want := range tests {
+		assert.Equal(t, want, p.DelayAfter(n), "after try %d", n)
+	}
+	assert.Equal(t, time.Hour, unlockBackoff.DelayAfter(1000), "the real policy is capped at an hour and does not overflow")
+}
+
+func TestTooManyAttemptsError(t *testing.T) {
+	err := error(&TooManyAttemptsError{RetryAfter: 90 * time.Second})
+	assert.ErrorIs(t, err, ErrTooManyAttempts)
+	wait, ok := RetryAfter(fmt.Errorf("wrapped: %w", err))
+	assert.True(t, ok)
+	assert.Equal(t, 90*time.Second, wait)
+	_, ok = RetryAfter(ErrWrongPassword)
+	assert.False(t, ok)
 }

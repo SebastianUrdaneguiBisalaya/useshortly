@@ -147,8 +147,9 @@ func (s *Service) Resolve(ctx context.Context, code string) (Link, error) {
 }
 
 // Unlock checks the password of a protected link and, if right, counts the visit like Resolve.
-// visitor identifies who is trying (their address): each visitor gets 3 tries per link every 15
-// minutes, and the next ones fail with ErrTooManyAttempts without looking at the password. A link
+// visitor identifies who is trying (their address). Each visitor gets 3 free tries per link; after
+// that every try is followed by a wait that doubles from 30 seconds up to an hour, and a try made
+// during it fails with ErrTooManyAttempts (see RetryAfter) without looking at the password. A link
 // that is not protected is simply served.
 func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (Link, error) {
 	l, err := s.repo.FindByCode(ctx, code)
@@ -162,12 +163,12 @@ func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (L
 		return s.visit(ctx, l)
 	}
 	key := "unlock:" + code + ":" + visitor
-	allowed, err := s.limiter.Take(ctx, key, unlockAttempts, unlockWindow)
+	allowed, retryAfter, err := s.limiter.Take(ctx, key, unlockBackoff)
 	if err != nil {
 		return Link{}, err
 	}
 	if !allowed {
-		return l, ErrTooManyAttempts
+		return l, &TooManyAttemptsError{RetryAfter: retryAfter}
 	}
 	ok, err := s.hasher.Verify(l.PasswordHash, password)
 	if err != nil {

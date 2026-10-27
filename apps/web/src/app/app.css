@@ -3,392 +3,381 @@
 @import "tailwindcss";
 
 :root {
-  /* Scandinavian neutral foundation: pure black/white ink over canvas,
+	/* Scandinavian neutral foundation: pure black/white ink over canvas,
      built with alpha-black (light) / alpha-white (dark) rather than a
      tinted gray ramp. `--red-*` is the one semantic exception — state
      color (destructive) is preserved, never neutralized. */
-  --white: #ffffff;
-  --black: #0a0a0a;
+	--white: #ffffff;
+	--black: #0a0a0a;
 
-  --red-500: #eb5757;
-  --red-600: #d64545;
-  --red-400: #f27979;
+	--red-500: #eb5757;
+	--red-600: #d64545;
+	--red-400: #f27979;
 
-  --green-500: #2f9e44;
-  --green-600: #268a3a;
-  --green-400: #51c96a;
+	--green-500: #2f9e44;
+	--green-600: #268a3a;
+	--green-400: #51c96a;
 
-  --amber-500: #b8860b;
-  --amber-600: #9c7209;
-  --amber-400: #e0a916;
+	--amber-500: #b8860b;
+	--amber-600: #9c7209;
+	--amber-400: #e0a916;
 
-  --orange-500: #c2650c;
-  --orange-600: #a8560a;
-  --orange-400: #e0973f;
-  --blue-400: #6fa8e0;
-  --blue-500: #2a68b0;
+	--orange-500: #c2650c;
+	--orange-600: #a8560a;
+	--orange-400: #e0973f;
+	--blue-400: #6fa8e0;
+	--blue-500: #2a68b0;
 
-  --font-primary: "Work Sans", sans-serif;
-  --font-secondary: "Fragment Mono", monospace;
+	--font-primary: "Work Sans", sans-serif;
+	--font-secondary: "Fragment Mono", monospace;
 }
 
 :root {
-  /* Semantic tokens — light theme (default) */
-  --background: var(--white);
-  --foreground: var(--black);
+	/* Semantic tokens — light theme (default) */
+	--background: var(--white);
+	--foreground: var(--black);
 
-  --foreground-secondary: rgb(0 0 0 / 64%);
-  --foreground-tertiary: rgb(0 0 0 / 44%);
+	--foreground-secondary: rgb(0 0 0 / 64%);
+	--foreground-tertiary: rgb(0 0 0 / 44%);
 
-  --border: rgb(0 0 0 / 10%);
-  --border-strong: rgb(0 0 0 / 18%);
+	--border: rgb(0 0 0 / 10%);
+	--border-strong: rgb(0 0 0 / 18%);
 
-  --hover: rgb(0 0 0 / 5%);
-  --pressed: rgb(0 0 0 / 9%);
+	--hover: rgb(0 0 0 / 5%);
+	--pressed: rgb(0 0 0 / 9%);
 
-  --muted: var(--hover);
-  --muted-foreground: var(--foreground-secondary);
+	--muted: var(--hover);
+	--muted-foreground: var(--foreground-secondary);
 
-  --ring: var(--foreground);
+	--ring: var(--foreground);
 
-  --destructive: var(--red-500);
-  --destructive-hover: var(--red-600);
-  --destructive-foreground: var(--white);
+	--destructive: var(--red-500);
+	--destructive-hover: var(--red-600);
+	--destructive-foreground: var(--white);
 
-  --success: var(--green-500);
-  --success-foreground: var(--white);
+	--success: var(--green-500);
+	--success-foreground: var(--white);
 
-  --warning: var(--amber-500);
-  --warning-foreground: var(--white);
+	--warning: var(--amber-500);
+	--warning-foreground: var(--white);
 
-  /* JSON viewer / code syntax colors — keys/values (and markup tags) are a legend, not decoration,
+	/* JSON viewer / code syntax colors — keys/values (and markup tags) are a legend, not decoration,
      so they're exempt from the neutral-chrome rule (same reasoning as a
      code editor's own syntax colors). */
-  --json-key: var(--orange-500);
-  --json-value: var(--green-500);
-  --code-tag: var(--blue-500);
+	--json-key: var(--orange-500);
+	--json-value: var(--green-500);
+	--code-tag: var(--blue-500);
 
-  /* File-format badge colors (FileIcon) — a legend, not decoration: each file
+	/* File-format badge colors (FileIcon) — a legend, not decoration: each file
      family keeps one hue so a PDF reads as a PDF at a glance, the same
      exemption as --json-key and the chart palette. Solid chips carrying
      white ink (all >= 4.5:1), so they stay the same in both themes. */
-  --file-pdf: #c0392b;
-  --file-image: #6d4fd1;
-  --file-document: #2b6cb0;
-  --file-spreadsheet: #1e7e45;
-  --file-presentation: #b54a12;
-  --file-video: #b83280;
-  --file-audio: #0f766e;
-  --file-archive: #946200;
-  --file-code: #475569;
-  --file-text: #5b6270;
-  --file-other: #6b7280;
+	--file-pdf: #c0392b;
+	--file-image: #6d4fd1;
+	--file-document: #2b6cb0;
+	--file-spreadsheet: #1e7e45;
+	--file-presentation: #b54a12;
+	--file-video: #b83280;
+	--file-audio: #0f766e;
+	--file-archive: #946200;
+	--file-code: #475569;
+	--file-text: #5b6270;
+	--file-other: #6b7280;
 
-  /* Inverted surface — the same neutral ink, flipped: a dark surface on a
+	/* Inverted surface — the same neutral ink, flipped: a dark surface on a
      light canvas (light theme) and a light one on a dark canvas (dark theme).
      Used by e.g. the floating navbar, which re-points the regular tokens to
      these so everything inside it (links, buttons) recolors on its own. */
-  --inverse-background: var(--black);
-  --inverse-foreground: var(--white);
-  --inverse-foreground-secondary: rgb(255 255 255 / 64%);
-  --inverse-border: rgb(255 255 255 / 14%);
-  --inverse-hover: rgb(255 255 255 / 10%);
+	--inverse-background: var(--black);
+	--inverse-foreground: var(--white);
+	--inverse-foreground-secondary: rgb(255 255 255 / 64%);
+	--inverse-border: rgb(255 255 255 / 14%);
+	--inverse-hover: rgb(255 255 255 / 10%);
 
-  /* Chart categorical palette — pastel, so series read as color without
+	/* Chart categorical palette — pastel, so series read as color without
      competing with the neutral chrome. Light enough that --black ink stays
      legible on top of them (treemap labels) in both themes. */
-  --chart-1: #a8c4f7;
-  --chart-2: #f8cf94;
-  --chart-3: #a9e0b5;
-  --chart-4: #f7b6ca;
-  --chart-5: #cdbdf6;
-  --chart-6: #a2e0dc;
+	--chart-1: #a8c4f7;
+	--chart-2: #f8cf94;
+	--chart-3: #a9e0b5;
+	--chart-4: #f7b6ca;
+	--chart-5: #cdbdf6;
+	--chart-6: #a2e0dc;
 
-  /* Overlay scrim intentionally doesn't flip with theme — it always dims
+	/* Overlay scrim intentionally doesn't flip with theme — it always dims
      what's behind it, regardless of which theme that content is in. */
-  --overlay: rgb(0 0 0 / 44%);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: var(--foreground);
+	--overlay: rgb(0 0 0 / 44%);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	color: var(--foreground);
 
-  color-scheme: light dark;
-  background: var(--background);
+	color-scheme: light dark;
+	background: var(--background);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+	@media (max-width: 1024px) {
+		font-size: 16px;
+	}
 }
 
 /* Follows the OS preference by default... */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: var(--black);
-    --foreground: var(--white);
+	:root:not([data-theme="light"]) {
+		--background: var(--black);
+		--foreground: var(--white);
 
-    --foreground-secondary: rgb(255 255 255 / 56%);
-    --foreground-tertiary: rgb(255 255 255 / 36%);
+		--foreground-secondary: rgb(255 255 255 / 56%);
+		--foreground-tertiary: rgb(255 255 255 / 36%);
 
-    --border: rgb(255 255 255 / 10%);
-    --border-strong: rgb(255 255 255 / 18%);
+		--border: rgb(255 255 255 / 10%);
+		--border-strong: rgb(255 255 255 / 18%);
 
-    --hover: rgb(255 255 255 / 9%);
-    --pressed: rgb(255 255 255 / 14%);
+		--hover: rgb(255 255 255 / 9%);
+		--pressed: rgb(255 255 255 / 14%);
 
-    --destructive: var(--red-400);
-    --destructive-hover: var(--red-500);
+		--destructive: var(--red-400);
+		--destructive-hover: var(--red-500);
 
-    --success: var(--green-400);
-    --warning: var(--amber-400);
+		--success: var(--green-400);
+		--warning: var(--amber-400);
 
-    --json-key: var(--orange-400);
-    --json-value: var(--green-400);
-    --code-tag: var(--blue-400);
+		--json-key: var(--orange-400);
+		--json-value: var(--green-400);
+		--code-tag: var(--blue-400);
 
-    --inverse-background: var(--white);
-    --inverse-foreground: var(--black);
-    --inverse-foreground-secondary: rgb(0 0 0 / 64%);
-    --inverse-border: rgb(0 0 0 / 14%);
-    --inverse-hover: rgb(0 0 0 / 8%);
+		--inverse-background: var(--white);
+		--inverse-foreground: var(--black);
+		--inverse-foreground-secondary: rgb(0 0 0 / 64%);
+		--inverse-border: rgb(0 0 0 / 14%);
+		--inverse-hover: rgb(0 0 0 / 8%);
 
-    --chart-1: #7fa2ee;
-    --chart-2: #e5b06a;
-    --chart-3: #7ccb8f;
-    --chart-4: #e88fac;
-    --chart-5: #a996ea;
-    --chart-6: #6fc7c2;
-  }
+		--chart-1: #7fa2ee;
+		--chart-2: #e5b06a;
+		--chart-3: #7ccb8f;
+		--chart-4: #e88fac;
+		--chart-5: #a996ea;
+		--chart-6: #6fc7c2;
+	}
 }
 
 /* ...but an explicit data-theme attribute on <html> always wins. */
 :root[data-theme="dark"] {
-  --background: var(--black);
-  --foreground: var(--white);
+	--background: var(--black);
+	--foreground: var(--white);
 
-  --foreground-secondary: rgb(255 255 255 / 56%);
-  --foreground-tertiary: rgb(255 255 255 / 36%);
+	--foreground-secondary: rgb(255 255 255 / 56%);
+	--foreground-tertiary: rgb(255 255 255 / 36%);
 
-  --border: rgb(255 255 255 / 10%);
-  --border-strong: rgb(255 255 255 / 18%);
+	--border: rgb(255 255 255 / 10%);
+	--border-strong: rgb(255 255 255 / 18%);
 
-  --hover: rgb(255 255 255 / 9%);
-  --pressed: rgb(255 255 255 / 14%);
+	--hover: rgb(255 255 255 / 9%);
+	--pressed: rgb(255 255 255 / 14%);
 
-  --destructive: var(--red-400);
-  --destructive-hover: var(--red-500);
+	--destructive: var(--red-400);
+	--destructive-hover: var(--red-500);
 
-  --success: var(--green-400);
-  --warning: var(--amber-400);
+	--success: var(--green-400);
+	--warning: var(--amber-400);
 
-  --json-key: var(--orange-400);
-  --json-value: var(--green-400);
-  --code-tag: var(--blue-400);
+	--json-key: var(--orange-400);
+	--json-value: var(--green-400);
+	--code-tag: var(--blue-400);
 
-  --inverse-background: var(--white);
-  --inverse-foreground: var(--black);
-  --inverse-foreground-secondary: rgb(0 0 0 / 64%);
-  --inverse-border: rgb(0 0 0 / 14%);
-  --inverse-hover: rgb(0 0 0 / 8%);
+	--inverse-background: var(--white);
+	--inverse-foreground: var(--black);
+	--inverse-foreground-secondary: rgb(0 0 0 / 64%);
+	--inverse-border: rgb(0 0 0 / 14%);
+	--inverse-hover: rgb(0 0 0 / 8%);
 
-  --chart-1: #7fa2ee;
-  --chart-2: #e5b06a;
-  --chart-3: #7ccb8f;
-  --chart-4: #e88fac;
-  --chart-5: #a996ea;
-  --chart-6: #6fc7c2;
+	--chart-1: #7fa2ee;
+	--chart-2: #e5b06a;
+	--chart-3: #7ccb8f;
+	--chart-4: #e88fac;
+	--chart-5: #a996ea;
+	--chart-6: #6fc7c2;
 }
 
 @theme inline {
-  --color-white: var(--white);
-  --color-black: var(--black);
+	--color-white: var(--white);
+	--color-black: var(--black);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-foreground-secondary: var(--foreground-secondary);
-  --color-foreground-tertiary: var(--foreground-tertiary);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-foreground-secondary: var(--foreground-secondary);
+	--color-foreground-tertiary: var(--foreground-tertiary);
 
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
+	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
 
-  --color-ring: var(--ring);
+	--color-ring: var(--ring);
 
-  --color-destructive: var(--destructive);
-  --color-destructive-hover: var(--destructive-hover);
-  --color-destructive-foreground: var(--destructive-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-hover: var(--destructive-hover);
+	--color-destructive-foreground: var(--destructive-foreground);
 
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
 
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-chart-6: var(--chart-6);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-chart-6: var(--chart-6);
 
-  --color-json-key: var(--json-key);
-  --color-json-value: var(--json-value);
-  --color-code-tag: var(--code-tag);
+	--color-json-key: var(--json-key);
+	--color-json-value: var(--json-value);
+	--color-code-tag: var(--code-tag);
 
-  --color-overlay: var(--overlay);
+	--color-overlay: var(--overlay);
 
-  --font-primary: var(--font-primary);
-  --font-secondary: var(--font-secondary);
+	--font-primary: var(--font-primary);
+	--font-secondary: var(--font-secondary);
 
-  --animate-fade-scale-in: fade-scale-in 150ms ease-out;
-  --animate-fade-in: fade-in 300ms ease-out forwards;
-  --animate-shimmer: shimmer 2s linear infinite;
-  --animate-progress-indeterminate: progress-indeterminate 1.5s ease-in-out
-    infinite;
-  --animate-caret-blink: caret-blink 1.2s ease-in-out infinite;
-  --animate-slide-up-in: slide-up-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-live-pulse: live-pulse 1.8s ease-in-out infinite;
+	--animate-fade-scale-in: fade-scale-in 150ms ease-out;
+	--animate-fade-in: fade-in 300ms ease-out forwards;
+	--animate-shimmer: shimmer 2s linear infinite;
+	--animate-progress-indeterminate: progress-indeterminate 1.5s ease-in-out infinite;
+	--animate-caret-blink: caret-blink 1.2s ease-in-out infinite;
+	--animate-slide-up-in: slide-up-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	--animate-live-pulse: live-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes marquee-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    /* Set per-instance in JS from the measured content width — never a
+	from {
+		transform: translateX(0);
+	}
+	to {
+		/* Set per-instance in JS from the measured content width — never a
        percentage, since a duplicate-content marquee's exact seam point
        depends on the real pixel width + gap, not the track's total width. */
-    transform: translateX(var(--marquee-distance, 0px));
-  }
+		transform: translateX(var(--marquee-distance, 0px));
+	}
 }
 
 /* Vertical counterpart of `marquee-scroll`: same per-instance distance, measured along the column instead. */
 @keyframes marquee-scroll-y {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(var(--marquee-distance, 0px));
-  }
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(var(--marquee-distance, 0px));
+	}
 }
 
 @keyframes caret-blink {
-  0%,
-  70%,
-  100% {
-    opacity: 1;
-  }
-  20%,
-  50% {
-    opacity: 0;
-  }
+	0%,
+	70%,
+	100% {
+		opacity: 1;
+	}
+	20%,
+	50% {
+		opacity: 0;
+	}
 }
 
 @keyframes fade-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+	from {
+		opacity: 0;
+		transform: scale(0.9);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @keyframes slide-up-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.5rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes live-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes shimmer {
-  from {
-    background-position: 200% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
 }
 
 @keyframes progress-indeterminate {
-  0% {
-    left: -40%;
-    width: 40%;
-  }
-  100% {
-    left: 100%;
-    width: 40%;
-  }
+	0% {
+		left: -40%;
+		width: 40%;
+	}
+	100% {
+		left: 100%;
+		width: 40%;
+	}
 }
 
 /* Animated gradient "loading" text, e.g. Marker.Content while a step is in
    progress. Applied directly via className, not a color/spacing token. */
 .shimmer {
-  color: transparent;
-  background: linear-gradient(
-    90deg,
-    var(--muted-foreground) 40%,
-    var(--foreground) 50%,
-    var(--muted-foreground) 60%
-  );
-  background-clip: text;
-  background-size: 200% 100%;
-  animation: var(--animate-shimmer);
+	color: transparent;
+	background: linear-gradient(90deg, var(--muted-foreground) 40%, var(--foreground) 50%, var(--muted-foreground) 60%);
+	background-clip: text;
+	background-size: 200% 100%;
+	animation: var(--animate-shimmer);
 }
 
 #root {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  width: 1126px;
-  max-width: 100%;
-  min-height: 100svh;
-  margin: 0 auto;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	width: 1126px;
+	max-width: 100%;
+	min-height: 100svh;
+	margin: 0 auto;
 }
 
 body {
-  margin: 0;
+	margin: 0;
 }
 
 .spinner {
-  width: 25px;
-  aspect-ratio: 1;
+	width: 25px;
+	aspect-ratio: 1;
 
-  background:
-    radial-gradient(farthest-side, currentColor 94%, transparent) top / 6px 6px
-    no-repeat,
-    conic-gradient(transparent 30%, currentColor);
-  border-radius: 9999px;
+	background:
+		radial-gradient(farthest-side, currentColor 94%, transparent) top / 6px 6px no-repeat,
+		conic-gradient(transparent 30%, currentColor);
+	border-radius: 9999px;
 
-  -webkit-mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - 4px),
-    #000 0
-  );
+	-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0);
 }
 
 /* Quiet, always-present scrollbar for panels that scroll inside a popover
@@ -398,26 +387,26 @@ body {
    crossed between them, and an overlay bar also painted over the content.
    A reserved gutter is quieter than a bar that appears only on hover. */
 @utility scrollbar-quiet {
-  scrollbar-color: var(--border-strong) transparent;
-  scrollbar-width: thin;
+	scrollbar-color: var(--border-strong) transparent;
+	scrollbar-width: thin;
 
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+	&::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
 
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
 
-  &::-webkit-scrollbar-thumb {
-    background-color: var(--border-strong);
-    background-clip: padding-box;
-    border: 2px solid transparent;
-    border-radius: 9999px;
-  }
+	&::-webkit-scrollbar-thumb {
+		background-color: var(--border-strong);
+		background-clip: padding-box;
+		border: 2px solid transparent;
+		border-radius: 9999px;
+	}
 
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: var(--foreground-tertiary);
-  }
+	&::-webkit-scrollbar-thumb:hover {
+		background-color: var(--foreground-tertiary);
+	}
 }

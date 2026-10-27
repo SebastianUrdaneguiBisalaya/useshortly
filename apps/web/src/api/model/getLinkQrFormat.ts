@@ -6,10 +6,9 @@
  * OpenAPI spec version: 1.0
  */
 
-export type GetLinkQrFormat = typeof GetLinkQrFormat[keyof typeof GetLinkQrFormat];
-
+export type GetLinkQrFormat = (typeof GetLinkQrFormat)[keyof typeof GetLinkQrFormat];
 
 export const GetLinkQrFormat = {
-  png: 'png',
-  svg: 'svg',
+	png: 'png',
+	svg: 'svg',
 } as const;

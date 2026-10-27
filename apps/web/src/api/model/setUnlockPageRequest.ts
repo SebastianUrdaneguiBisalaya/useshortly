@@ -7,5 +7,5 @@
  */
 
 export interface SetUnlockPageRequest {
-  html?: string;
+	html?: string;
 }

@@ -9,12 +9,12 @@ import type { ClickCount } from './clickCount';
 import type { DailyClicks } from './dailyClicks';
 
 export interface LinkStats {
-  countries?: ClickCount[];
-  daily?: DailyClicks[];
-  devices?: ClickCount[];
-  from?: string;
-  link_id?: number;
-  referrers?: ClickCount[];
-  to?: string;
-  total?: number;
+	countries?: ClickCount[];
+	daily?: DailyClicks[];
+	devices?: ClickCount[];
+	from?: string;
+	link_id?: number;
+	referrers?: ClickCount[];
+	to?: string;
+	total?: number;
 }

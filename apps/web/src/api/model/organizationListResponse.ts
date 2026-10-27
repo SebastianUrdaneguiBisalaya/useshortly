@@ -8,5 +8,5 @@
 import type { Organization } from './organization';
 
 export interface OrganizationListResponse {
-  data?: Organization[];
+	data?: Organization[];
 }

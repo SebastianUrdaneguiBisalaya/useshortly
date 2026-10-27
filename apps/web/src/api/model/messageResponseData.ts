@@ -7,5 +7,5 @@
  */
 
 export type MessageResponseData = {
-  message?: string;
+	message?: string;
 };

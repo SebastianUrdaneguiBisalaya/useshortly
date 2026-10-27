@@ -8,5 +8,5 @@
 import type { LinkStats } from './linkStats';
 
 export interface LinkStatsResponse {
-  data?: LinkStats;
+	data?: LinkStats;
 }

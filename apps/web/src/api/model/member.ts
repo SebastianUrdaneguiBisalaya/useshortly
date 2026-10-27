@@ -7,8 +7,8 @@
  */
 
 export interface Member {
-  created_at?: string;
-  id?: number;
-  role?: string;
-  user_id?: number;
+	created_at?: string;
+	id?: number;
+	role?: string;
+	user_id?: number;
 }

@@ -7,9 +7,9 @@
  */
 
 export interface Organization {
-  created_at?: string;
-  description?: string;
-  id?: number;
-  logo_url?: string;
-  name?: string;
+	created_at?: string;
+	description?: string;
+	id?: number;
+	logo_url?: string;
+	name?: string;
 }

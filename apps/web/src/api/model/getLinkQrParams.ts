@@ -8,14 +8,14 @@
 import type { GetLinkQrFormat } from './getLinkQrFormat';
 
 export type GetLinkQrParams = {
-/**
- * Image format
- */
-format?: GetLinkQrFormat;
-/**
- * Pixels on a side
- * @minimum 64
- * @maximum 1024
- */
-size?: number;
+	/**
+	 * Image format
+	 */
+	format?: GetLinkQrFormat;
+	/**
+	 * Pixels on a side
+	 * @minimum 64
+	 * @maximum 1024
+	 */
+	size?: number;
 };

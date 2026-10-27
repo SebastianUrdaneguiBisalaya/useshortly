@@ -8,19 +8,19 @@
  */
 
 /** Which end of a picked range a date represents; a single date is treated as the start of its day. */
-export type DateBoundary = "single" | "from" | "to";
+export type DateBoundary = 'single' | 'from' | 'to';
 
 const MS_PER_DAY = 86_400_000;
 
 function parse(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+	if (!value) return null;
+	const parsed = new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 /** Midnight UTC of a timestamp's calendar day, as epoch milliseconds. */
 function utcStartOfDay(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 /**
@@ -28,59 +28,34 @@ function utcStartOfDay(date: Date): number {
  * A `"to"` boundary is pushed to the last millisecond of the day so an inclusive range filter
  * covers the whole closing day instead of stopping at its midnight.
  */
-export function toUtcTimestamp(
-  date: Date,
-  boundary: DateBoundary = "single",
-): string {
-  const isEndOfDay = boundary === "to";
-  return new Date(
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      isEndOfDay ? 23 : 0,
-      isEndOfDay ? 59 : 0,
-      isEndOfDay ? 59 : 0,
-      isEndOfDay ? 999 : 0,
-    ),
-  ).toISOString();
+export function toUtcTimestamp(date: Date, boundary: DateBoundary = 'single'): string {
+	const isEndOfDay = boundary === 'to';
+	return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), isEndOfDay ? 23 : 0, isEndOfDay ? 59 : 0, isEndOfDay ? 59 : 0, isEndOfDay ? 999 : 0)).toISOString();
 }
 
 /**
  * Inverse of `toUtcTimestamp`: rebuilds a local `Date` sitting on the same calendar day, so calendars and
  * pickers that read `getDate()`/`getMonth()` highlight the day the backend actually stored.
  */
-export function fromUtcTimestamp(
-  value: string | null | undefined,
-): Date | null {
-  const parsed = parse(value);
-  if (!parsed) return null;
-  return new Date(
-    parsed.getUTCFullYear(),
-    parsed.getUTCMonth(),
-    parsed.getUTCDate(),
-  );
+export function fromUtcTimestamp(value: string | null | undefined): Date | null {
+	const parsed = parse(value);
+	if (!parsed) return null;
+	return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
 }
 
 /** Adds whole days to a UTC timestamp, returning another UTC timestamp at midnight. */
-export function addUtcDays(
-  value: string | null | undefined,
-  days: number,
-): string | null {
-  const parsed = parse(value);
-  if (!parsed || !Number.isFinite(days)) return null;
-  return new Date(utcStartOfDay(parsed) + days * MS_PER_DAY).toISOString();
+export function addUtcDays(value: string | null | undefined, days: number): string | null {
+	const parsed = parse(value);
+	if (!parsed || !Number.isFinite(days)) return null;
+	return new Date(utcStartOfDay(parsed) + days * MS_PER_DAY).toISOString();
 }
 
 /** Whole days from `start` to `end`, both read as UTC calendar days. Negative when `end` precedes `start`. */
-export function diffUtcDays(
-  start: string | null | undefined,
-  end: string | null | undefined,
-): number | null {
-  const from = parse(start);
-  const to = parse(end);
-  if (!from || !to) return null;
-  return Math.round((utcStartOfDay(to) - utcStartOfDay(from)) / MS_PER_DAY);
+export function diffUtcDays(start: string | null | undefined, end: string | null | undefined): number | null {
+	const from = parse(start);
+	const to = parse(end);
+	if (!from || !to) return null;
+	return Math.round((utcStartOfDay(to) - utcStartOfDay(from)) / MS_PER_DAY);
 }
 
 /**
@@ -91,17 +66,7 @@ export function diffUtcDays(
  * says where the range ends.
  */
 export function toUtcDateTime(date: Date): string {
-  return new Date(
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      date.getHours(),
-      date.getMinutes(),
-      0,
-      0,
-    ),
-  ).toISOString();
+	return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), 0, 0)).toISOString();
 }
 
 /**
@@ -109,15 +74,7 @@ export function toUtcDateTime(date: Date): string {
  * wall-clock time, so a picker rehydrated from the API highlights the hour the backend stored.
  */
 export function fromUtcDateTime(value: string | null | undefined): Date | null {
-  const parsed = parse(value);
-  if (!parsed) return null;
-  return new Date(
-    parsed.getUTCFullYear(),
-    parsed.getUTCMonth(),
-    parsed.getUTCDate(),
-    parsed.getUTCHours(),
-    parsed.getUTCMinutes(),
-    0,
-    0,
-  );
+	const parsed = parse(value);
+	if (!parsed) return null;
+	return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate(), parsed.getUTCHours(), parsed.getUTCMinutes(), 0, 0);
 }

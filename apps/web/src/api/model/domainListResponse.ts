@@ -9,6 +9,6 @@ import type { Domain } from './domain';
 import type { PageMeta } from './pageMeta';
 
 export interface DomainListResponse {
-  data?: Domain[];
-  meta?: PageMeta;
+	data?: Domain[];
+	meta?: PageMeta;
 }

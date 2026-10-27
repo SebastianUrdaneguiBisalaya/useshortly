@@ -8,7 +8,7 @@
 import type { CreateAPIKeyRequestScope } from './createAPIKeyRequestScope';
 
 export interface CreateAPIKeyRequest {
-  expires_at?: string;
-  name?: string;
-  scope?: CreateAPIKeyRequestScope;
+	expires_at?: string;
+	name?: string;
+	scope?: CreateAPIKeyRequestScope;
 }

@@ -7,13 +7,13 @@
  */
 
 export interface APIKeyCreated {
-  created_at?: string;
-  created_by?: number;
-  expires_at?: string;
-  id?: number;
-  last_used_at?: string;
-  name?: string;
-  prefix?: string;
-  scope?: string;
-  secret?: string;
+	created_at?: string;
+	created_by?: number;
+	expires_at?: string;
+	id?: number;
+	last_used_at?: string;
+	name?: string;
+	prefix?: string;
+	scope?: string;
+	secret?: string;
 }

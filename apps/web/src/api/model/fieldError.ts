@@ -7,6 +7,6 @@
  */
 
 export interface FieldError {
-  field?: string;
-  message?: string;
+	field?: string;
+	message?: string;
 }

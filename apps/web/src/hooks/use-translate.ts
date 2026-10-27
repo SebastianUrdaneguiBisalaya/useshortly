@@ -1,6 +1,6 @@
-import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import type { Translate } from "~/i18n";
+import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { Translate } from '~/i18n';
 
 /**
  * `t` with typed keys. Its identity changes with the language, so it is a
@@ -8,8 +8,6 @@ import type { Translate } from "~/i18n";
  * schemas, option lists).
  */
 export function useTranslate(): Translate {
-  const { t } = useTranslation();
-  return useCallback<Translate>((key, values) => t(key, values), [
-    t,
-  ]);
+	const { t } = useTranslation();
+	return useCallback<Translate>((key, values) => t(key, values), [t]);
 }

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type * as React from "react";
+import type * as React from 'react';
 
-import { cn } from "../../utils/tailwind/cn";
+import { cn } from '../../utils/tailwind/cn';
 
 export interface KbdProps extends React.HTMLAttributes<HTMLElement> {}
 
@@ -16,15 +16,12 @@ export interface KbdProps extends React.HTMLAttributes<HTMLElement> {}
  * ```
  */
 function KbdRoot({ className, ...props }: KbdProps) {
-  return (
-    <kbd
-      className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-secondary text-xs font-medium text-muted-foreground",
-        className,
-      )}
-      {...props}
-    />
-  );
+	return (
+		<kbd
+			className={cn('inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-secondary text-xs font-medium text-muted-foreground', className)}
+			{...props}
+		/>
+	);
 }
 
 export interface KbdGroupProps extends React.HTMLAttributes<HTMLElement> {}
@@ -40,14 +37,9 @@ export interface KbdGroupProps extends React.HTMLAttributes<HTMLElement> {}
  * ```
  */
 function KbdGroup({ className, ...props }: KbdGroupProps) {
-  return (
-    <kbd
-      className={cn("inline-flex items-center gap-1", className)}
-      {...props}
-    />
-  );
+	return <kbd className={cn('inline-flex items-center gap-1', className)} {...props} />;
 }
 
 export const Kbd = Object.assign(KbdRoot, {
-  Group: KbdGroup,
+	Group: KbdGroup,
 });

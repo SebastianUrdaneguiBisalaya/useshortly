@@ -7,6 +7,6 @@
  */
 
 export interface VerifyRegistrationRequest {
-  code?: string;
-  email?: string;
+	code?: string;
+	email?: string;
 }

@@ -1,119 +1,119 @@
 {
-  "auth": {
-    "common": {
-      "or": "O",
-      "email": {
-        "label": "Correo electrónico",
-        "placeholder": "hello@gmail.com"
-      },
-      "password": {
-        "label": "Contraseña",
-        "placeholder": "tucontraseña",
-        "show": "Mostrar contraseña",
-        "hide": "Ocultar contraseña"
-      },
-      "google": "Continuar con Google",
-      "backToSignIn": "Volver a iniciar sesión"
-    },
-    "validation": {
-      "emailInvalid": "Ingresa un correo electrónico válido",
-      "passwordRequired": "Ingresa tu contraseña",
-      "passwordMin": "La contraseña debe tener al menos {{min}} caracteres",
-      "passwordMax": "La contraseña debe tener como máximo {{max}} caracteres",
-      "passwordsMismatch": "Las contraseñas no coinciden",
-      "codeInvalid": "Ingresa el código de {{length}} dígitos",
-      "firstNameRequired": "Ingresa tu nombre",
-      "lastNameRequired": "Ingresa tu apellido"
-    },
-    "signIn": {
-      "title": "Iniciar sesión",
-      "submit": "Iniciar sesión",
-      "submitting": "Iniciando sesión",
-      "google": "Iniciar sesión con Google",
-      "forgotPassword": "¿Olvidaste tu contraseña?",
-      "noAccount": "¿Aún no tienes cuenta?",
-      "signUpLink": "Crear cuenta"
-    },
-    "signUp": {
-      "title": "Crear cuenta",
-      "submit": "Crear cuenta",
-      "submitting": "Creando cuenta",
-      "google": "Registrarse con Google",
-      "firstName": {
-        "label": "Nombre",
-        "placeholder": "Juan"
-      },
-      "lastName": {
-        "label": "Apellido",
-        "placeholder": "Pérez"
-      },
-      "haveAccount": "¿Ya tienes cuenta?",
-      "signInLink": "Iniciar sesión"
-    },
-    "forgotPassword": {
-      "title": "¿Olvidaste tu contraseña?",
-      "description": "Ingresa tu correo y te enviaremos un código para restablecerla.",
-      "submit": "Enviar código",
-      "submitting": "Enviando"
-    },
-    "resetPassword": {
-      "title": "Restablecer contraseña",
-      "description": "Ingresa el código que enviamos a {{email}} y elige una nueva contraseña.",
-      "code": {
-        "label": "Código de verificación"
-      },
-      "newPassword": {
-        "label": "Nueva contraseña",
-        "placeholder": "nuevacontraseña"
-      },
-      "confirmPassword": {
-        "label": "Confirmar contraseña",
-        "placeholder": "repite la contraseña"
-      },
-      "submit": "Restablecer contraseña",
-      "submitting": "Restableciendo",
-      "success": "Contraseña actualizada. Inicia sesión con tu nueva contraseña."
-    },
-    "verifyEmail": {
-      "title": "Verifica tu correo",
-      "description": "Ingresa el código que enviamos a {{email}} para terminar de crear tu cuenta.",
-      "submit": "Verificar",
-      "submitting": "Verificando"
-    }
-  },
-  "theme": {
-    "group": "Tema",
-    "system": "Sistema",
-    "light": "Claro",
-    "dark": "Oscuro"
-  },
-  "language": {
-    "group": "Idioma",
-    "system": "Sistema",
-    "en": "Inglés",
-    "es": "Español"
-  },
-  "protected": {
-    "nav": {
-      "dashboard": "Panel",
-      "links": "Enlaces"
-    },
-    "sidebar": {
-      "closeMenu": "Cerrar menú",
-      "collapse": "Contraer barra lateral",
-      "expand": "Expandir barra lateral",
-      "primary": "Principal",
-      "openMenu": "Abrir menú"
-    }
-  },
-  "errors": {
-    "generic": "Algo salió mal. Inténtalo de nuevo.",
-    "invalidCredentials": "Correo o contraseña incorrectos",
-    "emailTaken": "Ese correo ya está registrado",
-    "providerMismatch": "Ese correo está registrado con otro método de acceso",
-    "invalidCode": "El código es incorrecto o expiró",
-    "tooManyAttempts": "Demasiados códigos incorrectos. Solicita uno nuevo.",
-    "codeTooSoon": "Se pidió un código hace muy poco. Espera un minuto.",
-    "googleEmailNotVerified": "El correo de Google no está verificado"
-  }
+	"auth": {
+		"common": {
+			"or": "O",
+			"email": {
+				"label": "Correo electrónico",
+				"placeholder": "hello@gmail.com"
+			},
+			"password": {
+				"label": "Contraseña",
+				"placeholder": "tucontraseña",
+				"show": "Mostrar contraseña",
+				"hide": "Ocultar contraseña"
+			},
+			"google": "Continuar con Google",
+			"backToSignIn": "Volver a iniciar sesión"
+		},
+		"validation": {
+			"emailInvalid": "Ingresa un correo electrónico válido",
+			"passwordRequired": "Ingresa tu contraseña",
+			"passwordMin": "La contraseña debe tener al menos {{min}} caracteres",
+			"passwordMax": "La contraseña debe tener como máximo {{max}} caracteres",
+			"passwordsMismatch": "Las contraseñas no coinciden",
+			"codeInvalid": "Ingresa el código de {{length}} dígitos",
+			"firstNameRequired": "Ingresa tu nombre",
+			"lastNameRequired": "Ingresa tu apellido"
+		},
+		"signIn": {
+			"title": "Iniciar sesión",
+			"submit": "Iniciar sesión",
+			"submitting": "Iniciando sesión",
+			"google": "Iniciar sesión con Google",
+			"forgotPassword": "¿Olvidaste tu contraseña?",
+			"noAccount": "¿Aún no tienes cuenta?",
+			"signUpLink": "Crear cuenta"
+		},
+		"signUp": {
+			"title": "Crear cuenta",
+			"submit": "Crear cuenta",
+			"submitting": "Creando cuenta",
+			"google": "Registrarse con Google",
+			"firstName": {
+				"label": "Nombre",
+				"placeholder": "Juan"
+			},
+			"lastName": {
+				"label": "Apellido",
+				"placeholder": "Pérez"
+			},
+			"haveAccount": "¿Ya tienes cuenta?",
+			"signInLink": "Iniciar sesión"
+		},
+		"forgotPassword": {
+			"title": "¿Olvidaste tu contraseña?",
+			"description": "Ingresa tu correo y te enviaremos un código para restablecerla.",
+			"submit": "Enviar código",
+			"submitting": "Enviando"
+		},
+		"resetPassword": {
+			"title": "Restablecer contraseña",
+			"description": "Ingresa el código que enviamos a {{email}} y elige una nueva contraseña.",
+			"code": {
+				"label": "Código de verificación"
+			},
+			"newPassword": {
+				"label": "Nueva contraseña",
+				"placeholder": "nuevacontraseña"
+			},
+			"confirmPassword": {
+				"label": "Confirmar contraseña",
+				"placeholder": "repite la contraseña"
+			},
+			"submit": "Restablecer contraseña",
+			"submitting": "Restableciendo",
+			"success": "Contraseña actualizada. Inicia sesión con tu nueva contraseña."
+		},
+		"verifyEmail": {
+			"title": "Verifica tu correo",
+			"description": "Ingresa el código que enviamos a {{email}} para terminar de crear tu cuenta.",
+			"submit": "Verificar",
+			"submitting": "Verificando"
+		}
+	},
+	"theme": {
+		"group": "Tema",
+		"system": "Sistema",
+		"light": "Claro",
+		"dark": "Oscuro"
+	},
+	"language": {
+		"group": "Idioma",
+		"system": "Sistema",
+		"en": "Inglés",
+		"es": "Español"
+	},
+	"protected": {
+		"nav": {
+			"dashboard": "Panel",
+			"links": "Enlaces"
+		},
+		"sidebar": {
+			"closeMenu": "Cerrar menú",
+			"collapse": "Contraer barra lateral",
+			"expand": "Expandir barra lateral",
+			"primary": "Principal",
+			"openMenu": "Abrir menú"
+		}
+	},
+	"errors": {
+		"generic": "Algo salió mal. Inténtalo de nuevo.",
+		"invalidCredentials": "Correo o contraseña incorrectos",
+		"emailTaken": "Ese correo ya está registrado",
+		"providerMismatch": "Ese correo está registrado con otro método de acceso",
+		"invalidCode": "El código es incorrecto o expiró",
+		"tooManyAttempts": "Demasiados códigos incorrectos. Solicita uno nuevo.",
+		"codeTooSoon": "Se pidió un código hace muy poco. Espera un minuto.",
+		"googleEmailNotVerified": "El correo de Google no está verificado"
+	}
 }

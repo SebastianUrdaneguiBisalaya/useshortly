@@ -7,11 +7,11 @@
  */
 
 export interface Invitation {
-  created_at?: string;
-  email?: string;
-  expires_at?: string;
-  id?: number;
-  organization_id?: number;
-  role?: string;
-  status?: string;
+	created_at?: string;
+	email?: string;
+	expires_at?: string;
+	id?: number;
+	organization_id?: number;
+	role?: string;
+	status?: string;
 }

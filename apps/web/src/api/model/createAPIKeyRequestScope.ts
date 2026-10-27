@@ -6,10 +6,9 @@
  * OpenAPI spec version: 1.0
  */
 
-export type CreateAPIKeyRequestScope = typeof CreateAPIKeyRequestScope[keyof typeof CreateAPIKeyRequestScope];
-
+export type CreateAPIKeyRequestScope = (typeof CreateAPIKeyRequestScope)[keyof typeof CreateAPIKeyRequestScope];
 
 export const CreateAPIKeyRequestScope = {
-  read: 'read',
-  write: 'write',
+	read: 'read',
+	write: 'write',
 } as const;

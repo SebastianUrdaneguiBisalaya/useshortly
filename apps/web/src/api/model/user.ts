@@ -7,12 +7,12 @@
  */
 
 export interface User {
-  created_at?: string;
-  email?: string;
-  email_verified?: boolean;
-  first_name?: string;
-  id?: number;
-  image_url?: string;
-  last_name?: string;
-  updated_at?: string;
+	created_at?: string;
+	email?: string;
+	email_verified?: boolean;
+	first_name?: string;
+	id?: number;
+	image_url?: string;
+	last_name?: string;
+	updated_at?: string;
 }

@@ -9,6 +9,6 @@ import type { APIKey } from './aPIKey';
 import type { PageMeta } from './pageMeta';
 
 export interface APIKeyListResponse {
-  data?: APIKey[];
-  meta?: PageMeta;
+	data?: APIKey[];
+	meta?: PageMeta;
 }

@@ -7,10 +7,10 @@
  */
 
 export interface CreateLinkRequest {
-  alias?: string;
-  domain_id?: number;
-  expires_at?: string;
-  max_clicks?: number;
-  password?: string;
-  url?: string;
+	alias?: string;
+	domain_id?: number;
+	expires_at?: string;
+	max_clicks?: number;
+	password?: string;
+	url?: string;
 }

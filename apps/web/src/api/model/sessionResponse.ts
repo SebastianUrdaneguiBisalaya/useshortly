@@ -8,5 +8,5 @@
 import type { Session } from './session';
 
 export interface SessionResponse {
-  data?: Session;
+	data?: Session;
 }

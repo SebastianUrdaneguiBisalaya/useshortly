@@ -7,6 +7,6 @@
  */
 
 export interface DailyClicks {
-  clicks?: number;
-  date?: string;
+	clicks?: number;
+	date?: string;
 }

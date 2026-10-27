@@ -7,12 +7,12 @@
  */
 
 export type GetLinkStatsParams = {
-/**
- * First day, YYYY-MM-DD (UTC)
- */
-from?: string;
-/**
- * Last day, YYYY-MM-DD (UTC)
- */
-to?: string;
+	/**
+	 * First day, YYYY-MM-DD (UTC)
+	 */
+	from?: string;
+	/**
+	 * Last day, YYYY-MM-DD (UTC)
+	 */
+	to?: string;
 };

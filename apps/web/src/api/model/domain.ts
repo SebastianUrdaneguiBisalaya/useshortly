@@ -8,11 +8,11 @@
 import type { DomainChallenge } from './domainChallenge';
 
 export interface Domain {
-  created_at?: string;
-  host?: string;
-  id?: number;
-  /** Verification is the DNS record to create; it is left out once the domain is verified. */
-  verification?: DomainChallenge;
-  verified?: boolean;
-  verified_at?: string;
+	created_at?: string;
+	host?: string;
+	id?: number;
+	/** Verification is the DNS record to create; it is left out once the domain is verified. */
+	verification?: DomainChallenge;
+	verified?: boolean;
+	verified_at?: string;
 }

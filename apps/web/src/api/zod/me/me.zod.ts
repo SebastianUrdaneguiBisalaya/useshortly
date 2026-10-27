@@ -7,40 +7,44 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * Deletes the user, every organization they own and what is in them. It cannot be undone.
  * @summary Delete the account
  */
-export const DeleteAccountBody = zod.object({
-  "code": zod.string().optional()
-}).describe('Emailed confirmation code')
+export const DeleteAccountBody = zod
+	.object({
+		code: zod.string().optional(),
+	})
+	.describe('Emailed confirmation code');
 
-export const DeleteAccountResponse = zod.void()
+export const DeleteAccountResponse = zod.void();
 
 /**
  * @summary Get the signed-in user
  */
 export const GetMeResponse = zod.object({
-  "data": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "email_verified": zod.boolean().optional(),
-  "first_name": zod.string().optional(),
-  "id": zod.int().optional(),
-  "image_url": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "updated_at": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			email: zod.string().optional(),
+			email_verified: zod.boolean().optional(),
+			first_name: zod.string().optional(),
+			id: zod.int().optional(),
+			image_url: zod.string().optional(),
+			last_name: zod.string().optional(),
+			updated_at: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * Only available when account deletion is enabled on the server.
  * @summary Request an account deletion code
  */
 export const RequestAccountDeletionResponse = zod.object({
-  "data": zod.object({
-  "message": zod.string().optional()
-}).optional()
-})
-
+	data: zod
+		.object({
+			message: zod.string().optional(),
+		})
+		.optional(),
+});

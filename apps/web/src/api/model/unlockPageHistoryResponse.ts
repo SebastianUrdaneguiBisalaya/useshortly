@@ -9,6 +9,6 @@ import type { PageMeta } from './pageMeta';
 import type { UnlockPageEvent } from './unlockPageEvent';
 
 export interface UnlockPageHistoryResponse {
-  data?: UnlockPageEvent[];
-  meta?: PageMeta;
+	data?: UnlockPageEvent[];
+	meta?: PageMeta;
 }

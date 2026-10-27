@@ -8,5 +8,5 @@
 import type { APIKeyCreated } from './aPIKeyCreated';
 
 export interface APIKeyCreatedResponse {
-  data?: APIKeyCreated;
+	data?: APIKeyCreated;
 }

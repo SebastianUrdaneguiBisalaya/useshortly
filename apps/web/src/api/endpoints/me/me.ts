@@ -5,278 +5,188 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
-  MutationFunction,
-  QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
+	DataTag,
+	DefinedInitialDataOptions,
+	DefinedUseQueryResult,
+	MutationFunction,
+	QueryClient,
+	QueryFunction,
+	QueryKey,
+	UndefinedInitialDataOptions,
+	UseMutationOptions,
+	UseMutationResult,
+	UseQueryOptions,
+	UseQueryResult,
 } from '@tanstack/react-query';
 
-import type {
-  ConfirmationCodeRequest,
-  ErrorResponse,
-  MessageResponse,
-  UserResponse
-} from '../../model';
+import type { ConfirmationCodeRequest, ErrorResponse, MessageResponse, UserResponse } from '../../model';
 
 import { customInstance } from '../../axios-instance';
-import type { ErrorType , BodyType } from '../../axios-instance';
-
+import type { ErrorType, BodyType } from '../../axios-instance';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
+	const result = { queryKey } as T & { queryKey: K };
+	for (const key of Object.keys(query)) {
+		// The explicit queryKey always wins, matching the previous
+		// `{ ...query, queryKey }` spread where it was set last.
+		if (key === 'queryKey') continue;
+		Object.defineProperty(result, key, {
+			enumerable: true,
+			configurable: true,
+			get: () => (query as Record<string, unknown>)[key],
+		});
+	}
+	return result;
 };
 
 /**
  * Deletes the user, every organization they own and what is in them. It cannot be undone.
  * @summary Delete the account
  */
-export const deleteAccount = (
-    confirmationCodeRequest: BodyType<ConfirmationCodeRequest>,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<void>(
-      {url: `/me`, method: 'DELETE',
-      headers: {'Content-Type': 'application/json', },
-      data: confirmationCodeRequest, signal
-    },
-      options);
-    }
-
-
-
+export const deleteAccount = (confirmationCodeRequest: BodyType<ConfirmationCodeRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<void>({ url: `/me`, method: 'DELETE', headers: { 'Content-Type': 'application/json' }, data: confirmationCodeRequest, signal }, options);
+};
 
 export const getDeleteAccountMutationKey = () => ['deleteAccount'] as const;
 
-export const getDeleteAccountMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext> => {
+export const getDeleteAccountMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, DeleteAccountMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, DeleteAccountMutationVariables, TContext> => {
+	const mutationKey = getDeleteAccountMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
 
-const mutationKey = getDeleteAccountMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, DeleteAccountMutationVariables> = props => {
+		const { data } = props ?? {};
 
+		return deleteAccount(data, requestOptions);
+	};
 
+	return { mutationFn, ...mutationOptions };
+};
 
+export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>;
+export type DeleteAccountMutationBody = BodyType<ConfirmationCodeRequest>;
+export type DeleteAccountMutationError = ErrorType<ErrorResponse>;
+export type DeleteAccountMutationVariables = { data: BodyType<ConfirmationCodeRequest> };
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, DeleteAccountMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  deleteAccount(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
-    export type DeleteAccountMutationBody = BodyType<ConfirmationCodeRequest>
-    export type DeleteAccountMutationError = ErrorType<ErrorResponse>
-    export type DeleteAccountMutationVariables = {data: BodyType<ConfirmationCodeRequest>}
-
-    /**
+/**
  * @summary Delete the account
  */
-export const useDeleteAccount = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteAccount>>,
-        TError,
-        DeleteAccountMutationVariables,
-        TContext
-      > => {
-      return useMutation(getDeleteAccountMutationOptions(options), queryClient);
-    }
-    /**
+export const useDeleteAccount = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, DeleteAccountMutationVariables, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof deleteAccount>>, TError, DeleteAccountMutationVariables, TContext> => {
+	return useMutation(getDeleteAccountMutationOptions(options), queryClient);
+};
+/**
  * @summary Get the signed-in user
  */
-export const getMe = (
-
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<UserResponse>(
-      {url: `/me`, method: 'GET', signal
-    },
-      options);
-    }
-
-
-
+export const getMe = (options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<UserResponse>({ url: `/me`, method: 'GET', signal }, options);
+};
 
 export const getGetMeQueryKey = () => {
-    return [
-    `/me`
-    ] as const;
-    }
+	return [`/me`] as const;
+};
 
+export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(options?: {
+	query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
+	request?: SecondParameter<typeof customInstance>;
+}) => {
+	const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
+	const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+	const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({ signal }) => getMe(requestOptions, signal);
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMeQueryKey();
+	return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({ signal }) => getMe(requestOptions, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>
-export type GetMeQueryError = ErrorType<ErrorResponse>
-
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<ErrorResponse>;
 
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMe>>,
-          TError,
-          Awaited<ReturnType<typeof getMe>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	options: {
+		query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
+			Pick<DefinedInitialDataOptions<Awaited<ReturnType<typeof getMe>>, TError, Awaited<ReturnType<typeof getMe>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMe>>,
-          TError,
-          Awaited<ReturnType<typeof getMe>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	options?: {
+		query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
+			Pick<UndefinedInitialDataOptions<Awaited<ReturnType<typeof getMe>>, TError, Awaited<ReturnType<typeof getMe>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Get the signed-in user
  */
 
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	const queryOptions = getGetMeQueryOptions(options);
 
-  const queryOptions = getGetMeQueryOptions(options)
+	const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
+	return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
 
 /**
  * Only available when account deletion is enabled on the server.
  * @summary Request an account deletion code
  */
-export const requestAccountDeletion = (
-
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<MessageResponse>(
-      {url: `/me/delete-code`, method: 'POST', signal
-    },
-      options);
-    }
-
-
-
+export const requestAccountDeletion = (options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<MessageResponse>({ url: `/me/delete-code`, method: 'POST', signal }, options);
+};
 
 export const getRequestAccountDeletionMutationKey = () => ['requestAccountDeletion'] as const;
 
-export const getRequestAccountDeletionMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,void, TContext> => {
+export const getRequestAccountDeletionMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError, void, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError, void, TContext> => {
+	const mutationKey = getRequestAccountDeletionMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
 
-const mutationKey = getRequestAccountDeletionMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestAccountDeletion>>, void> = () => {
+		return requestAccountDeletion(requestOptions);
+	};
 
+	return { mutationFn, ...mutationOptions };
+};
 
+export type RequestAccountDeletionMutationResult = NonNullable<Awaited<ReturnType<typeof requestAccountDeletion>>>;
 
+export type RequestAccountDeletionMutationError = ErrorType<ErrorResponse>;
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestAccountDeletion>>, void> = () => {
-
-
-          return  requestAccountDeletion(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RequestAccountDeletionMutationResult = NonNullable<Awaited<ReturnType<typeof requestAccountDeletion>>>
-
-    export type RequestAccountDeletionMutationError = ErrorType<ErrorResponse>
-
-
-    /**
+/**
  * @summary Request an account deletion code
  */
-export const useRequestAccountDeletion = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof requestAccountDeletion>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getRequestAccountDeletionMutationOptions(options), queryClient);
-    }
+export const useRequestAccountDeletion = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError, void, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof requestAccountDeletion>>, TError, void, TContext> => {
+	return useMutation(getRequestAccountDeletionMutationOptions(options), queryClient);
+};

@@ -7,5 +7,5 @@
  */
 
 export interface CreateDomainRequest {
-  host?: string;
+	host?: string;
 }

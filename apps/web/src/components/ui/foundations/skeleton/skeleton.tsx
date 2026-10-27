@@ -1,13 +1,12 @@
-"use client";
+'use client';
 
-import type * as React from "react";
+import type * as React from 'react';
 
-import { cn } from "../../utils/tailwind/cn";
+import { cn } from '../../utils/tailwind/cn';
 
-export interface SkeletonRootProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  /** Text announced to assistive tech while the skeleton is shown; visually hidden. */
-  label?: string;
+export interface SkeletonRootProps extends React.HTMLAttributes<HTMLDivElement> {
+	/** Text announced to assistive tech while the skeleton is shown; visually hidden. */
+	label?: string;
 }
 
 /**
@@ -23,40 +22,22 @@ export interface SkeletonRootProps
  * </Skeleton>
  * ```
  */
-function SkeletonRoot({
-  label = "Cargando…",
-  className,
-  children,
-  ...props
-}: SkeletonRootProps) {
-  return (
-    <div
-      aria-busy="true"
-      aria-live="polite"
-      className={cn("flex flex-col gap-2", className)}
-      role="status"
-      {...props}
-    >
-      <span className="sr-only">{label}</span>
-      {children}
-    </div>
-  );
+function SkeletonRoot({ label = 'Cargando…', className, children, ...props }: SkeletonRootProps) {
+	return (
+		<div aria-busy='true' aria-live='polite' className={cn('flex flex-col gap-2', className)} role='status' {...props}>
+			<span className='sr-only'>{label}</span>
+			{children}
+		</div>
+	);
 }
 
-export interface SkeletonItemProps
-  extends React.HTMLAttributes<HTMLDivElement> {}
+export interface SkeletonItemProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 /** One pulsing placeholder bar. Decorative — hidden from assistive tech; the loading state is announced by `Skeleton`'s live region. */
 function SkeletonItem({ className, ...props }: SkeletonItemProps) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn("animate-pulse rounded-md bg-muted", className)}
-      {...props}
-    />
-  );
+	return <div aria-hidden='true' className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />;
 }
 
 export const Skeleton = Object.assign(SkeletonRoot, {
-  Item: SkeletonItem,
+	Item: SkeletonItem,
 });

@@ -7,7 +7,7 @@
  */
 
 export interface DomainChallenge {
-  name?: string;
-  type?: string;
-  value?: string;
+	name?: string;
+	type?: string;
+	value?: string;
 }

@@ -8,5 +8,5 @@
 import type { MessageResponseData } from './messageResponseData';
 
 export interface MessageResponse {
-  data?: MessageResponseData;
+	data?: MessageResponseData;
 }

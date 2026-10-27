@@ -7,12 +7,12 @@
  */
 
 export type ListApiKeysParams = {
-/**
- * Page size
- */
-limit?: number;
-/**
- * Items to skip
- */
-offset?: number;
+	/**
+	 * Page size
+	 */
+	limit?: number;
+	/**
+	 * Items to skip
+	 */
+	offset?: number;
 };

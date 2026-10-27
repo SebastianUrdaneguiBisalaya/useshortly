@@ -5,15 +5,15 @@
  */
 
 type EscapeHandlerRef = {
-  current: () => void;
+	current: () => void;
 };
 
 const escapeStack: EscapeHandlerRef[] = [];
 const layerStack: number[] = [];
 
 function handleEscape(event: KeyboardEvent) {
-  if (event.key !== "Escape") return;
-  escapeStack.at(-1)?.current();
+	if (event.key !== 'Escape') return;
+	escapeStack.at(-1)?.current();
 }
 
 /**
@@ -21,18 +21,18 @@ function handleEscape(event: KeyboardEvent) {
  * so the topmost overlay closes first. Returns the unregister function.
  */
 export function registerEscapeHandler(handler: EscapeHandlerRef): () => void {
-  if (escapeStack.length === 0) {
-    window.addEventListener("keydown", handleEscape);
-  }
-  escapeStack.push(handler);
+	if (escapeStack.length === 0) {
+		window.addEventListener('keydown', handleEscape);
+	}
+	escapeStack.push(handler);
 
-  return () => {
-    const index = escapeStack.indexOf(handler);
-    if (index !== -1) escapeStack.splice(index, 1);
-    if (escapeStack.length === 0) {
-      window.removeEventListener("keydown", handleEscape);
-    }
-  };
+	return () => {
+		const index = escapeStack.indexOf(handler);
+		if (index !== -1) escapeStack.splice(index, 1);
+		if (escapeStack.length === 0) {
+			window.removeEventListener('keydown', handleEscape);
+		}
+	};
 }
 
 /**
@@ -40,17 +40,17 @@ export function registerEscapeHandler(handler: EscapeHandlerRef): () => void {
  * opened over it…). Returns the layer and the function that releases it.
  */
 export function claimOverlayLayer(): {
-  layer: number;
-  release: () => void;
+	layer: number;
+	release: () => void;
 } {
-  const layer = (layerStack.at(-1) ?? -1) + 1;
-  layerStack.push(layer);
+	const layer = (layerStack.at(-1) ?? -1) + 1;
+	layerStack.push(layer);
 
-  return {
-    layer,
-    release: () => {
-      const index = layerStack.indexOf(layer);
-      if (index !== -1) layerStack.splice(index, 1);
-    },
-  };
+	return {
+		layer,
+		release: () => {
+			const index = layerStack.indexOf(layer);
+			if (index !== -1) layerStack.splice(index, 1);
+		},
+	};
 }

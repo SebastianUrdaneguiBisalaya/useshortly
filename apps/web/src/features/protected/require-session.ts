@@ -1,9 +1,9 @@
-import { redirect } from "react-router";
-import { renewSession } from "~/api/axios-instance";
-import { useSessionStore } from "~/stores/session-store";
+import { redirect } from 'react-router';
+import { renewSession } from '~/api/axios-instance';
+import { useSessionStore } from '~/stores/session-store';
 
 function isPast(isoDate: string | undefined) {
-  return !isoDate || Date.parse(isoDate) <= Date.now();
+	return !isoDate || Date.parse(isoDate) <= Date.now();
 }
 
 /**
@@ -12,12 +12,12 @@ function isPast(isoDate: string | undefined) {
  * refresh cookie; if that is expired or rejected too, the session is dropped.
  */
 export async function requireSession() {
-  const { session, clearSession } = useSessionStore.getState();
-  if (!session || isPast(session.refresh_expires_at)) {
-    clearSession();
-    throw redirect("/auth/sign-in");
-  }
-  if (isPast(session.expires_at) && !(await renewSession())) {
-    throw redirect("/auth/sign-in");
-  }
+	const { session, clearSession } = useSessionStore.getState();
+	if (!session || isPast(session.refresh_expires_at)) {
+		clearSession();
+		throw redirect('/auth/sign-in');
+	}
+	if (isPast(session.expires_at) && !(await renewSession())) {
+		throw redirect('/auth/sign-in');
+	}
 }

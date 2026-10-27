@@ -8,5 +8,5 @@
 import type { Domain } from './domain';
 
 export interface DomainResponse {
-  data?: Domain;
+	data?: Domain;
 }

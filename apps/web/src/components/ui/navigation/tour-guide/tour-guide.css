@@ -6,85 +6,85 @@
  */
 
 .driver-popover {
-  min-width: 17.5rem;
-  max-width: 20rem;
-  padding: 1rem;
-  font-family: var(--font-primary);
-  color: var(--foreground);
-  background-color: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+	min-width: 17.5rem;
+	max-width: 20rem;
+	padding: 1rem;
+	font-family: var(--font-primary);
+	color: var(--foreground);
+	background-color: var(--background);
+	border: 1px solid var(--border);
+	border-radius: 0.75rem;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
 }
 
 .driver-popover-title {
-  font-family: var(--font-primary);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--foreground);
+	font-family: var(--font-primary);
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: var(--foreground);
 }
 
 .driver-popover-description {
-  font-family: var(--font-primary);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  color: var(--foreground-secondary);
+	font-family: var(--font-primary);
+	font-size: 0.8125rem;
+	font-weight: 400;
+	color: var(--foreground-secondary);
 }
 
 .driver-popover-title[style*="block"] + .driver-popover-description {
-  margin-top: 0.375rem;
+	margin-top: 0.375rem;
 }
 
 .driver-popover-close-btn {
-  color: var(--foreground-tertiary);
+	color: var(--foreground-tertiary);
 }
 
 .driver-popover-close-btn:hover,
 .driver-popover-close-btn:focus-visible {
-  color: var(--foreground);
+	color: var(--foreground);
 }
 
 .driver-popover-footer {
-  margin-top: 0.875rem;
+	margin-top: 0.875rem;
 }
 
 .driver-popover-progress-text {
-  font-family: var(--font-primary);
-  font-size: 0.75rem;
-  color: var(--foreground-tertiary);
+	font-family: var(--font-primary);
+	font-size: 0.75rem;
+	color: var(--foreground-tertiary);
 }
 
 .driver-popover-footer-btn {
-  padding: 0.375rem 0.75rem;
-  font-family: var(--font-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--foreground);
-  background-color: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  transition: background-color 150ms ease;
+	padding: 0.375rem 0.75rem;
+	font-family: var(--font-primary);
+	font-size: 0.8125rem;
+	font-weight: 500;
+	color: var(--foreground);
+	background-color: var(--background);
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	transition: background-color 150ms ease;
 }
 
 .driver-popover-footer-btn:hover,
 .driver-popover-footer-btn:focus-visible {
-  background-color: var(--hover);
+	background-color: var(--hover);
 }
 
 .driver-popover-navigation-btns .driver-popover-next-btn,
 .driver-popover-navigation-btns .driver-popover-done-btn {
-  color: var(--background);
-  background-color: var(--foreground);
-  border-color: transparent;
+	color: var(--background);
+	background-color: var(--foreground);
+	border-color: transparent;
 }
 
 .driver-popover-navigation-btns .driver-popover-next-btn:hover,
 .driver-popover-navigation-btns .driver-popover-done-btn:hover {
-  background-color: var(--foreground);
-  opacity: 0.9;
+	background-color: var(--foreground);
+	opacity: 0.9;
 }
 
 /* Only one side stays non-transparent per `-side-*` variant (see driver.css); overriding the shared base color covers all of them. */
 .driver-popover-arrow {
-  border-color: var(--background);
+	border-color: var(--background);
 }

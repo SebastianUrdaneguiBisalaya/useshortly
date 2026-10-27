@@ -7,7 +7,7 @@
  */
 
 export interface ResetPasswordRequest {
-  code?: string;
-  email?: string;
-  new_password?: string;
+	code?: string;
+	email?: string;
+	new_password?: string;
 }

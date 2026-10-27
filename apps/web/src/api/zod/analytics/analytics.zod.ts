@@ -7,43 +7,59 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a link
  */
 export const GetLinkStatsParams = zod.object({
-  "orgID": zod.int().describe('Organization id'),
-  "linkID": zod.int().describe('Link id')
-})
+	orgID: zod.int().describe('Organization id'),
+	linkID: zod.int().describe('Link id'),
+});
 
 export const GetLinkStatsQueryParams = zod.object({
-  "from": zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
-  "to": zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)')
-})
+	from: zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
+	to: zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)'),
+});
 
 export const GetLinkStatsResponse = zod.object({
-  "data": zod.object({
-  "countries": zod.array(zod.object({
-  "clicks": zod.int().optional(),
-  "name": zod.string().optional()
-})).optional(),
-  "daily": zod.array(zod.object({
-  "clicks": zod.int().optional(),
-  "date": zod.string().optional()
-})).optional(),
-  "devices": zod.array(zod.object({
-  "clicks": zod.int().optional(),
-  "name": zod.string().optional()
-})).optional(),
-  "from": zod.string().optional(),
-  "link_id": zod.int().optional(),
-  "referrers": zod.array(zod.object({
-  "clicks": zod.int().optional(),
-  "name": zod.string().optional()
-})).optional(),
-  "to": zod.string().optional(),
-  "total": zod.int().optional()
-}).optional()
-})
-
+	data: zod
+		.object({
+			countries: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			daily: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						date: zod.string().optional(),
+					})
+				)
+				.optional(),
+			devices: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			from: zod.string().optional(),
+			link_id: zod.int().optional(),
+			referrers: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			to: zod.string().optional(),
+			total: zod.int().optional(),
+		})
+		.optional(),
+});

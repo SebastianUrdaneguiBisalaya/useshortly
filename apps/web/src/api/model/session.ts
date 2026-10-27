@@ -8,7 +8,7 @@
 import type { User } from './user';
 
 export interface Session {
-  expires_at?: string;
-  refresh_expires_at?: string;
-  user?: User;
+	expires_at?: string;
+	refresh_expires_at?: string;
+	user?: User;
 }

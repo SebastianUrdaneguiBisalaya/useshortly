@@ -7,5 +7,5 @@
  */
 
 export interface GoogleLoginRequest {
-  code?: string;
+	code?: string;
 }

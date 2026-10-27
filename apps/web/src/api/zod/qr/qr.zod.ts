@@ -7,27 +7,23 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.
  * @summary QR code of a link
  */
 export const GetLinkQrParams = zod.object({
-  "orgID": zod.int().describe('Organization id'),
-  "linkID": zod.int().describe('Link id')
-})
+	orgID: zod.int().describe('Organization id'),
+	linkID: zod.int().describe('Link id'),
+});
 
 export const getLinkQrQueryFormatDefault = `png`;
 export const getLinkQrQuerySizeDefault = 256;
 export const getLinkQrQuerySizeMin = 64;
 export const getLinkQrQuerySizeMax = 1024;
 
-
-
 export const GetLinkQrQueryParams = zod.object({
-  "format": zod.enum(['png', 'svg']).default(getLinkQrQueryFormatDefault).describe('Image format'),
-  "size": zod.int().min(getLinkQrQuerySizeMin).max(getLinkQrQuerySizeMax).default(getLinkQrQuerySizeDefault).describe('Pixels on a side')
-})
+	format: zod.enum(['png', 'svg']).default(getLinkQrQueryFormatDefault).describe('Image format'),
+	size: zod.int().min(getLinkQrQuerySizeMin).max(getLinkQrQuerySizeMax).default(getLinkQrQuerySizeDefault).describe('Pixels on a side'),
+});
 
-export const GetLinkQrResponse = zod.unknown()
-
+export const GetLinkQrResponse = zod.unknown();

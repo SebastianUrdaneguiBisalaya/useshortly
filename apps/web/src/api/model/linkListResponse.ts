@@ -9,6 +9,6 @@ import type { Link } from './link';
 import type { PageMeta } from './pageMeta';
 
 export interface LinkListResponse {
-  data?: Link[];
-  meta?: PageMeta;
+	data?: Link[];
+	meta?: PageMeta;
 }

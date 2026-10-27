@@ -8,5 +8,5 @@
 import type { UnlockPage } from './unlockPage';
 
 export interface UnlockPageResponse {
-  data?: UnlockPage;
+	data?: UnlockPage;
 }

@@ -7,7 +7,7 @@
  */
 
 export interface InviteRequest {
-  bcc?: string[];
-  cc?: string[];
-  email?: string;
+	bcc?: string[];
+	cc?: string[];
+	email?: string;
 }

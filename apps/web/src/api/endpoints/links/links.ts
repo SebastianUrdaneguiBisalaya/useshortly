@@ -5,290 +5,203 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
-  MutationFunction,
-  QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
+	DataTag,
+	DefinedInitialDataOptions,
+	DefinedUseQueryResult,
+	MutationFunction,
+	QueryClient,
+	QueryFunction,
+	QueryKey,
+	UndefinedInitialDataOptions,
+	UseMutationOptions,
+	UseMutationResult,
+	UseQueryOptions,
+	UseQueryResult,
 } from '@tanstack/react-query';
 
-import type {
-  CreateLinkRequest,
-  ErrorResponse,
-  LinkListResponse,
-  LinkResponse,
-  ListLinksParams
-} from '../../model';
+import type { CreateLinkRequest, ErrorResponse, LinkListResponse, LinkResponse, ListLinksParams } from '../../model';
 
 import { customInstance } from '../../axios-instance';
-import type { ErrorType , BodyType } from '../../axios-instance';
-
+import type { ErrorType, BodyType } from '../../axios-instance';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
+	const result = { queryKey } as T & { queryKey: K };
+	for (const key of Object.keys(query)) {
+		// The explicit queryKey always wins, matching the previous
+		// `{ ...query, queryKey }` spread where it was set last.
+		if (key === 'queryKey') continue;
+		Object.defineProperty(result, key, {
+			enumerable: true,
+			configurable: true,
+			get: () => (query as Record<string, unknown>)[key],
+		});
+	}
+	return result;
 };
 
 /**
  * Needs a JWT or an API key with the read scope.
  * @summary List links
  */
-export const listLinks = (
-    orgID: number,
-    params?: ListLinksParams,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+export const listLinks = (orgID: number, params?: ListLinksParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<LinkListResponse>({ url: `/orgs/${orgID}/links`, method: 'GET', params, signal }, options);
+};
+
+export const getListLinksQueryKey = (orgID: number, params?: ListLinksParams) => {
+	return [`/orgs/${orgID}/links`, ...(params ? [params] : [])] as const;
+};
+
+export const getListLinksQueryOptions = <TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	params?: ListLinksParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>; request?: SecondParameter<typeof customInstance> }
 ) => {
+	const { query: queryOptions, request: requestOptions } = options ?? {};
 
+	const queryKey = queryOptions?.queryKey ?? getListLinksQueryKey(orgID, params);
 
-      return customInstance<LinkListResponse>(
-      {url: `/orgs/${orgID}/links`, method: 'GET',
-        params, signal
-    },
-      options);
-    }
+	const queryFn: QueryFunction<Awaited<ReturnType<typeof listLinks>>> = ({ signal }) => listLinks(orgID, params, requestOptions, signal);
 
+	return { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData> & {
+		queryKey: DataTag<QueryKey, TData, TError>;
+	};
+};
 
-
-
-export const getListLinksQueryKey = (orgID: number,
-    params?: ListLinksParams,) => {
-    return [
-    `/orgs/${orgID}/links`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getListLinksQueryOptions = <TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(orgID: number,
-    params?: ListLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListLinksQueryKey(orgID,params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLinks>>> = ({ signal }) => listLinks(orgID,params, requestOptions, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListLinksQueryResult = NonNullable<Awaited<ReturnType<typeof listLinks>>>
-export type ListLinksQueryError = ErrorType<ErrorResponse>
-
+export type ListLinksQueryResult = NonNullable<Awaited<ReturnType<typeof listLinks>>>;
+export type ListLinksQueryError = ErrorType<ErrorResponse>;
 
 export function useListLinks<TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(
- orgID: number,
-    params: undefined |  ListLinksParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listLinks>>,
-          TError,
-          Awaited<ReturnType<typeof listLinks>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	orgID: number,
+	params: undefined | ListLinksParams,
+	options: {
+		query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>> &
+			Pick<DefinedInitialDataOptions<Awaited<ReturnType<typeof listLinks>>, TError, Awaited<ReturnType<typeof listLinks>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListLinks<TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(
- orgID: number,
-    params?: ListLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listLinks>>,
-          TError,
-          Awaited<ReturnType<typeof listLinks>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	orgID: number,
+	params?: ListLinksParams,
+	options?: {
+		query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>> &
+			Pick<UndefinedInitialDataOptions<Awaited<ReturnType<typeof listLinks>>, TError, Awaited<ReturnType<typeof listLinks>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListLinks<TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(
- orgID: number,
-    params?: ListLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+	orgID: number,
+	params?: ListLinksParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List links
  */
 
 export function useListLinks<TData = Awaited<ReturnType<typeof listLinks>>, TError = ErrorType<ErrorResponse>>(
- orgID: number,
-    params?: ListLinksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	orgID: number,
+	params?: ListLinksParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listLinks>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	const queryOptions = getListLinksQueryOptions(orgID, params, options);
 
-  const queryOptions = getListLinksQueryOptions(orgID,params,options)
+	const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
+	return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
 
 /**
  * Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
  * @summary Create a short link
  */
-export const createLink = (
-    orgID: number,
-    createLinkRequest: BodyType<CreateLinkRequest>,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<LinkResponse>(
-      {url: `/orgs/${orgID}/links`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: createLinkRequest, signal
-    },
-      options);
-    }
-
-
-
+export const createLink = (orgID: number, createLinkRequest: BodyType<CreateLinkRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<LinkResponse>({ url: `/orgs/${orgID}/links`, method: 'POST', headers: { 'Content-Type': 'application/json' }, data: createLinkRequest, signal }, options);
+};
 
 export const getCreateLinkMutationKey = () => ['createLink'] as const;
 
-export const getCreateLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError,CreateLinkMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError,CreateLinkMutationVariables, TContext> => {
+export const getCreateLinkMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError, CreateLinkMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError, CreateLinkMutationVariables, TContext> => {
+	const mutationKey = getCreateLinkMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
 
-const mutationKey = getCreateLinkMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLink>>, CreateLinkMutationVariables> = props => {
+		const { orgID, data } = props ?? {};
 
+		return createLink(orgID, data, requestOptions);
+	};
 
+	return { mutationFn, ...mutationOptions };
+};
 
+export type CreateLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createLink>>>;
+export type CreateLinkMutationBody = BodyType<CreateLinkRequest>;
+export type CreateLinkMutationError = ErrorType<ErrorResponse>;
+export type CreateLinkMutationVariables = { orgID: number; data: BodyType<CreateLinkRequest> };
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLink>>, CreateLinkMutationVariables> = (props) => {
-          const {orgID,data} = props ?? {};
-
-          return  createLink(orgID,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createLink>>>
-    export type CreateLinkMutationBody = BodyType<CreateLinkRequest>
-    export type CreateLinkMutationError = ErrorType<ErrorResponse>
-    export type CreateLinkMutationVariables = {orgID: number;data: BodyType<CreateLinkRequest>}
-
-    /**
+/**
  * @summary Create a short link
  */
-export const useCreateLink = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError,CreateLinkMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createLink>>,
-        TError,
-        CreateLinkMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCreateLinkMutationOptions(options), queryClient);
-    }
-    /**
+export const useCreateLink = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createLink>>, TError, CreateLinkMutationVariables, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof createLink>>, TError, CreateLinkMutationVariables, TContext> => {
+	return useMutation(getCreateLinkMutationOptions(options), queryClient);
+};
+/**
  * Needs a JWT or an API key with the write scope.
  * @summary Delete a link
  */
-export const deleteLink = (
-    orgID: number,
-    linkID: number,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<void>(
-      {url: `/orgs/${orgID}/links/${linkID}`, method: 'DELETE', signal
-    },
-      options);
-    }
-
-
-
+export const deleteLink = (orgID: number, linkID: number, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<void>({ url: `/orgs/${orgID}/links/${linkID}`, method: 'DELETE', signal }, options);
+};
 
 export const getDeleteLinkMutationKey = () => ['deleteLink'] as const;
 
-export const getDeleteLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError,DeleteLinkMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError,DeleteLinkMutationVariables, TContext> => {
+export const getDeleteLinkMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError, DeleteLinkMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError, DeleteLinkMutationVariables, TContext> => {
+	const mutationKey = getDeleteLinkMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
 
-const mutationKey = getDeleteLinkMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLink>>, DeleteLinkMutationVariables> = props => {
+		const { orgID, linkID } = props ?? {};
 
+		return deleteLink(orgID, linkID, requestOptions);
+	};
 
+	return { mutationFn, ...mutationOptions };
+};
 
+export type DeleteLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLink>>>;
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLink>>, DeleteLinkMutationVariables> = (props) => {
-          const {orgID,linkID} = props ?? {};
+export type DeleteLinkMutationError = ErrorType<ErrorResponse>;
+export type DeleteLinkMutationVariables = { orgID: number; linkID: number };
 
-          return  deleteLink(orgID,linkID,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLink>>>
-
-    export type DeleteLinkMutationError = ErrorType<ErrorResponse>
-    export type DeleteLinkMutationVariables = {orgID: number;linkID: number}
-
-    /**
+/**
  * @summary Delete a link
  */
-export const useDeleteLink = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError,DeleteLinkMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteLink>>,
-        TError,
-        DeleteLinkMutationVariables,
-        TContext
-      > => {
-      return useMutation(getDeleteLinkMutationOptions(options), queryClient);
-    }
+export const useDeleteLink = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteLink>>, TError, DeleteLinkMutationVariables, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof deleteLink>>, TError, DeleteLinkMutationVariables, TContext> => {
+	return useMutation(getDeleteLinkMutationOptions(options), queryClient);
+};

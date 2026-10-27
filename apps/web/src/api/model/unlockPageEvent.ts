@@ -7,8 +7,8 @@
  */
 
 export interface UnlockPageEvent {
-  action?: string;
-  at?: string;
-  link_id?: number;
-  user_id?: number;
+	action?: string;
+	at?: string;
+	link_id?: number;
+	user_id?: number;
 }

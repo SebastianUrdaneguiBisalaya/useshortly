@@ -7,5 +7,5 @@
  */
 
 export interface ConfirmationCodeRequest {
-  code?: string;
+	code?: string;
 }

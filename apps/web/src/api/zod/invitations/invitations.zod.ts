@@ -7,29 +7,29 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * @summary Accept an invitation
  */
 export const AcceptInvitationParams = zod.object({
-  "invitationID": zod.int().describe('Invitation id')
-})
+	invitationID: zod.int().describe('Invitation id'),
+});
 
 export const AcceptInvitationResponse = zod.object({
-  "data": zod.object({
-  "created_at": zod.string().optional(),
-  "id": zod.int().optional(),
-  "role": zod.string().optional(),
-  "user_id": zod.int().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			id: zod.int().optional(),
+			role: zod.string().optional(),
+			user_id: zod.int().optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Reject an invitation
  */
 export const RejectInvitationParams = zod.object({
-  "invitationID": zod.int().describe('Invitation id')
-})
+	invitationID: zod.int().describe('Invitation id'),
+});
 
-export const RejectInvitationResponse = zod.void()
-
+export const RejectInvitationResponse = zod.void();

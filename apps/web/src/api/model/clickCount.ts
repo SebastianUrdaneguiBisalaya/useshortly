@@ -7,6 +7,6 @@
  */
 
 export interface ClickCount {
-  clicks?: number;
-  name?: string;
+	clicks?: number;
+	name?: string;
 }

@@ -7,131 +7,151 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * @summary List my organizations
  */
 export const ListMyOrganizationsResponse = zod.object({
-  "data": zod.array(zod.object({
-  "created_at": zod.string().optional(),
-  "description": zod.string().optional(),
-  "id": zod.int().optional(),
-  "logo_url": zod.string().optional(),
-  "name": zod.string().optional()
-})).optional()
-})
+	data: zod
+		.array(
+			zod.object({
+				created_at: zod.string().optional(),
+				description: zod.string().optional(),
+				id: zod.int().optional(),
+				logo_url: zod.string().optional(),
+				name: zod.string().optional(),
+			})
+		)
+		.optional(),
+});
 
 /**
  * @summary Create an organization
  */
-export const CreateOrganizationBody = zod.object({
-  "description": zod.string().optional(),
-  "name": zod.string().optional()
-}).describe('Organization data')
+export const CreateOrganizationBody = zod
+	.object({
+		description: zod.string().optional(),
+		name: zod.string().optional(),
+	})
+	.describe('Organization data');
 
 export const CreateOrganizationResponse = zod.object({
-  "data": zod.object({
-  "created_at": zod.string().optional(),
-  "description": zod.string().optional(),
-  "id": zod.int().optional(),
-  "logo_url": zod.string().optional(),
-  "name": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			description: zod.string().optional(),
+			id: zod.int().optional(),
+			logo_url: zod.string().optional(),
+			name: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Delete an organization
  */
 export const DeleteOrganizationParams = zod.object({
-  "orgID": zod.int().describe('Organization id')
-})
+	orgID: zod.int().describe('Organization id'),
+});
 
-export const DeleteOrganizationResponse = zod.void()
+export const DeleteOrganizationResponse = zod.void();
 
 /**
  * @summary Get an organization
  */
 export const GetOrganizationParams = zod.object({
-  "orgID": zod.int().describe('Organization id')
-})
+	orgID: zod.int().describe('Organization id'),
+});
 
 export const GetOrganizationResponse = zod.object({
-  "data": zod.object({
-  "created_at": zod.string().optional(),
-  "description": zod.string().optional(),
-  "id": zod.int().optional(),
-  "logo_url": zod.string().optional(),
-  "name": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			description: zod.string().optional(),
+			id: zod.int().optional(),
+			logo_url: zod.string().optional(),
+			name: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary List pending invitations
  */
 export const ListInvitationsParams = zod.object({
-  "orgID": zod.int().describe('Organization id')
-})
+	orgID: zod.int().describe('Organization id'),
+});
 
 export const ListInvitationsResponse = zod.object({
-  "data": zod.array(zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "expires_at": zod.string().optional(),
-  "id": zod.int().optional(),
-  "organization_id": zod.int().optional(),
-  "role": zod.string().optional(),
-  "status": zod.string().optional()
-})).optional()
-})
+	data: zod
+		.array(
+			zod.object({
+				created_at: zod.string().optional(),
+				email: zod.string().optional(),
+				expires_at: zod.string().optional(),
+				id: zod.int().optional(),
+				organization_id: zod.int().optional(),
+				role: zod.string().optional(),
+				status: zod.string().optional(),
+			})
+		)
+		.optional(),
+});
 
 /**
  * @summary Invite someone to an organization
  */
 export const InviteMemberParams = zod.object({
-  "orgID": zod.int().describe('Organization id')
-})
+	orgID: zod.int().describe('Organization id'),
+});
 
-export const InviteMemberBody = zod.object({
-  "bcc": zod.array(zod.string()).optional(),
-  "cc": zod.array(zod.string()).optional(),
-  "email": zod.string().optional()
-}).describe('Invitee and optional copies')
+export const InviteMemberBody = zod
+	.object({
+		bcc: zod.array(zod.string()).optional(),
+		cc: zod.array(zod.string()).optional(),
+		email: zod.string().optional(),
+	})
+	.describe('Invitee and optional copies');
 
 export const InviteMemberResponse = zod.object({
-  "data": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "expires_at": zod.string().optional(),
-  "id": zod.int().optional(),
-  "organization_id": zod.int().optional(),
-  "role": zod.string().optional(),
-  "status": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			email: zod.string().optional(),
+			expires_at: zod.string().optional(),
+			id: zod.int().optional(),
+			organization_id: zod.int().optional(),
+			role: zod.string().optional(),
+			status: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary List members
  */
 export const ListMembersParams = zod.object({
-  "orgID": zod.int().describe('Organization id')
-})
+	orgID: zod.int().describe('Organization id'),
+});
 
 export const ListMembersResponse = zod.object({
-  "data": zod.array(zod.object({
-  "created_at": zod.string().optional(),
-  "id": zod.int().optional(),
-  "role": zod.string().optional(),
-  "user_id": zod.int().optional()
-})).optional()
-})
+	data: zod
+		.array(
+			zod.object({
+				created_at: zod.string().optional(),
+				id: zod.int().optional(),
+				role: zod.string().optional(),
+				user_id: zod.int().optional(),
+			})
+		)
+		.optional(),
+});
 
 /**
  * @summary Remove a member
  */
 export const RemoveMemberParams = zod.object({
-  "orgID": zod.int().describe('Organization id'),
-  "userID": zod.int().describe('User id')
-})
+	orgID: zod.int().describe('Organization id'),
+	userID: zod.int().describe('User id'),
+});
 
-export const RemoveMemberResponse = zod.void()
-
+export const RemoveMemberResponse = zod.void();

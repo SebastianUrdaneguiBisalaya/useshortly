@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
-    "type-check": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "author": {
     "name": "Sebastian Marat Urdanegui Bisalaya",

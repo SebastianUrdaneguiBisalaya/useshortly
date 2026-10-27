@@ -7,146 +7,176 @@
  */
 import * as zod from 'zod';
 
-
 /**
  * @summary Request a password reset code
  */
-export const ForgotPasswordBody = zod.object({
-  "email": zod.string().optional()
-}).describe('Account email')
+export const ForgotPasswordBody = zod
+	.object({
+		email: zod.string().optional(),
+	})
+	.describe('Account email');
 
 export const ForgotPasswordResponse = zod.object({
-  "data": zod.object({
-  "message": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			message: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * Only available when Google sign-in is configured on the server.
  * @summary Sign in with Google
  */
-export const LoginWithGoogleBody = zod.object({
-  "code": zod.string().optional()
-}).describe('Google authorization code')
+export const LoginWithGoogleBody = zod
+	.object({
+		code: zod.string().optional(),
+	})
+	.describe('Google authorization code');
 
 export const LoginWithGoogleResponse = zod.object({
-  "data": zod.object({
-  "expires_at": zod.string().optional(),
-  "refresh_expires_at": zod.string().optional(),
-  "user": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "email_verified": zod.boolean().optional(),
-  "first_name": zod.string().optional(),
-  "id": zod.int().optional(),
-  "image_url": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "updated_at": zod.string().optional()
-}).optional()
-}).optional()
-})
+	data: zod
+		.object({
+			expires_at: zod.string().optional(),
+			refresh_expires_at: zod.string().optional(),
+			user: zod
+				.object({
+					created_at: zod.string().optional(),
+					email: zod.string().optional(),
+					email_verified: zod.boolean().optional(),
+					first_name: zod.string().optional(),
+					id: zod.int().optional(),
+					image_url: zod.string().optional(),
+					last_name: zod.string().optional(),
+					updated_at: zod.string().optional(),
+				})
+				.optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Sign in
  */
-export const LoginBody = zod.object({
-  "email": zod.string().optional(),
-  "password": zod.string().optional()
-}).describe('Credentials')
+export const LoginBody = zod
+	.object({
+		email: zod.string().optional(),
+		password: zod.string().optional(),
+	})
+	.describe('Credentials');
 
 export const LoginResponse = zod.object({
-  "data": zod.object({
-  "expires_at": zod.string().optional(),
-  "refresh_expires_at": zod.string().optional(),
-  "user": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "email_verified": zod.boolean().optional(),
-  "first_name": zod.string().optional(),
-  "id": zod.int().optional(),
-  "image_url": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "updated_at": zod.string().optional()
-}).optional()
-}).optional()
-})
+	data: zod
+		.object({
+			expires_at: zod.string().optional(),
+			refresh_expires_at: zod.string().optional(),
+			user: zod
+				.object({
+					created_at: zod.string().optional(),
+					email: zod.string().optional(),
+					email_verified: zod.boolean().optional(),
+					first_name: zod.string().optional(),
+					id: zod.int().optional(),
+					image_url: zod.string().optional(),
+					last_name: zod.string().optional(),
+					updated_at: zod.string().optional(),
+				})
+				.optional(),
+		})
+		.optional(),
+});
 
 /**
  * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Sign out
  */
-export const LogoutResponse = zod.void()
+export const LogoutResponse = zod.void();
 
 /**
  * Reads the refresh token from the refresh_token cookie; there is no body.
  * @summary Refresh a session
  */
 export const RefreshSessionResponse = zod.object({
-  "data": zod.object({
-  "expires_at": zod.string().optional(),
-  "refresh_expires_at": zod.string().optional(),
-  "user": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "email_verified": zod.boolean().optional(),
-  "first_name": zod.string().optional(),
-  "id": zod.int().optional(),
-  "image_url": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "updated_at": zod.string().optional()
-}).optional()
-}).optional()
-})
+	data: zod
+		.object({
+			expires_at: zod.string().optional(),
+			refresh_expires_at: zod.string().optional(),
+			user: zod
+				.object({
+					created_at: zod.string().optional(),
+					email: zod.string().optional(),
+					email_verified: zod.boolean().optional(),
+					first_name: zod.string().optional(),
+					id: zod.int().optional(),
+					image_url: zod.string().optional(),
+					last_name: zod.string().optional(),
+					updated_at: zod.string().optional(),
+				})
+				.optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Start a signup
  */
-export const RegisterBody = zod.object({
-  "email": zod.string().optional(),
-  "first_name": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "password": zod.string().optional()
-}).describe('Account data')
+export const RegisterBody = zod
+	.object({
+		email: zod.string().optional(),
+		first_name: zod.string().optional(),
+		last_name: zod.string().optional(),
+		password: zod.string().optional(),
+	})
+	.describe('Account data');
 
 export const RegisterResponse = zod.object({
-  "data": zod.object({
-  "message": zod.string().optional()
-}).optional()
-})
+	data: zod
+		.object({
+			message: zod.string().optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Confirm a signup and sign in
  */
-export const VerifyRegistrationBody = zod.object({
-  "code": zod.string().optional(),
-  "email": zod.string().optional()
-}).describe('Email and emailed code')
+export const VerifyRegistrationBody = zod
+	.object({
+		code: zod.string().optional(),
+		email: zod.string().optional(),
+	})
+	.describe('Email and emailed code');
 
 export const VerifyRegistrationResponse = zod.object({
-  "data": zod.object({
-  "expires_at": zod.string().optional(),
-  "refresh_expires_at": zod.string().optional(),
-  "user": zod.object({
-  "created_at": zod.string().optional(),
-  "email": zod.string().optional(),
-  "email_verified": zod.boolean().optional(),
-  "first_name": zod.string().optional(),
-  "id": zod.int().optional(),
-  "image_url": zod.string().optional(),
-  "last_name": zod.string().optional(),
-  "updated_at": zod.string().optional()
-}).optional()
-}).optional()
-})
+	data: zod
+		.object({
+			expires_at: zod.string().optional(),
+			refresh_expires_at: zod.string().optional(),
+			user: zod
+				.object({
+					created_at: zod.string().optional(),
+					email: zod.string().optional(),
+					email_verified: zod.boolean().optional(),
+					first_name: zod.string().optional(),
+					id: zod.int().optional(),
+					image_url: zod.string().optional(),
+					last_name: zod.string().optional(),
+					updated_at: zod.string().optional(),
+				})
+				.optional(),
+		})
+		.optional(),
+});
 
 /**
  * @summary Reset a password
  */
-export const ResetPasswordBody = zod.object({
-  "code": zod.string().optional(),
-  "email": zod.string().optional(),
-  "new_password": zod.string().optional()
-}).describe('Email, emailed code and new password')
+export const ResetPasswordBody = zod
+	.object({
+		code: zod.string().optional(),
+		email: zod.string().optional(),
+		new_password: zod.string().optional(),
+	})
+	.describe('Email, emailed code and new password');
 
-export const ResetPasswordResponse = zod.void()
-
+export const ResetPasswordResponse = zod.void();

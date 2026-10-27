@@ -7,8 +7,8 @@
  */
 
 export interface UnlockPage {
-  html?: string;
-  link_id?: number;
-  updated_at?: string;
-  updated_by?: number;
+	html?: string;
+	link_id?: number;
+	updated_at?: string;
+	updated_by?: number;
 }

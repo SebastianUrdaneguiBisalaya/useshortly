@@ -8,5 +8,5 @@
 import type { User } from './user';
 
 export interface UserResponse {
-  data?: User;
+	data?: User;
 }

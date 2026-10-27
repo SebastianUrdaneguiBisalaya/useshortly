@@ -8,5 +8,5 @@
 import type { Member } from './member';
 
 export interface MemberListResponse {
-  data?: Member[];
+	data?: Member[];
 }

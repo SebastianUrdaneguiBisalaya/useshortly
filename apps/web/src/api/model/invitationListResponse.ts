@@ -8,5 +8,5 @@
 import type { Invitation } from './invitation';
 
 export interface InvitationListResponse {
-  data?: Invitation[];
+	data?: Invitation[];
 }

@@ -8,7 +8,7 @@
 import type { FieldError } from './fieldError';
 
 export type ErrorResponseError = {
-  code?: string;
-  details?: FieldError[];
-  message?: string;
+	code?: string;
+	details?: FieldError[];
+	message?: string;
 };

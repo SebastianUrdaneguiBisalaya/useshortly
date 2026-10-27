@@ -7,13 +7,13 @@
  */
 
 export interface Link {
-  code?: string;
-  created_at?: string;
-  domain_id?: number;
-  expires_at?: string;
-  id?: number;
-  max_clicks?: number;
-  origin_url?: string;
-  protected?: boolean;
-  short_url?: string;
+	code?: string;
+	created_at?: string;
+	domain_id?: number;
+	expires_at?: string;
+	id?: number;
+	max_clicks?: number;
+	origin_url?: string;
+	protected?: boolean;
+	short_url?: string;
 }

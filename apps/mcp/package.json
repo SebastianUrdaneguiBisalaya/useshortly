@@ -1,11 +1,12 @@
 {
-  "name": "mcp",
+  "name": "@useshortly/mcp",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "MCP server for useshortly with OAuth 2.1 (Better Auth + Hono)",
+  "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts",
+    "keygen": "tsx scripts/keygen.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
@@ -15,7 +16,7 @@
   },
   "keywords": [],
   "license": "ISC",
-  "private": false,
+  "private": true,
   "devEngines": {
     "packageManager": {
       "name": "pnpm",

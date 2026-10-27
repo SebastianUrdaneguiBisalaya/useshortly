@@ -43,3 +43,6 @@ pnpm-lock.yaml
 # React Router
 .react-router/
 build/
+# MCP server
+apps/mcp/dist/
+apps/mcp/data/

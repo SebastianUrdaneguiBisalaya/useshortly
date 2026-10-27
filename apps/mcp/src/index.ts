@@ -1,12 +1,4 @@
-// import { serve } from "@hono/node-server";
-// import { app } from "./app.js";
+import { loadConfig } from "./config.js";
 
-// serve(
-//   {
-//     fetch: app.fetch,
-//     port: Number(process.env.PORT ?? 4001),
-//   },
-//   (info) => {
-//     console.log(`Server is running on http://localhost:${info.port}`);
-//   },
-// );
+const config = loadConfig();
+console.log(`useshortly MCP (${config.environment}) will listen on ${config.publicUrl}`);

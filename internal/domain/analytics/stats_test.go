@@ -1,0 +1,131 @@
+package analytics
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type fakeStatsRepo struct {
+	got struct {
+		tenant, link int64
+		from, to     time.Time
+	}
+	calls  int
+	result Stats
+	err    error
+}
+
+func (f *fakeStatsRepo) Stats(_ context.Context, tenantID, linkID int64, from, to time.Time) (Stats, error) {
+	f.calls++
+	f.got.tenant, f.got.link, f.got.from, f.got.to = tenantID, linkID, from, to
+	return f.result, f.err
+}
+
+func date(s string) time.Time {
+	t, err := time.Parse(dateLayout, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func newStatsService(repo StatsRepository) *Service {
+	s := NewService(repo)
+	s.now = func() time.Time { return time.Date(2026, 3, 10, 15, 30, 0, 0, time.UTC) }
+	return s
+}
+
+func TestStatsFillsEveryDayOfTheWindow(t *testing.T) {
+	repo := &fakeStatsRepo{result: Stats{
+		Total: 5,
+		Daily: []DayCount{{"2026-03-01", 2}, {"2026-03-03", 3}},
+	}}
+	st, err := newStatsService(repo).Stats(context.Background(),
+		StatsQuery{TenantID: 4, LinkID: 9, From: date("2026-03-01"), To: date("2026-03-04")})
+	require.NoError(t, err)
+
+	assert.Equal(t, []DayCount{{"2026-03-01", 2}, {"2026-03-02", 0}, {"2026-03-03", 3}, {"2026-03-04", 0}}, st.Daily)
+	assert.EqualValues(t, 9, st.LinkID)
+	assert.Equal(t, "2026-03-01", st.From)
+	assert.Equal(t, "2026-03-04", st.To)
+	assert.EqualValues(t, 5, st.Total)
+
+	assert.EqualValues(t, 4, repo.got.tenant)
+	assert.EqualValues(t, 9, repo.got.link)
+	assert.Equal(t, date("2026-03-01"), repo.got.from)
+	assert.Equal(t, date("2026-03-05"), repo.got.to, "the repository gets a half-open range that includes the whole last day")
+}
+
+func TestStatsDefaultsToTheLastThirtyDaysEndingToday(t *testing.T) {
+	repo := &fakeStatsRepo{}
+	st, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "2026-03-10", st.To)
+	assert.Equal(t, "2026-02-09", st.From)
+	assert.Len(t, st.Daily, DefaultDays)
+	assert.Equal(t, DayCount{"2026-03-10", 0}, st.Daily[len(st.Daily)-1])
+}
+
+func TestStatsKeepsOnlyTheDayOfTheDates(t *testing.T) {
+	repo := &fakeStatsRepo{}
+	from := time.Date(2026, 3, 1, 23, 59, 0, 0, time.FixedZone("UTC-5", -5*3600)) // already 04:59 on the 2nd in UTC
+	st, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: from, To: date("2026-03-02")})
+	require.NoError(t, err)
+	assert.Equal(t, "2026-03-02", st.From)
+	assert.Len(t, st.Daily, 1)
+}
+
+func TestStatsRejectsBadRanges(t *testing.T) {
+	tests := []struct {
+		name     string
+		from, to time.Time
+		ok       bool
+	}{
+		{"from after to", date("2026-03-05"), date("2026-03-01"), false},
+		{"one day", date("2026-03-05"), date("2026-03-05"), true},
+		{"exactly the maximum", date("2025-03-10"), date("2026-03-10"), true},
+		{"one day over the maximum", date("2025-03-09"), date("2026-03-10"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeStatsRepo{}
+			_, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: tt.from, To: tt.to})
+			if tt.ok {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, ErrInvalidRange)
+			assert.Zero(t, repo.calls, "the repository is not asked")
+		})
+	}
+}
+
+func TestStatsNamesMissingValues(t *testing.T) {
+	repo := &fakeStatsRepo{result: Stats{
+		Referrers: []Count{{"", 4}, {"https://news.example/a", 2}},
+		Countries: []Count{{"PE", 5}, {"", 1}},
+		Devices:   []Count{{"", 3}},
+	}}
+	st, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
+	require.NoError(t, err)
+	assert.Equal(t, []Count{{"direct", 4}, {"https://news.example/a", 2}}, st.Referrers)
+	assert.Equal(t, []Count{{"PE", 5}, {"unknown", 1}}, st.Countries)
+	assert.Equal(t, []Count{{"unknown", 3}}, st.Devices)
+}
+
+func TestStatsListsAreNeverNil(t *testing.T) {
+	st, err := newStatsService(&fakeStatsRepo{}).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
+	require.NoError(t, err)
+	assert.NotNil(t, st.Referrers)
+	assert.NotNil(t, st.Countries)
+	assert.NotNil(t, st.Devices)
+}
+
+func TestStatsPropagatesRepositoryErrors(t *testing.T) {
+	_, err := newStatsService(&fakeStatsRepo{err: ErrNotFound}).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
+	assert.ErrorIs(t, err, ErrNotFound)
+}

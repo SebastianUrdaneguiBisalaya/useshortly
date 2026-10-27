@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
@@ -52,6 +53,9 @@ var httpErrors = []struct {
 	{apikey.ErrInvalidName, apiError{http.StatusBadRequest, "invalid_name", "the name is empty or too long"}},
 	{apikey.ErrInvalidScope, apiError{http.StatusBadRequest, "invalid_scope", "the scope must be read or write"}},
 	{apikey.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "the expiration must be in the future"}},
+
+	{analytics.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
+	{analytics.ErrInvalidRange, apiError{http.StatusBadRequest, "invalid_range", "from must not be after to, and the range is at most 366 days"}},
 
 	{link.ErrInvalidURL, apiError{http.StatusBadRequest, "invalid_url", "the url must be http(s) and at most 255 characters"}},
 	{link.ErrInvalidAlias, apiError{http.StatusBadRequest, "invalid_alias", "the alias must be 3 to 15 letters, digits, - or _, not 7 characters long and not a reserved word"}},

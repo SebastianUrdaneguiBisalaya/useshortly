@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -27,6 +28,10 @@ type Config struct {
 	GoogleRedirect   string
 	RefreshTTL       time.Duration
 	LinkCacheTTL     time.Duration
+	// GeoIPPath is a MaxMind .mmdb database; empty disables the country of clicks.
+	GeoIPPath string
+	// TrustProxy reads the visitor's address from X-Forwarded-For (set it behind a reverse proxy).
+	TrustProxy bool
 }
 
 func Load() (*Config, error) {
@@ -46,6 +51,7 @@ func Load() (*Config, error) {
 		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleSecret:     getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirect:   getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
+		GeoIPPath:        getEnv("GEOIP_DB_PATH", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {
@@ -67,6 +73,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("LINK_CACHE_TTL must be a positive duration like 5m")
 	}
 	cfg.LinkCacheTTL = linkCacheTTL
+	trustProxy, err := strconv.ParseBool(getEnv("TRUST_PROXY", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("TRUST_PROXY must be true or false")
+	}
+	cfg.TrustProxy = trustProxy
 	if cfg.Env == "" {
 		return nil, fmt.Errorf("ENVIRONMENT is not set")
 	}

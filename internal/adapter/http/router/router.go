@@ -17,6 +17,7 @@ type Handlers struct {
 	Orgs     *handler.OrgHandler
 	APIKeys  *handler.APIKeyHandler
 	Links    *handler.LinkHandler
+	Stats    *handler.StatsHandler
 }
 
 func NewRouter(h Handlers) http.Handler {
@@ -70,6 +71,7 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 
 	// Public redirect. Registered last so it never shadows /health or /api.
 	r.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)

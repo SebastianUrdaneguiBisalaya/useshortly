@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"sort"
 	"strings"
 	"testing"
@@ -88,7 +89,7 @@ func createLink(t *testing.T, h *LinkHandler, body string) *httptest.ResponseRec
 
 func TestCreateLinkAlias(t *testing.T) {
 	repo := &fakeLinkRepo{links: map[string]link.Link{"taken": {Code: "taken"}}}
-	h := NewLinkHandler(link.NewService(repo, unusedGen{}), nil, "http://x")
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}), nil, "http://x", false)
 
 	t.Run("uses the alias as the code", func(t *testing.T) {
 		rec := createLink(t, h, `{"url":"https://example.com","alias":"promo"}`)
@@ -110,7 +111,7 @@ func TestCreateLinkAlias(t *testing.T) {
 }
 
 func TestCreateLinkExpiration(t *testing.T) {
-	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x")
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x", false)
 	future := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 
 	t.Run("accepts expires_at and max_clicks", func(t *testing.T) {
@@ -142,7 +143,7 @@ func TestCreateLinkExpiration(t *testing.T) {
 }
 
 func TestRedirectStopsAfterMaxClicks(t *testing.T) {
-	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x")
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x", false)
 	require.Equal(t, http.StatusCreated, createLink(t, h, `{"url":"https://example.com/t","alias":"once","max_clicks":1}`).Code)
 
 	redirect := func() *httptest.ResponseRecorder {
@@ -197,7 +198,7 @@ func (f *fakeClicks) Record(c analytics.Click) { f.got = append(f.got, c) }
 func TestRedirectRecordsTheClick(t *testing.T) {
 	repo := &fakeLinkRepo{links: map[string]link.Link{}}
 	clicks := &fakeClicks{}
-	h := NewLinkHandler(link.NewService(repo, unusedGen{}), clicks, "http://x")
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}), clicks, "http://x", false)
 	created := createLink(t, h, `{"url":"https://example.com/t","alias":"promo","max_clicks":1}`)
 	require.Equal(t, http.StatusCreated, created.Code)
 	linkID := repo.links["promo"].ID
@@ -213,7 +214,10 @@ func TestRedirectRecordsTheClick(t *testing.T) {
 
 	assert.Equal(t, http.StatusFound, visit().Code)
 	require.Len(t, clicks.got, 1)
-	assert.Equal(t, analytics.Click{LinkID: linkID, Referrer: "https://news.example/a", UserAgent: "Mozilla/5.0 (iPhone)"}, clicks.got[0])
+	assert.Equal(t, analytics.Click{
+		LinkID: linkID, Referrer: "https://news.example/a", UserAgent: "Mozilla/5.0 (iPhone)",
+		IP: netip.MustParseAddr("192.0.2.1"), // httptest's default remote address
+	}, clicks.got[0])
 
 	assert.Equal(t, http.StatusGone, visit().Code, "the link used its only click")
 	assert.Len(t, clicks.got, 1, "a refused redirect is not a click")

@@ -49,7 +49,7 @@ func (r *fakeRepo) stored() []Click {
 }
 
 func newRecorder(repo Repository, buffer int) *Recorder {
-	r := NewRecorder(repo, buffer)
+	r := NewRecorder(repo, nil, buffer)
 	r.now = func() time.Time { return fixedNow }
 	return r
 }

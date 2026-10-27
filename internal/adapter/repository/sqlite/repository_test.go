@@ -317,6 +317,71 @@ func TestClickRepository(t *testing.T) {
 	assert.Zero(t, n)
 }
 
+func TestClickRepositoryStats(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	links := NewLinkRepository(db)
+	clicks := NewClickRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	for _, name := range []string{"acme", "other"} {
+		_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES (?)`, name)
+		require.NoError(t, err)
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	mine, err := links.Create(ctx, link.Link{Code: "mine000", OriginURL: "https://example.com/m", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+	theirs, err := links.Create(ctx, link.Link{Code: "their00", OriginURL: "https://example.com/t", TenantID: 2, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	at := func(s string) time.Time { return time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Add(mustDuration(t, s)) }
+	add := func(linkID int64, when time.Time, referrer, country, device string) {
+		_, err := clicks.Create(ctx, analytics.Click{LinkID: linkID, At: when, Referrer: referrer, Country: country, Device: device})
+		require.NoError(t, err)
+	}
+	add(mine.ID, at("0h"), "https://a.example", "PE", "mobile")        // 03-01 00:00, first instant of the window
+	add(mine.ID, at("23h59m"), "https://a.example", "PE", "mobile")    // 03-01
+	add(mine.ID, at("24h"), "", "US", "desktop")                       // 03-02
+	add(mine.ID, at("49h"), "https://b.example", "", "")               // 03-03
+	add(mine.ID, at("-1ms"), "https://old.example", "ES", "bot")       // 02-28 23:59:59.999: before the window
+	add(mine.ID, at("72h"), "https://late.example", "ES", "bot")       // 03-04 00:00: first instant after it
+	add(theirs.ID, at("1h"), "https://other.example", "FR", "desktop") // another tenant's link
+
+	from, to := at("0h"), at("72h") // [03-01, 03-04)
+	st, err := clicks.Stats(ctx, 1, mine.ID, from, to)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, 4, st.Total)
+	assert.Equal(t, []analytics.DayCount{{Date: "2026-03-01", Clicks: 2}, {Date: "2026-03-02", Clicks: 1}, {Date: "2026-03-03", Clicks: 1}}, st.Daily, "only days with clicks")
+	assert.Equal(t, []analytics.Count{{Name: "https://a.example", Clicks: 2}, {Name: "", Clicks: 1}, {Name: "https://b.example", Clicks: 1}}, st.Referrers,
+		"most frequent first, ties by name")
+	assert.Equal(t, []analytics.Count{{Name: "PE", Clicks: 2}, {Name: "", Clicks: 1}, {Name: "US", Clicks: 1}}, st.Countries)
+	assert.Equal(t, []analytics.Count{{Name: "mobile", Clicks: 2}, {Name: "", Clicks: 1}, {Name: "desktop", Clicks: 1}}, st.Devices)
+
+	empty, err := clicks.Stats(ctx, 1, mine.ID, at("500h"), at("600h"))
+	require.NoError(t, err)
+	assert.Zero(t, empty.Total)
+	assert.Empty(t, empty.Daily)
+
+	_, err = clicks.Stats(ctx, 2, mine.ID, from, to)
+	assert.ErrorIs(t, err, analytics.ErrNotFound, "another tenant cannot read my link's stats")
+	_, err = clicks.Stats(ctx, 1, 9999, from, to)
+	assert.ErrorIs(t, err, analytics.ErrNotFound)
+
+	for i := 0; i < analytics.TopN+5; i++ {
+		add(mine.ID, at("1h"), "https://many.example/"+string(rune('a'+i)), "", "")
+	}
+	capped, err := clicks.Stats(ctx, 1, mine.ID, from, to)
+	require.NoError(t, err)
+	assert.Len(t, capped.Referrers, analytics.TopN)
+}
+
+func mustDuration(t *testing.T, s string) time.Duration {
+	t.Helper()
+	d, err := time.ParseDuration(s)
+	require.NoError(t, err)
+	return d
+}
+
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/geoip"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/logsender"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/mailing/resend"
 	otpredis "github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/otp/redis"
@@ -75,7 +76,18 @@ func run() error {
 		log.Println("GOOGLE_CLIENT_ID is not set: Google sign-in is disabled")
 	}
 
-	a := newApp(cfg, db.DB, adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient)})
+	ad := adapters{codes: otpredis.NewStore(redisClient), sender: sender, google: googleAuth, linkCache: cache.NewRedisStore(redisClient)}
+	if cfg.GeoIPPath != "" {
+		geo, err := geoip.Open(cfg.GeoIPPath)
+		if err != nil {
+			return err
+		}
+		defer geo.Close()
+		ad.countries = geo
+	} else {
+		log.Println("GEOIP_DB_PATH is not set: the country of clicks is not recorded")
+	}
+	a := newApp(cfg, db.DB, ad)
 	// Let emails still in flight finish before the database and Redis close.
 	defer a.mail.Wait()
 	// Flush the queued clicks before the database closes.

@@ -131,6 +131,21 @@ func TestFindByCodeCachesTheLink(t *testing.T) {
 	assert.Equal(t, 1, next.finds, "the second read does not reach the repository")
 }
 
+func TestACachedProtectedLinkStaysProtected(t *testing.T) {
+	repo, next, _, _ := fixture()
+	l := next.links["abc1234"]
+	l.PasswordHash = "$argon2id$v=19$secret"
+	next.links["abc1234"] = l
+
+	_, err := repo.FindByCode(ctx, "abc1234") // fills the cache
+	require.NoError(t, err)
+	got, err := repo.FindByCode(ctx, "abc1234") // served from it
+	require.NoError(t, err)
+	assert.Equal(t, 1, next.finds)
+	assert.True(t, got.Protected(), "the cached copy must not lose the password")
+	assert.Equal(t, "$argon2id$v=19$secret", got.PasswordHash)
+}
+
 func TestFindByCodeDoesNotCacheMisses(t *testing.T) {
 	repo, next, store, _ := fixture()
 	_, err := repo.FindByCode(ctx, "nope000")

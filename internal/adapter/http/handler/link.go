@@ -34,6 +34,7 @@ type linkBody struct {
 	OriginURL string  `json:"origin_url"`
 	ExpiresAt *string `json:"expires_at"`
 	MaxClicks *int64  `json:"max_clicks"`
+	Protected bool    `json:"protected"`
 	CreatedAt string  `json:"created_at"`
 }
 
@@ -49,13 +50,14 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt *time.Time `json:"expires_at"`
 		Alias     string     `json:"alias"`
 		MaxClicks *int64     `json:"max_clicks"`
+		Password  string     `json:"password"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
 	l, err := h.links.Shorten(r.Context(), link.ShortenInput{
 		TenantID: tenant.ID, UserID: PrincipalFrom(r).UserID,
-		URL: in.URL, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks,
+		URL: in.URL, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
 	})
 	if err != nil {
 		WriteError(w, r, err)
@@ -67,7 +69,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
 		ID: l.ID, Code: l.Code, ShortURL: h.baseURL + "/" + l.Code, OriginURL: l.OriginURL,
-		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, CreatedAt: formatTime(l.CreatedAt),
+		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), CreatedAt: formatTime(l.CreatedAt),
 	}
 }
 

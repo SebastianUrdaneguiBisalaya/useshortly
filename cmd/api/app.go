@@ -82,7 +82,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	}
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
-	links := link.NewService(linkRepo, codegen.NewBase62())
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, nil)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)

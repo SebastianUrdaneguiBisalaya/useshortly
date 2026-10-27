@@ -82,6 +82,12 @@ func (r *fakeLinkRepo) FindByCode(_ context.Context, code string) (link.Link, er
 	return l, nil
 }
 
+// fakeHasher "hashes" by prefixing.
+type fakeHasher struct{}
+
+func (fakeHasher) Hash(password string) (string, error)       { return "hash:" + password, nil }
+func (fakeHasher) Verify(hash, password string) (bool, error) { return hash == "hash:"+password, nil }
+
 type unusedGen struct{}
 
 func (unusedGen) Generate() (string, error) { return "abc1234", nil }
@@ -98,7 +104,7 @@ func createLink(t *testing.T, h *LinkHandler, body string) *httptest.ResponseRec
 
 func TestCreateLinkAlias(t *testing.T) {
 	repo := &fakeLinkRepo{links: map[string]link.Link{"taken": {Code: "taken"}}}
-	h := NewLinkHandler(link.NewService(repo, unusedGen{}), nil, "http://x", false)
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}, fakeHasher{}, nil), nil, "http://x", false)
 
 	t.Run("uses the alias as the code", func(t *testing.T) {
 		rec := createLink(t, h, `{"url":"https://example.com","alias":"promo"}`)
@@ -120,7 +126,7 @@ func TestCreateLinkAlias(t *testing.T) {
 }
 
 func TestCreateLinkExpiration(t *testing.T) {
-	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x", false)
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}, fakeHasher{}, nil), nil, "http://x", false)
 	future := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 
 	t.Run("accepts expires_at and max_clicks", func(t *testing.T) {
@@ -152,7 +158,7 @@ func TestCreateLinkExpiration(t *testing.T) {
 }
 
 func TestRedirectStopsAfterMaxClicks(t *testing.T) {
-	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}), nil, "http://x", false)
+	h := NewLinkHandler(link.NewService(&fakeLinkRepo{links: map[string]link.Link{}}, unusedGen{}, fakeHasher{}, nil), nil, "http://x", false)
 	require.Equal(t, http.StatusCreated, createLink(t, h, `{"url":"https://example.com/t","alias":"once","max_clicks":1}`).Code)
 
 	redirect := func() *httptest.ResponseRecorder {
@@ -207,7 +213,7 @@ func (f *fakeClicks) Record(c analytics.Click) { f.got = append(f.got, c) }
 func TestRedirectRecordsTheClick(t *testing.T) {
 	repo := &fakeLinkRepo{links: map[string]link.Link{}}
 	clicks := &fakeClicks{}
-	h := NewLinkHandler(link.NewService(repo, unusedGen{}), clicks, "http://x", false)
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}, fakeHasher{}, nil), clicks, "http://x", false)
 	created := createLink(t, h, `{"url":"https://example.com/t","alias":"promo","max_clicks":1}`)
 	require.Equal(t, http.StatusCreated, created.Code)
 	linkID := repo.links["promo"].ID
@@ -236,4 +242,32 @@ func TestRedirectRecordsTheClick(t *testing.T) {
 	h.Redirect(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Len(t, clicks.got, 1, "an unknown code is not a click")
+}
+
+func TestCreateProtectedLink(t *testing.T) {
+	repo := &fakeLinkRepo{links: map[string]link.Link{}}
+	clicks := &fakeClicks{}
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}, fakeHasher{}, nil), clicks, "http://x", false)
+
+	rec := createLink(t, h, `{"url":"https://example.com/s","alias":"locked-1","password":"hunter22"}`)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"protected":true`)
+	assert.NotContains(t, rec.Body.String(), "hunter22", "the password never comes back")
+	assert.NotContains(t, rec.Body.String(), "hash:", "nor its hash")
+	assert.Equal(t, "hash:hunter22", repo.links["locked-1"].PasswordHash)
+
+	open := createLink(t, h, `{"url":"https://example.com/s","alias":"open-001"}`)
+	assert.Contains(t, open.Body.String(), `"protected":false`)
+
+	bad := createLink(t, h, `{"url":"https://example.com/s","password":"abc"}`)
+	assert.Equal(t, http.StatusBadRequest, bad.Code)
+	assert.Contains(t, bad.Body.String(), "invalid_password")
+
+	req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/locked-1", nil), map[string]string{"code": "locked-1"})
+	visit := httptest.NewRecorder()
+	h.Redirect(visit, req)
+	assert.Equal(t, http.StatusUnauthorized, visit.Code)
+	assert.Contains(t, visit.Body.String(), "password_required")
+	assert.Empty(t, visit.Header().Get("Location"), "a protected link does not redirect")
+	assert.Empty(t, clicks.got, "a refused visit is not a click")
 }

@@ -124,24 +124,26 @@ type cachedLink struct {
 	TenantID   int64      `json:"tenant_id"`
 	MaxClicks  *int64     `json:"max_clicks,omitempty"`
 	ClickCount int64      `json:"click_count"`
-	CreatedBy  int64      `json:"created_by"`
-	UpdatedBy  *int64     `json:"updated_by,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  *time.Time `json:"updated_at,omitempty"`
+	// PasswordHash is cached too: a cached copy that lost it would serve a protected link openly.
+	PasswordHash string     `json:"password_hash,omitempty"`
+	CreatedBy    int64      `json:"created_by"`
+	UpdatedBy    *int64     `json:"updated_by,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at,omitempty"`
 }
 
 func newCachedLink(l link.Link) cachedLink {
 	return cachedLink{
 		ID: l.ID, Code: l.Code, OriginURL: l.OriginURL, ExpiresAt: l.ExpiresAt, TenantID: l.TenantID,
-		MaxClicks: l.MaxClicks, ClickCount: l.ClickCount, CreatedBy: l.CreatedBy, UpdatedBy: l.UpdatedBy,
-		CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt,
+		MaxClicks: l.MaxClicks, ClickCount: l.ClickCount, PasswordHash: l.PasswordHash, CreatedBy: l.CreatedBy,
+		UpdatedBy: l.UpdatedBy, CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt,
 	}
 }
 
 func (c cachedLink) link() link.Link {
 	return link.Link{
 		ID: c.ID, Code: c.Code, OriginURL: c.OriginURL, ExpiresAt: c.ExpiresAt, TenantID: c.TenantID,
-		MaxClicks: c.MaxClicks, ClickCount: c.ClickCount, CreatedBy: c.CreatedBy, UpdatedBy: c.UpdatedBy,
-		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
+		MaxClicks: c.MaxClicks, ClickCount: c.ClickCount, PasswordHash: c.PasswordHash, CreatedBy: c.CreatedBy,
+		UpdatedBy: c.UpdatedBy, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	}
 }

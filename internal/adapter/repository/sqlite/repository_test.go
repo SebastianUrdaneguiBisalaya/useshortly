@@ -390,6 +390,36 @@ func mustDuration(t *testing.T, s string) time.Duration {
 	return d
 }
 
+func TestLinkRepositoryPasswordHash(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	repo := NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme')`)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	_, err = repo.Create(ctx, link.Link{Code: "locked0", OriginURL: "https://example.com", PasswordHash: "$argon2id$x", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+	_, err = repo.Create(ctx, link.Link{Code: "open000", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
+	require.NoError(t, err)
+
+	locked, err := repo.FindByCode(ctx, "locked0")
+	require.NoError(t, err)
+	assert.Equal(t, "$argon2id$x", locked.PasswordHash)
+	assert.True(t, locked.Protected())
+	open, err := repo.FindByCode(ctx, "open000")
+	require.NoError(t, err)
+	assert.False(t, open.Protected())
+
+	list, _, err := repo.ListByTenant(ctx, 1, page.Params{Limit: 10})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	assert.True(t, list[1].Protected(), "lists carry the flag too")
+	byID, err := repo.FindByID(ctx, 1, locked.ID)
+	require.NoError(t, err)
+	assert.True(t, byID.Protected())
+}
+
 func TestLinkRepositoryAllowsSameExpiry(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)

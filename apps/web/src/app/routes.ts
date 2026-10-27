@@ -6,10 +6,14 @@ import {
 } from "@react-router/dev/routes";
 
 export default [
-  index("routes/index.tsx"),
+  layout("../features/protected/layout.tsx", [
+    index("../features/protected/dashboard.tsx"),
+    route("links", "../features/protected/links.tsx"),
+  ]),
   layout("../features/auth/layout.tsx", [
     route("auth/sign-in", "../features/auth/sign-in.tsx"),
     route("auth/sign-up", "../features/auth/sign-up.tsx"),
+    route("auth/verify-email", "../features/auth/verify-email.tsx"),
     route("auth/forgot-password", "../features/auth/forgot-password.tsx"),
     route("auth/reset-password", "../features/auth/reset-password.tsx"),
   ]),

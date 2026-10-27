@@ -251,23 +251,39 @@ function SidebarFloatHeader({
   );
 }
 
-export interface SidebarFloatBrandProps
-  extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+interface SidebarFloatBrandOwnProps {
   /** Wordmark shown beside the logo mark while expanded; hidden in the icon rail, where the mark (`children`) stands alone. */
-  label?: string;
+  readonly label?: string;
+  readonly className?: string;
+  readonly children?: React.ReactNode;
+  /**
+   * Element/component to render instead of `<a>` (e.g. a router `Link`).
+   * Must forward `className`, `ref` and remaining props to a single anchor.
+   * @default "a"
+   */
+  readonly as?: React.ElementType;
 }
 
+export type SidebarFloatBrandProps<C extends React.ElementType = "a"> = Omit<
+  SidebarFloatBrandOwnProps,
+  "as"
+> & {
+  readonly as?: C;
+} & Omit<React.ComponentPropsWithoutRef<C>, keyof SidebarFloatBrandOwnProps>;
+
 /** Logo slot in `SidebarFloat.Header`. Pass the mark as `children`; give it `label` for a visible wordmark, or an `aria-label` when the mark is all there is. */
-function SidebarFloatBrand({
+function SidebarFloatBrand<C extends React.ElementType = "a">({
+  as,
   label,
   className,
   children,
   ...props
-}: SidebarFloatBrandProps) {
+}: SidebarFloatBrandProps<C>) {
   const { collapsed } = useSidebarFloatContext();
+  const Component: React.ElementType = as ?? "a";
 
   return (
-    <a
+    <Component
       className={cn(
         "flex h-8 min-w-0 items-center gap-2 rounded-md font-primary text-sm font-semibold text-foreground",
         "focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!",
@@ -284,7 +300,7 @@ function SidebarFloatBrand({
           {label}
         </span>
       )}
-    </a>
+    </Component>
   );
 }
 
@@ -394,20 +410,35 @@ function SidebarFloatItemBadge({ count }: { count?: number }) {
   );
 }
 
-export interface SidebarFloatItemProps
-  extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "children"> {
+interface SidebarFloatItemOwnProps {
   /** Icon shown before the label — the only visible content in the collapsed rail. */
-  icon: LucideIcon;
+  readonly icon: LucideIcon;
   /** Item text. Shown as the label while expanded, and kept as the accessible name and native tooltip once collapsed. */
-  label: string;
+  readonly label: string;
   /** Marks this as the current page — subtle fill, full-ink label, and a left accent bar. */
-  active?: boolean;
+  readonly active?: boolean;
   /** Small counter shown over the icon (e.g. unread count); also appended to the accessible name. Values over 9 show as "9+". */
-  badge?: number;
+  readonly badge?: number;
+  readonly className?: string;
+  readonly onClick?: React.MouseEventHandler<HTMLElement>;
+  /**
+   * Element/component to render instead of `<a>` (e.g. a router `Link`).
+   * Must forward `className`, `ref` and remaining props to a single anchor.
+   * @default "a"
+   */
+  readonly as?: React.ElementType;
 }
 
-/** One nav link. Renders a plain `<a>` — wrap it with your framework's own `Link` if you need client-side routing/prefetch. Closes `SidebarFloat.Root`'s mobile drawer on click. */
-function SidebarFloatItem({
+export type SidebarFloatItemProps<C extends React.ElementType = "a"> = Omit<
+  SidebarFloatItemOwnProps,
+  "as"
+> & {
+  readonly as?: C;
+} & Omit<React.ComponentPropsWithoutRef<C>, keyof SidebarFloatItemOwnProps>;
+
+/** One nav link. Renders a plain `<a>` by default; pass `as` (e.g. a router `Link`) for client-side routing. Closes `SidebarFloat.Root`'s mobile drawer on click. */
+function SidebarFloatItem<C extends React.ElementType = "a">({
+  as,
   icon,
   label,
   active = false,
@@ -415,8 +446,9 @@ function SidebarFloatItem({
   className,
   onClick,
   ...props
-}: SidebarFloatItemProps) {
+}: SidebarFloatItemProps<C>) {
   const { collapsed, setMobileOpen } = useSidebarFloatContext();
+  const Component: React.ElementType = as ?? "a";
   const unreadLabel =
     badge && badge > 0 ? ` (${badge > 9 ? "9+" : badge} unread)` : "";
 
@@ -428,7 +460,7 @@ function SidebarFloatItem({
           className="absolute top-1/2 left-0 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground"
         />
       )}
-      <a
+      <Component
         aria-current={active ? "page" : undefined}
         className={cn(
           "group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 font-primary text-sm transition-colors duration-150 ease-in-out",
@@ -439,7 +471,7 @@ function SidebarFloatItem({
             : "text-muted-foreground hover:bg-muted hover:text-foreground",
           className,
         )}
-        onClick={(event) => {
+        onClick={(event: React.MouseEvent<HTMLElement>) => {
           onClick?.(event);
           setMobileOpen(false);
         }}
@@ -460,7 +492,7 @@ function SidebarFloatItem({
           {label}
           {unreadLabel && <span className="sr-only">{unreadLabel}</span>}
         </span>
-      </a>
+      </Component>
     </li>
   );
 }

@@ -34,3 +34,13 @@ export const linkStats = z.object({
   countries: z.array(count).nullable().transform((v) => v ?? []),
   devices: z.array(count).nullable().transform((v) => v ?? []),
 });
+
+export const domain = z.object({
+  id: z.number(),
+  host: z.string(),
+  verified: z.boolean(),
+  verified_at: z.string().nullable(),
+  created_at: z.string(),
+  // The DNS record to create; the API leaves it out once the domain is verified.
+  verification: z.object({ type: z.string(), name: z.string(), value: z.string() }).optional(),
+});

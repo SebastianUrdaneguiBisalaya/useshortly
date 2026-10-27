@@ -11,43 +11,8 @@ beforeEach(() => {
   h.apiCalls.length = 0;
 });
 
-const version = "2026-07-28";
-
-/** A minimal 2026-07-28 client: one JSON-RPC request per POST, with the per-request envelope. */
-const rpc = (token: string | null, method: string, params: Record<string, unknown> = {}, extra: RequestInit = {}) =>
-  h.req("/mcp", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      "mcp-protocol-version": version,
-      // The 2026-07-28 transport repeats the method (and a tool's name) in headers, so a proxy can route on them.
-      "mcp-method": method,
-      ...(typeof params.name === "string" ? { "mcp-name": params.name } : {}),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params: {
-        ...params,
-        _meta: {
-          "io.modelcontextprotocol/protocolVersion": version,
-          "io.modelcontextprotocol/clientInfo": { name: "test-client", version: "1.0.0" },
-          "io.modelcontextprotocol/clientCapabilities": {},
-        },
-      },
-    }),
-    ...extra,
-  });
-
-const result = async (res: Response) => {
-  expect(res.status).toBe(200);
-  const body = (await res.json()) as { result?: any; error?: any };
-  expect(body.error, JSON.stringify(body.error)).toBeUndefined();
-  return body.result;
-};
+const rpc = (...a: Parameters<Harness["rpc"]>) => h.rpc(...a);
+const result = (res: Response) => h.rpcResult(res);
 
 describe("POST /mcp authentication", () => {
   it("challenges a request without a token and points to the resource metadata", async () => {

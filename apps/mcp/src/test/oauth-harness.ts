@@ -196,6 +196,49 @@ export async function createHarness() {
     return ((await res.json()) as { access_token: string }).access_token;
   };
 
+  const mcpVersion = "2026-07-28";
+
+  /** A minimal 2026-07-28 client: one JSON-RPC request per POST, with the per-request envelope. */
+  const rpc = (token: string | null, method: string, params: Record<string, unknown> = {}, extra: RequestInit = {}) =>
+    req("/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": mcpVersion,
+        // The 2026-07-28 transport repeats the method (and a tool's name) in headers, so a proxy can route on them.
+        "mcp-method": method,
+        ...(typeof params.name === "string" ? { "mcp-name": params.name } : {}),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method,
+        params: {
+          ...params,
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": mcpVersion,
+            "io.modelcontextprotocol/clientInfo": { name: "test-client", version: "1.0.0" },
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      }),
+      ...extra,
+    });
+
+  /** The JSON-RPC result of a successful call; fails the test on a protocol error. */
+  const rpcResult = async (res: Response) => {
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { result?: any; error?: any };
+    expect(body.error, JSON.stringify(body.error)).toBeUndefined();
+    return body.result;
+  };
+
+  /** Calls a tool and returns its result. */
+  const callTool = async (token: string, name: string, args: Record<string, unknown> = {}) =>
+    rpcResult(await rpc(token, "tools/call", { name, arguments: args }));
+
   const jwtParts = (token: string) => {
     const [h, p, s] = token.split(".") as [string, string, string];
     return {
@@ -216,7 +259,7 @@ export async function createHarness() {
 
   return {
     config, base, resource, db, auth, app, close, state, reset, api, apiCalls, apiReplies,
-    req, origin, pkce, authorizeUrl, startFlow, form, cookieOf, signInAndResume, exchange, accessToken, jwtParts, signatureIsValid,
+    req, origin, pkce, authorizeUrl, startFlow, form, cookieOf, signInAndResume, exchange, accessToken, rpc, rpcResult, callTool, jwtParts, signatureIsValid,
   };
 }
 

@@ -1,5 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { UserApi } from "../api/client.js";
+import { registerListLinks } from "./tools/links.js";
+import { registerListOrganizations } from "./tools/organizations.js";
 import { registerWhoami } from "./tools/whoami.js";
 
 const instructions = `useshortly is a URL shortener. These tools act on the signed-in user's account.
@@ -11,5 +13,7 @@ export function createMcpServer(api: UserApi): McpServer {
   const server = new McpServer({ name: "useshortly", version: "1.0.0" }, { instructions });
   const context = { api };
   registerWhoami(server, context);
+  registerListOrganizations(server, context);
+  registerListLinks(server, context);
   return server;
 }

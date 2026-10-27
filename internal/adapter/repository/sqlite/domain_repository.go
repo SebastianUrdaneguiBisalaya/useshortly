@@ -42,7 +42,7 @@ func (r *DomainRepository) FindByID(ctx context.Context, tenantID, id int64) (do
 }
 
 func (r *DomainRepository) FindByHost(ctx context.Context, host string) (domain.Domain, error) {
-	return r.find(ctx, `host = ?`, host)
+	return r.find(ctx, `host = ? AND tenant_id NOT IN (SELECT id FROM organizations WHERE deleted_at IS NOT NULL)`, host)
 }
 
 func (r *DomainRepository) find(ctx context.Context, where string, args ...any) (domain.Domain, error) {

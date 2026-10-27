@@ -13,6 +13,10 @@ type Repository interface {
 	// FindByID returns ErrNotFound.
 	FindByID(ctx context.Context, id int64) (Organization, error)
 	ListByUser(ctx context.Context, userID int64) ([]Organization, error)
+	// SoftDelete hides the organization at once, in one transaction: it marks it deleted, frees its
+	// name and removes its members, invitations and API keys. Its links and clicks stay until the
+	// Purger deletes them. Returns ErrNotFound if it does not exist or is already deleted.
+	SoftDelete(ctx context.Context, id int64, at time.Time) error
 
 	// FindMember returns ErrNotMember.
 	FindMember(ctx context.Context, tenantID, userID int64) (Member, error)

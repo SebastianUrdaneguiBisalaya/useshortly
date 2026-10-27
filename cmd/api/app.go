@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"net/url"
@@ -56,7 +57,14 @@ type app struct {
 	mail *mailing.Async
 	// clicks writes the click log in the background; Close it on shutdown to flush what is queued.
 	clicks *analytics.Recorder
+	// purger deletes the links of deleted organizations in the background; run it with Run.
+	purger *org.Purger
 }
+
+// noEviction is the link evictor when there is no cache: nothing is cached, so nothing to drop.
+type noEviction struct{}
+
+func (noEviction) Evict(context.Context, []int64) error { return nil }
 
 // newApp is the composition root: it builds the repositories on db, injects every port into
 // the domain services through their constructors, and hands the services to the handlers.
@@ -66,9 +74,13 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	orgRepo := sqlite.NewOrgRepository(db)
 	keyRepo := sqlite.NewAPIKeyRepository(db)
 	var linkRepo link.Repository = sqlite.NewLinkRepository(db)
+	var evictor org.LinkEvictor = noEviction{}
 	if a.linkCache != nil {
-		linkRepo = cached.NewLinkRepository(linkRepo, a.linkCache, cfg.LinkCacheTTL)
+		c := cached.NewLinkRepository(linkRepo, a.linkCache, cfg.LinkCacheTTL)
+		linkRepo, evictor = c, c
 	}
+	// Deleted organizations are purged in the background (see org.Purger).
+	purger := org.NewPurger(sqlite.NewOrgPurgeRepository(db), evictor)
 	refreshRepo := sqlite.NewRefreshTokenRepository(db)
 	templateRepo := sqlite.NewEmailTemplateRepository(db)
 	logRepo := sqlite.NewEmailLogRepository(db)
@@ -86,11 +98,12 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 
 	users := user.NewService(userRepo, passwords, tokens, refresh, mail, otp)
 	reset := user.NewPasswordResetService(userRepo, passwords, otp, mail, refresh)
+	deletion := user.NewDeletionService(userRepo, otp, mail, purger)
 	var google *user.GoogleService
 	if a.google != nil {
 		google = user.NewGoogleService(userRepo, a.google, tokens, refresh, mail)
 	}
-	orgs := org.NewService(orgRepo, mail)
+	orgs := org.NewService(orgRepo, mail).WithPurger(purger)
 	keys := apikey.NewService(keyRepo)
 	domains := domain.NewService(sqlite.NewDomainRepository(db), a.dns, cfg.JWTSecret, appHost(cfg.AppURL))
 	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains)
@@ -102,10 +115,11 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	return &app{
 		mail:   mail,
 		clicks: clicks,
+		purger: purger,
 		handler: router.NewRouter(router.Handlers{
 			Auth:     middlewares.NewAuth(users, keys),
 			Tenant:   middlewares.NewTenant(orgs),
-			Accounts: handler.NewAuthHandler(users, google, reset),
+			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion),
 			Orgs:     handler.NewOrgHandler(orgs),
 			APIKeys:  handler.NewAPIKeyHandler(keys),
 			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),

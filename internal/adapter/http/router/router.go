@@ -56,6 +56,10 @@ func NewRouter(h Handlers) http.Handler {
 	user := api.NewRoute().Subrouter()
 	user.Use(h.Auth.User, h.Limits.PerPrincipal())
 	user.HandleFunc("/me", h.Accounts.Me).Methods(http.MethodGet)
+	if h.Accounts.CanDelete() {
+		user.HandleFunc("/me/delete-code", h.Accounts.RequestDeletion).Methods(http.MethodPost)
+		user.HandleFunc("/me", h.Accounts.DeleteAccount).Methods(http.MethodDelete)
+	}
 	user.HandleFunc("/orgs", h.Orgs.Create).Methods(http.MethodPost)
 	user.HandleFunc("/orgs", h.Orgs.ListMine).Methods(http.MethodGet)
 	user.HandleFunc("/invitations/{invitationID}/accept", h.Orgs.AcceptInvitation).Methods(http.MethodPost)
@@ -65,6 +69,7 @@ func NewRouter(h Handlers) http.Handler {
 	userOrg := user.PathPrefix("/orgs/{orgID}").Subrouter()
 	userOrg.Use(h.Tenant.Require)
 	userOrg.HandleFunc("", h.Orgs.Get).Methods(http.MethodGet)
+	userOrg.HandleFunc("", h.Orgs.Delete).Methods(http.MethodDelete)
 	userOrg.HandleFunc("/members", h.Orgs.ListMembers).Methods(http.MethodGet)
 	userOrg.HandleFunc("/members/{userID}", h.Orgs.RemoveMember).Methods(http.MethodDelete)
 	userOrg.HandleFunc("/invitations", h.Orgs.Invite).Methods(http.MethodPost)

@@ -23,4 +23,9 @@ type Repository interface {
 	// UpdateAccountScope stores the scope Google granted and stamps updated_at with at (UTC).
 	// Returns ErrNotFound.
 	UpdateAccountScope(ctx context.Context, accountID int64, scope string, at time.Time) error
+	// DeleteWithOrganizations deletes the user in one transaction: their accounts, sessions,
+	// memberships and API keys go with them, the organizations they own are soft deleted (see
+	// org.Repository.SoftDelete), and the links they created elsewhere stay with no creator.
+	// Returns ErrNotFound if the user does not exist.
+	DeleteWithOrganizations(ctx context.Context, userID int64, at time.Time) error
 }

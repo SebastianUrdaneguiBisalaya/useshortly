@@ -9,6 +9,7 @@ var (
 	ErrInvalidEmail         = errors.New("org: invalid email")
 	ErrNotMember            = errors.New("org: not a member")
 	ErrAlreadyMember        = errors.New("org: already a member")
+	ErrNotOwner             = errors.New("org: only the owner can do this")
 	ErrCannotRemoveOwner    = errors.New("org: the owner cannot be removed")
 	ErrInvitationNotFound   = errors.New("org: invitation not found")
 	ErrInvitationExists     = errors.New("org: a pending invitation already exists for this email")

@@ -201,7 +201,7 @@ func TestShorten(t *testing.T) {
 
 	t.Run("retries on collision", func(t *testing.T) {
 		repo := newFakeRepo()
-		repo.links["dup0000"] = Link{Code: "dup0000"}
+		repo.links["dup0000"] = Link{ID: 101, Code: "dup0000"}
 		s := newSvc(repo, &fakeGen{codes: []string{"dup0000", "dup0000", "new1111"}})
 		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
 		require.NoError(t, err)
@@ -240,9 +240,9 @@ func TestResolve(t *testing.T) {
 	past := fixedNow.Add(-time.Hour)
 	future := fixedNow.Add(time.Hour)
 	repo := newFakeRepo()
-	repo.links["live000"] = Link{Code: "live000", OriginURL: "https://example.com/live", ExpiresAt: &future}
-	repo.links["forever"] = Link{Code: "forever", OriginURL: "https://example.com/forever"}
-	repo.links["dead000"] = Link{Code: "dead000", OriginURL: "https://example.com/dead", ExpiresAt: &past}
+	repo.links["live000"] = Link{ID: 102, Code: "live000", OriginURL: "https://example.com/live", ExpiresAt: &future}
+	repo.links["forever"] = Link{ID: 103, Code: "forever", OriginURL: "https://example.com/forever"}
+	repo.links["dead000"] = Link{ID: 104, Code: "dead000", OriginURL: "https://example.com/dead", ExpiresAt: &past}
 	s := newSvc(repo, &fakeGen{codes: []string{"x"}})
 
 	tests := []struct {
@@ -325,7 +325,7 @@ func TestShortenAlias(t *testing.T) {
 
 	t.Run("alias taken is reported once, without retries", func(t *testing.T) {
 		repo := newFakeRepo()
-		repo.links["promo"] = Link{Code: "promo"}
+		repo.links["promo"] = Link{ID: 105, Code: "promo"}
 		s := newSvc(repo, &fakeGen{codes: []string{"abc1234"}})
 		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com", Alias: "promo"})
 		assert.ErrorIs(t, err, ErrAliasTaken)
@@ -391,8 +391,8 @@ func TestResolveMaxClicks(t *testing.T) {
 	ctx := context.Background()
 	two := int64(2)
 	repo := newFakeRepo()
-	repo.links["limit00"] = Link{Code: "limit00", OriginURL: "https://example.com/limit", MaxClicks: &two}
-	repo.links["free000"] = Link{Code: "free000", OriginURL: "https://example.com/free"}
+	repo.links["limit00"] = Link{ID: 106, Code: "limit00", OriginURL: "https://example.com/limit", MaxClicks: &two}
+	repo.links["free000"] = Link{ID: 107, Code: "free000", OriginURL: "https://example.com/free"}
 	s := newSvc(repo, &fakeGen{codes: []string{"x"}})
 
 	t.Run("serves the link until it uses all its clicks", func(t *testing.T) {
@@ -414,7 +414,7 @@ func TestResolveMaxClicks(t *testing.T) {
 	})
 
 	t.Run("a link already out of clicks is expired before counting", func(t *testing.T) {
-		repo.links["spent00"] = Link{Code: "spent00", MaxClicks: &two, ClickCount: 2}
+		repo.links["spent00"] = Link{ID: 108, Code: "spent00", MaxClicks: &two, ClickCount: 2}
 		before := repo.consumes
 		_, err := s.Resolve(ctx, nil, "spent00")
 		assert.ErrorIs(t, err, ErrExpired)
@@ -565,7 +565,7 @@ func TestResolveDoesNotServeAProtectedLink(t *testing.T) {
 
 	t.Run("an expired protected link is expired, not locked", func(t *testing.T) {
 		past := fixedNow.Add(-time.Hour)
-		repo.links["old0000"] = Link{Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
+		repo.links["old0000"] = Link{ID: 109, Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
 		_, err := s.Resolve(ctx, nil, "old0000")
 		assert.ErrorIs(t, err, ErrExpired)
 	})
@@ -650,7 +650,7 @@ func TestUnlock(t *testing.T) {
 
 	t.Run("each visitor and each link has its own tries", func(t *testing.T) {
 		s, repo, _, _, _ := newProtected(t)
-		repo.links["other00"] = Link{Code: "other00", OriginURL: "https://example.com/o", PasswordHash: "hash:pw12"}
+		repo.links["other00"] = Link{ID: 110, Code: "other00", OriginURL: "https://example.com/o", PasswordHash: "hash:pw12"}
 		for range 3 {
 			_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "1.1.1.1")
 		}
@@ -680,7 +680,7 @@ func TestUnlock(t *testing.T) {
 		_, err := s.Unlock(ctx, nil, "nope000", "x", "v")
 		assert.ErrorIs(t, err, ErrNotFound)
 		past := fixedNow.Add(-time.Hour)
-		repo.links["old0000"] = Link{Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
+		repo.links["old0000"] = Link{ID: 111, Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
 		_, err = s.Unlock(ctx, nil, "old0000", "x", "v")
 		assert.ErrorIs(t, err, ErrExpired)
 		assert.Empty(t, limiter.counts)
@@ -688,7 +688,7 @@ func TestUnlock(t *testing.T) {
 
 	t.Run("a link without password is just served", func(t *testing.T) {
 		s, repo, _, limiter, _ := newProtected(t)
-		repo.links["open000"] = Link{Code: "open000", OriginURL: "https://example.com/open"}
+		repo.links["open000"] = Link{ID: 112, Code: "open000", OriginURL: "https://example.com/open"}
 		got, err := s.Unlock(ctx, nil, "open000", "whatever", "v")
 		require.NoError(t, err)
 		assert.Equal(t, "https://example.com/open", got.OriginURL)

@@ -42,6 +42,7 @@ var httpErrors = []struct {
 	{org.ErrInvalidEmail, apiError{http.StatusBadRequest, "invalid_email", "an email is not valid"}},
 	{org.ErrNameTaken, apiError{http.StatusConflict, "name_taken", "the organization name is taken"}},
 	{org.ErrNotFound, apiError{http.StatusNotFound, "not_found", "organization not found"}},
+	{org.ErrNotOwner, apiError{http.StatusForbidden, "not_owner", "only the owner of the organization can do this"}},
 	{org.ErrNotMember, apiError{http.StatusForbidden, "not_member", "you are not a member of this organization"}},
 	{org.ErrAlreadyMember, apiError{http.StatusConflict, "already_member", "already a member"}},
 	{org.ErrCannotRemoveOwner, apiError{http.StatusConflict, "cannot_remove_owner", "the owner cannot be removed"}},

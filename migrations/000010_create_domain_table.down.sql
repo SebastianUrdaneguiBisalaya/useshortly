@@ -1,5 +1,6 @@
 -- Restores the global UNIQUE code. Fails if two domains already share a code.
 PRAGMA foreign_keys = OFF;
+BEGIN;
 
 CREATE TABLE links_old (
     id INTEGER PRIMARY KEY,
@@ -33,7 +34,8 @@ CREATE INDEX IF NOT EXISTS idx_links_created_by ON links (created_by);
 CREATE INDEX IF NOT EXISTS idx_links_updated_by ON links (updated_by);
 CREATE INDEX IF NOT EXISTS idx_links_expires_at ON links (expires_at);
 
-PRAGMA foreign_keys = ON;
 
 DROP INDEX IF EXISTS idx_domains_tenant_id;
 DROP TABLE IF EXISTS domains;
+COMMIT;
+PRAGMA foreign_keys = ON;

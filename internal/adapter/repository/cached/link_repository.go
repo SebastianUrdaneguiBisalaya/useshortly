@@ -109,6 +109,24 @@ func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	return nil
 }
 
+// Evict drops the cached copies of the links, for links that are being deleted without going
+// through Delete (an organization purge). Unlike Delete it reports failures, so the caller can retry.
+func (r *LinkRepository) Evict(ctx context.Context, ids []int64) error {
+	for _, id := range ids {
+		sc, found, err := r.store.Get(ctx, idKey(id))
+		if err != nil {
+			return err
+		}
+		if !found {
+			continue
+		}
+		if err := r.store.Del(ctx, codeKey(string(sc)), idKey(id)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, error) {
 	return r.next.Create(ctx, l)
 }

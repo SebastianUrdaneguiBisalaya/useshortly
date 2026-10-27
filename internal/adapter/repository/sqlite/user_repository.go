@@ -166,3 +166,48 @@ func nullString(s string) any {
 	}
 	return s
 }
+
+func (r *UserRepository) DeleteWithOrganizations(ctx context.Context, userID int64, at time.Time) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("user repo: begin: %w", err)
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT tenant_id FROM org_members WHERE user_id = ? AND role = 'OWNER'`, userID)
+	if err != nil {
+		return fmt.Errorf("user repo: owned organizations: %w", err)
+	}
+	var owned []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return fmt.Errorf("user repo: owned organizations: %w", err)
+		}
+		owned = append(owned, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("user repo: owned organizations: %w", err)
+	}
+	for _, id := range owned {
+		if err := softDeleteOrg(ctx, tx, id, at); err != nil {
+			return err
+		}
+	}
+	// The cascades remove accounts, refresh tokens, memberships, invitations and API keys; links
+	// they created keep existing with created_by and updated_by set to NULL.
+	res, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
+	if err != nil {
+		return fmt.Errorf("user repo: delete: %w", err)
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return fmt.Errorf("user repo: delete: %w", err)
+	} else if n == 0 {
+		return user.ErrNotFound
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("user repo: commit: %w", err)
+	}
+	return nil
+}

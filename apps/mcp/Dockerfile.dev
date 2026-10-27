@@ -1,0 +1,8 @@
+# Development image for docker-compose.dev.yml: dependencies are installed here, the source is
+# mounted from the host and tsx restarts the server when it changes.
+FROM node:24-bookworm-slim
+RUN npm install -g pnpm@12.15.0
+WORKDIR /app
+COPY apps/mcp/package.json apps/mcp/pnpm-lock.yaml apps/mcp/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+CMD ["pnpm", "dev"]

@@ -10,6 +10,13 @@ import { loadConfig } from "./config.js";
 import { openDatabase } from "./db/index.js";
 
 const config = loadConfig();
+if (config.environment === "production" && !config.trustProxy) {
+  console.warn(
+    "TRUST_PROXY is false in production: the server speaks plain HTTP, so it should sit behind a reverse proxy that " +
+      "terminates TLS. Set TRUST_PROXY=true there so rate limits count each visitor, not the proxy.",
+  );
+}
+
 const db = await openDatabase(config.database);
 const options = authOptions(config, db.database);
 

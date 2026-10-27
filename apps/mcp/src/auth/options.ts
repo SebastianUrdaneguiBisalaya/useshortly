@@ -47,6 +47,10 @@ export function authOptions(config: Config, database: AuthDatabase["database"]) 
     secret: config.authSecret,
     trustedOrigins: config.trustedOrigins,
     database,
+    // Better Auth rate limits its own endpoints per client address. It can only read the address from
+    // headers, so behind a trusted reverse proxy (TRUST_PROXY) it takes the one the proxy set; with
+    // no proxy there is no header to trust and everyone shares one bucket per endpoint.
+    advanced: { ipAddress: { ipAddressHeaders: config.trustProxy ? ["x-forwarded-for"] : [] } },
     // The jwt plugin's /token would turn any session into a JWT; only the OAuth token endpoint may issue.
     disabledPaths: ["/token"],
     user: {

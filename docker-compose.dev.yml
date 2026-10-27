@@ -12,3 +12,28 @@ services:
       DATABASE_PATH: /app/data/useshortly.db
     volumes:
       - .:/app
+
+  # The MCP server with hot reload (tsx). Opt in with: docker compose -f docker-compose.dev.yml --profile mcp up
+  # Dependencies live in the mcp_node_modules volume: after changing apps/mcp's lockfile, recreate it with
+  # `docker compose -f docker-compose.dev.yml --profile mcp down -v`.
+  mcp:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: apps/mcp/Dockerfile.dev
+    depends_on:
+      - app
+    ports:
+      - "${MCP_PORT:-4001}:4001"
+    env_file: apps/mcp/.env
+    environment:
+      PORT: "4001"
+      MCP_DATABASE_PATH: /app/data/mcp.db
+      API_URL: http://app:8080
+    volumes:
+      - ./apps/mcp:/app
+      - ./tsconfig.base.json:/tsconfig.base.json:ro
+      - mcp_node_modules:/app/node_modules
+
+volumes:
+  mcp_node_modules:

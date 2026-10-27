@@ -14,5 +14,34 @@ services:
     volumes:
       - data:/data
 
+  # The MCP server (OAuth + MCP endpoint). Opt in with: docker compose --profile mcp up
+  # Setup: `pnpm keygen` in apps/mcp prints MCP_SIGNING_KEY and AUTH_SECRET for apps/mcp/.env and the
+  # matching MCP_PUBLIC_KEY for this stack's .env. In apps/mcp/.env also set MCP_PUBLIC_URL (https, the
+  # address clients reach it at behind your reverse proxy) and TRUST_PROXY=true. Its database is its own
+  # SQLite file in the `mcp_data` volume.
+  mcp:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: apps/mcp/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "${MCP_PORT:-4001}:4001"
+    env_file: apps/mcp/.env
+    environment:
+      ENVIRONMENT: production
+      PORT: "4001"
+      MCP_DATABASE_PATH: /data/mcp.db
+      API_URL: http://app:8080
+    volumes:
+      - mcp_data:/data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   data:
+  mcp_data:

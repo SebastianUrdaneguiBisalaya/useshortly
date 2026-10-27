@@ -38,6 +38,8 @@ type adapters struct {
 	linkCache cached.Store
 	// countries finds the country of a click's address; nil leaves the country empty.
 	countries analytics.CountryResolver
+	// attempts limits the password tries of protected links.
+	attempts link.AttemptLimiter
 }
 
 type app struct {
@@ -82,7 +84,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	}
 	orgs := org.NewService(orgRepo, mail)
 	keys := apikey.NewService(keyRepo)
-	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, nil)
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)

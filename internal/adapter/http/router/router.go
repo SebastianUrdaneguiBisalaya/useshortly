@@ -77,5 +77,6 @@ func NewRouter(h Handlers) http.Handler {
 
 	// Public redirect. Registered last so it never shadows /health or /api.
 	r.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}", h.Links.Redirect).Methods(http.MethodGet)
+	r.HandleFunc("/{code:[0-9A-Za-z_-]{1,15}}/unlock", h.Links.Unlock).Methods(http.MethodPost)
 	return r
 }

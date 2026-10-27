@@ -118,6 +118,26 @@ func newEnvWithCache(t *testing.T, withGoogle bool, linkCache cached.Store) *env
 	return newEnvFull(t, withGoogle, linkCache, nil, false)
 }
 
+// memAttempts is an in-memory link.AttemptLimiter that never lets a window expire.
+type memAttempts struct {
+	mu     sync.Mutex
+	counts map[string]int
+}
+
+func (m *memAttempts) Take(_ context.Context, key string, limit int, _ time.Duration) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.counts[key]++
+	return m.counts[key] <= limit, nil
+}
+
+func (m *memAttempts) Reset(_ context.Context, key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.counts, key)
+	return nil
+}
+
 // fakeCountries places every address in a fixed country.
 type fakeCountries map[string]string
 
@@ -149,6 +169,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 
 		linkCache: linkCache,
 		countries: countries,
+		attempts:  &memAttempts{counts: map[string]int{}},
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -720,6 +741,87 @@ func TestLinkQRCode(t *testing.T) {
 	t.Run("an API key needs only the read scope", func(t *testing.T) {
 		secret := e.do("POST", "/api/v1/orgs/"+acme+"/api-keys", ana, map[string]string{"name": "r", "scope": "read"}).str("secret")
 		assert.Equal(t, http.StatusOK, get(qrURL, secret).Code)
+	})
+}
+
+func TestUnlockProtectedLink(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	res := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]any{"url": "https://example.com/secret", "alias": "locked-01", "password": "hunter22"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	assert.Equal(t, true, res.body["protected"])
+
+	send := func(method, path, contentType, body, remote string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		req.RemoteAddr = remote
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		return rec
+	}
+	form := "application/x-www-form-urlencoded"
+
+	t.Run("a visit without the password is refused", func(t *testing.T) {
+		rec := send(http.MethodGet, "/locked-01", "", "", "198.51.100.1:1")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Contains(t, rec.Body.String(), "password_required")
+		assert.Empty(t, rec.Header().Get("Location"))
+	})
+
+	t.Run("the right password redirects, from a form or from JSON", func(t *testing.T) {
+		rec := send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", "198.51.100.2:1")
+		assert.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+		assert.Equal(t, "https://example.com/secret", rec.Header().Get("Location"))
+
+		rec = send(http.MethodPost, "/locked-01/unlock", "application/json", `{"password":"hunter22"}`, "198.51.100.3:1")
+		assert.Equal(t, http.StatusFound, rec.Code)
+	})
+
+	t.Run("a wrong password is a 401", func(t *testing.T) {
+		rec := send(http.MethodPost, "/locked-01/unlock", form, "password=nope", "198.51.100.4:1")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Contains(t, rec.Body.String(), "wrong_password")
+		assert.Empty(t, rec.Header().Get("Location"))
+	})
+
+	t.Run("three tries, then 429 even with the right password; others are unaffected", func(t *testing.T) {
+		const bad = "198.51.100.5:1"
+		for range 3 {
+			assert.Equal(t, http.StatusUnauthorized, send(http.MethodPost, "/locked-01/unlock", form, "password=nope", bad).Code)
+		}
+		rec := send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", bad)
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+		assert.Contains(t, rec.Body.String(), "too_many_attempts")
+		assert.Equal(t, http.StatusFound, send(http.MethodPost, "/locked-01/unlock", form, "password=hunter22", "198.51.100.6:1").Code, "another visitor")
+	})
+
+	t.Run("an unknown link is a 404 and a bad body a 400", func(t *testing.T) {
+		assert.Equal(t, http.StatusNotFound, send(http.MethodPost, "/nowhere1/unlock", form, "password=x", "198.51.100.7:1").Code)
+		assert.Equal(t, http.StatusBadRequest, send(http.MethodPost, "/locked-01/unlock", "application/json", "{nope", "198.51.100.7:1").Code)
+	})
+
+	t.Run("a link without password is simply served", func(t *testing.T) {
+		open := e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]string{"url": "https://example.com/open", "alias": "open-link-1"})
+		require.Equal(t, http.StatusCreated, open.status)
+		rec := send(http.MethodPost, "/open-link-1/unlock", form, "password=anything", "198.51.100.8:1")
+		assert.Equal(t, http.StatusFound, rec.Code)
+	})
+
+	t.Run("only successful unlocks are clicks", func(t *testing.T) {
+		require.NoError(t, e.app.clicks.Close(context.Background()))
+		var n int
+		require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT count(*) FROM clicks WHERE link_id = ?`, res.id()).Scan(&n))
+		assert.Equal(t, 3, n, "the three successful unlocks of this link")
+	})
+
+	t.Run("the password is only in the database as a hash", func(t *testing.T) {
+		var hash string
+		require.NoError(t, e.sql.QueryRowContext(context.Background(), `SELECT password_hash FROM links WHERE code = 'locked-01'`).Scan(&hash))
+		assert.True(t, strings.HasPrefix(hash, "$argon2id$"), hash)
+		assert.NotContains(t, hash, "hunter22")
 	})
 }
 

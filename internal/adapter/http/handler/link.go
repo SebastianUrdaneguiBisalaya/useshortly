@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"mime"
 	"net/http"
 	"strings"
 	"time"
@@ -110,6 +111,50 @@ func (h *LinkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// unlockBodyLimit bounds an unlock request: a password is at most 64 characters.
+const unlockBodyLimit = 4 << 10
+
+// Unlock checks the password of a protected link: 302 to the link when right, 401 when wrong and
+// 429 after too many tries. The password comes from an HTML form (password=...) or from JSON
+// ({"password": "..."}).
+func (h *LinkHandler) Unlock(w http.ResponseWriter, r *http.Request) {
+	password, ok := readPassword(w, r)
+	if !ok {
+		return
+	}
+	ip := clientIP(r, h.trustProxy)
+	l, err := h.links.Unlock(r.Context(), mux.Vars(r)["code"], password, ip.String())
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	if h.clicks != nil {
+		// The Referer of this request is the unlock page itself, so it says nothing about the visitor.
+		h.clicks.Record(analytics.Click{LinkID: l.ID, UserAgent: r.UserAgent(), IP: ip})
+	}
+	http.Redirect(w, r, l.OriginURL, http.StatusFound)
+}
+
+// readPassword takes the password from a form or a JSON body, bounded in size. On failure it has
+// already answered.
+func readPassword(w http.ResponseWriter, r *http.Request) (string, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, unlockBodyLimit)
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt == "application/json" {
+		var in struct {
+			Password string `json:"password"`
+		}
+		if !decode(w, r, &in) {
+			return "", false
+		}
+		return in.Password, true
+	}
+	if err := r.ParseForm(); err != nil {
+		WriteAPIError(w, http.StatusBadRequest, "invalid_body", "the request body is not a valid form")
+		return "", false
+	}
+	return r.PostForm.Get("password"), true
 }
 
 // Redirect answers 302 (not 301) so every click reaches the server.

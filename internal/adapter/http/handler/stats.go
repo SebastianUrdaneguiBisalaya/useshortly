@@ -18,12 +18,12 @@ func NewStatsHandler(stats *analytics.Service) *StatsHandler {
 type countBody struct {
 	Name   string `json:"name"`
 	Clicks int64  `json:"clicks"`
-}
+} // @name ClickCount
 
 type dayBody struct {
 	Date   string `json:"date"`
 	Clicks int64  `json:"clicks"`
-}
+} // @name DailyClicks
 
 type statsBody struct {
 	LinkID    int64       `json:"link_id"`
@@ -34,12 +34,29 @@ type statsBody struct {
 	Referrers []countBody `json:"referrers"`
 	Countries []countBody `json:"countries"`
 	Devices   []countBody `json:"devices"`
-}
+} // @name LinkStats
 
 const dateLayout = "2006-01-02"
 
 // Get answers the clicks of one link of the organization between ?from= and ?to= (YYYY-MM-DD,
 // both included, UTC). Without them it covers the last 30 days.
+//
+//	@Summary		Click statistics of a link
+//	@Description	Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.
+//	@Tags			analytics
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int		true	"Organization id"
+//	@Param			linkID	path		int		true	"Link id"
+//	@Param			from	query		string	false	"First day, YYYY-MM-DD (UTC)"
+//	@Param			to		query		string	false	"Last day, YYYY-MM-DD (UTC)"
+//	@Success		200		{object}	LinkStatsResponse
+//	@Failure	400	{object}	ErrorResponse
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/links/{linkID}/stats [get]
 func (h *StatsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

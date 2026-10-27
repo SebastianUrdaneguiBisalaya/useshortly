@@ -60,3 +60,41 @@ type APIKeyListData struct {
 	Data []apiKeyBody `json:"data"`
 	Meta pageMeta     `json:"meta"`
 } // @name APIKeyListResponse
+
+// LinkData answers with one short link.
+type LinkData struct {
+	Data linkBody `json:"data"`
+} // @name LinkResponse
+
+// LinkListData answers with one page of links.
+type LinkListData struct {
+	Data []linkBody `json:"data"`
+	Meta pageMeta   `json:"meta"`
+} // @name LinkListResponse
+
+// UnlockPageData answers with an unlock page.
+type UnlockPageData struct {
+	Data unlockPageBody `json:"data"`
+} // @name UnlockPageResponse
+
+// UnlockPageHistoryData answers with one page of unlock page changes.
+type UnlockPageHistoryData struct {
+	Data []unlockPageEventBody `json:"data"`
+	Meta pageMeta              `json:"meta"`
+} // @name UnlockPageHistoryResponse
+
+// DomainData answers with one custom domain.
+type DomainData struct {
+	Data domainBody `json:"data"`
+} // @name DomainResponse
+
+// DomainListData answers with one page of custom domains.
+type DomainListData struct {
+	Data []domainBody `json:"data"`
+	Meta pageMeta     `json:"meta"`
+} // @name DomainListResponse
+
+// LinkStatsData answers with the clicks of one link.
+type LinkStatsData struct {
+	Data statsBody `json:"data"`
+} // @name LinkStatsResponse

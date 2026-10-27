@@ -21,6 +21,23 @@ func NewQRHandler(links *link.Service, qr *qr.Service, baseURL string) *QRHandle
 
 // Get answers the QR code of a link of the organization as an image of its short URL. ?format=
 // is png (default) or svg and ?size= the pixels on a side (64 to 1024, default 256).
+//
+//	@Summary		QR code of a link
+//	@Description	An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.
+//	@Tags			qr
+//	@Produce		image/png,image/svg+xml
+//	@Security		BearerAuth
+//	@Param			orgID	path		int		true	"Organization id"
+//	@Param			linkID	path		int		true	"Link id"
+//	@Param			format	query		string	false	"Image format"	Enums(png, svg)	default(png)
+//	@Param			size	query		int		false	"Pixels on a side"	minimum(64)	maximum(1024)	default(256)
+//	@Success		200		{string}	string	"Image bytes"
+//	@Failure	400	{object}	ErrorResponse
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/links/{linkID}/qr [get]
 func (h *QRHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

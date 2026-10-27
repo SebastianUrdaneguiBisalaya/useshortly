@@ -29,7 +29,7 @@ type dataBody struct {
 }
 
 // pageMeta tells a client which window of a list it got and how big the whole list is.
-type pageMeta struct {
+type pageMeta struct { // @name PageMeta
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 	Total  int `json:"total"`

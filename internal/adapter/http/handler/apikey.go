@@ -24,7 +24,13 @@ type apiKeyBody struct {
 	LastUsedAt *string `json:"last_used_at"`
 	ExpiresAt  *string `json:"expires_at"`
 	CreatedAt  string  `json:"created_at"`
-}
+} // @name APIKey
+
+// apiKeyCreatedBody is what creating a key answers: the key plus its secret, shown only once.
+type apiKeyCreatedBody struct {
+	apiKeyBody
+	Secret string `json:"secret"`
+} // @name APIKeyCreated
 
 func newAPIKeyBody(k apikey.APIKey) apiKeyBody {
 	return apiKeyBody{
@@ -33,18 +39,36 @@ func newAPIKeyBody(k apikey.APIKey) apiKeyBody {
 	}
 }
 
+type CreateAPIKeyRequest struct {
+	Name      string     `json:"name"`
+	Scope     string     `json:"scope" enums:"read,write"`
+	ExpiresAt *time.Time `json:"expires_at"`
+} // @name CreateAPIKeyRequest
+
 // Create answers with the secret once; it cannot be read again. The scope (read or write)
 // is required and cannot be changed afterwards.
+//
+//	@Summary		Create an API key
+//	@Description	The secret is returned once and cannot be read again. The scope cannot be changed afterwards.
+//	@Tags			api-keys
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			body	body		CreateAPIKeyRequest	true	"Key name, scope and optional expiry"
+//	@Success		201		{object}	APIKeyCreatedResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@Router			/orgs/{orgID}/api-keys [post]
 func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
 		return
 	}
-	var in struct {
-		Name      string     `json:"name"`
-		Scope     string     `json:"scope"`
-		ExpiresAt *time.Time `json:"expires_at"`
-	}
+	var in CreateAPIKeyRequest
 	if !decode(w, r, &in) {
 		return
 	}
@@ -53,12 +77,25 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeData(w, http.StatusCreated, struct {
-		apiKeyBody
-		Secret string `json:"secret"`
-	}{newAPIKeyBody(k), secret})
+	writeData(w, http.StatusCreated, apiKeyCreatedBody{newAPIKeyBody(k), secret})
 }
 
+// List returns the organization's API keys, never their secrets.
+//
+//	@Summary	List API keys
+//	@Tags		api-keys
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int	true	"Organization id"
+//	@Param		limit	query		int	false	"Page size"
+//	@Param		offset	query		int	false	"Items to skip"
+//	@Success	200		{object}	APIKeyListResponse
+//	@Failure	400		{object}	ErrorResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/api-keys [get]
 func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -80,6 +117,20 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 	writePage(w, out, p, total)
 }
 
+// Delete revokes an API key.
+//
+//	@Summary	Delete an API key
+//	@Tags		api-keys
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path	int	true	"Organization id"
+//	@Param		keyID	path	int	true	"API key id"
+//	@Success	204
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/api-keys/{keyID} [delete]
 func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {

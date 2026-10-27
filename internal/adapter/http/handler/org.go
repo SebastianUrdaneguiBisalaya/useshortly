@@ -20,7 +20,7 @@ type orgBody struct {
 	Description string `json:"description,omitempty"`
 	LogoURL     string `json:"logo_url,omitempty"`
 	CreatedAt   string `json:"created_at"`
-}
+} // @name Organization
 
 func newOrgBody(o org.Organization) orgBody {
 	return orgBody{ID: o.ID, Name: o.Name, Description: o.Description, LogoURL: o.LogoURL, CreatedAt: formatTime(o.CreatedAt)}
@@ -31,7 +31,7 @@ type memberBody struct {
 	UserID    int64  `json:"user_id"`
 	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
-}
+} // @name Member
 
 type invitationBody struct {
 	ID        int64   `json:"id"`
@@ -41,7 +41,7 @@ type invitationBody struct {
 	Status    string  `json:"status"`
 	CreatedAt string  `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
-}
+} // @name Invitation
 
 func newInvitationBody(i org.Invitation) invitationBody {
 	return invitationBody{
@@ -50,11 +50,32 @@ func newInvitationBody(i org.Invitation) invitationBody {
 	}
 }
 
+type CreateOrganizationRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+} // @name CreateOrganizationRequest
+
+type InviteRequest struct {
+	Email string   `json:"email"`
+	CC    []string `json:"cc"`
+	BCC   []string `json:"bcc"`
+} // @name InviteRequest
+
+// Create makes an organization owned by the caller.
+//
+//	@Summary	Create an organization
+//	@Tags		orgs
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		body	body		CreateOrganizationRequest	true	"Organization data"
+//	@Success	201		{object}	OrganizationResponse
+//	@Failure	400		{object}	ErrorResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs [post]
 func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
+	var in CreateOrganizationRequest
 	if !decode(w, r, &in) {
 		return
 	}
@@ -66,6 +87,16 @@ func (h *OrgHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusCreated, newOrgBody(o))
 }
 
+// ListMine lists the organizations the caller belongs to.
+//
+//	@Summary	List my organizations
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	OrganizationListResponse
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router		/orgs [get]
 func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 	list, err := h.orgs.ListMine(r.Context(), PrincipalFrom(r).UserID)
 	if err != nil {
@@ -79,6 +110,19 @@ func (h *OrgHandler) ListMine(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, out)
 }
 
+// Get returns one organization the caller belongs to.
+//
+//	@Summary	Get an organization
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int	true	"Organization id"
+//	@Success	200		{object}	OrganizationResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs/{orgID} [get]
 func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -94,6 +138,18 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Delete removes the organization with everything in it. Only its OWNER can. The organization is
 // gone for every caller when this answers; its links and clicks are deleted in the background.
+//
+//	@Summary	Delete an organization
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path	int	true	"Organization id"
+//	@Success	204
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router		/orgs/{orgID} [delete]
 func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -106,6 +162,19 @@ func (h *OrgHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ListMembers lists the members of an organization.
+//
+//	@Summary	List members
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int	true	"Organization id"
+//	@Success	200		{object}	MemberListResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/members [get]
 func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -123,6 +192,20 @@ func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, out)
 }
 
+// RemoveMember removes a member from an organization.
+//
+//	@Summary	Remove a member
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path	int	true	"Organization id"
+//	@Param		userID	path	int	true	"User id"
+//	@Success	204
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/members/{userID} [delete]
 func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
@@ -139,16 +222,28 @@ func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// Invite emails an invitation to join the organization.
+//
+//	@Summary	Invite someone to an organization
+//	@Tags		orgs
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int				true	"Organization id"
+//	@Param		body	body		InviteRequest	true	"Invitee and optional copies"
+//	@Success	201		{object}	InvitationResponse
+//	@Failure	400		{object}	ErrorResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/invitations [post]
 func (h *OrgHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	tenant, ok := tenantFrom(w, r)
 	if !ok {
 		return
 	}
-	var in struct {
-		Email string   `json:"email"`
-		CC    []string `json:"cc"`
-		BCC   []string `json:"bcc"`
-	}
+	var in InviteRequest
 	if !decode(w, r, &in) {
 		return
 	}
@@ -162,6 +257,19 @@ func (h *OrgHandler) Invite(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusCreated, newInvitationBody(inv))
 }
 
+// ListInvitations lists the pending invitations of an organization.
+//
+//	@Summary	List pending invitations
+//	@Tags		orgs
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int	true	"Organization id"
+//	@Success	200		{object}	InvitationListResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@Router		/orgs/{orgID}/invitations [get]
 func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	orgID, ok := idParam(w, r, "orgID")
 	if !ok {
@@ -180,6 +288,18 @@ func (h *OrgHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 }
 
 // AcceptInvitation joins the caller to the organization that invited their email.
+//
+//	@Summary	Accept an invitation
+//	@Tags		invitations
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		invitationID	path		int	true	"Invitation id"
+//	@Success	200				{object}	MemberResponse
+//	@Failure	401				{object}	ErrorResponse
+//	@Failure	403				{object}	ErrorResponse
+//	@Failure	404				{object}	ErrorResponse
+//	@Failure	429				{object}	ErrorResponse
+//	@Router		/invitations/{invitationID}/accept [post]
 func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 	id, ok := idParam(w, r, "invitationID")
 	if !ok {
@@ -194,6 +314,19 @@ func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
 }
 
+// RejectInvitation declines an invitation addressed to the caller's email.
+//
+//	@Summary	Reject an invitation
+//	@Tags		invitations
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		invitationID	path	int	true	"Invitation id"
+//	@Success	204
+//	@Failure	401	{object}	ErrorResponse
+//	@Failure	403	{object}	ErrorResponse
+//	@Failure	404	{object}	ErrorResponse
+//	@Failure	429	{object}	ErrorResponse
+//	@Router		/invitations/{invitationID}/reject [post]
 func (h *OrgHandler) RejectInvitation(w http.ResponseWriter, r *http.Request) {
 	id, ok := idParam(w, r, "invitationID")
 	if !ok {

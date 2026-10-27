@@ -110,7 +110,14 @@ type env struct {
 	sql    *sql.DB
 	// attempts is the unlock limiter; its clock can be moved to skip a wait.
 	attempts *memAttempts
+	// dns holds the TXT records that custom domains are verified against.
+	dns fakeDNS
 }
+
+// fakeDNS maps a record name to its TXT values.
+type fakeDNS map[string][]string
+
+func (f fakeDNS) LookupTXT(_ context.Context, name string) ([]string, error) { return f[name], nil }
 
 func newEnv(t *testing.T, withGoogle bool) *env {
 	t.Helper()
@@ -189,6 +196,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 
 	box := &outbox{}
 	attempts := newMemAttempts()
+	dns := fakeDNS{}
 	a := adapters{
 		codes:  &memCodes{entries: map[string]*memCode{}, cooldown: map[string]bool{}},
 		sender: box,
@@ -197,6 +205,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 		countries: countries,
 		attempts:  attempts,
 		limits:    limits,
+		dns:       dns,
 	}
 	if withGoogle {
 		a.google = fakeGoogle{&googleIdentity}
@@ -212,7 +221,7 @@ func newEnvFull(t *testing.T, withGoogle bool, linkCache cached.Store, countries
 		AbuseEmail:   "abuse@useshortly.test",
 		TrustProxy:   trustProxy,
 	}
-	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB, attempts: attempts}
+	e := &env{t: t, app: newApp(cfg, db.DB, a), outbox: box, sql: db.DB, attempts: attempts, dns: dns}
 	t.Cleanup(e.app.mail.Wait)
 	// Registered after the database cleanup, so queued clicks are written before it closes.
 	t.Cleanup(func() { _ = e.app.clicks.Close(context.Background()) })
@@ -228,6 +237,12 @@ type response struct {
 
 func (e *env) do(method, path, token string, body any) response {
 	e.t.Helper()
+	return e.doAt("", method, path, token, body)
+}
+
+// doAt is do with the Host header set, to reach the links of a custom domain.
+func (e *env) doAt(host, method, path, token string, body any) response {
+	e.t.Helper()
 	var rd *bytes.Reader
 	switch b := body.(type) {
 	case nil:
@@ -240,6 +255,9 @@ func (e *env) do(method, path, token string, body any) response {
 		rd = bytes.NewReader(j)
 	}
 	req := httptest.NewRequest(method, path, rd)
+	if host != "" {
+		req.Host = host
+	}
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -1508,4 +1526,75 @@ func TestAPIKeyScopes(t *testing.T) {
 
 	// Scope does not widen what keys may reach: management stays closed to them.
 	assert.Equal(t, "api_key_not_allowed", e.do("POST", keys, writeKey.str("secret"), map[string]string{"name": "x", "scope": "write"}).errCode())
+}
+
+func TestCustomDomains(t *testing.T) {
+	e := newEnv(t, false)
+	ana := e.signUp("ana@example.com", "Ana")
+	acme := e.createOrg(ana, "Acme")
+	bob := e.signUp("bob@example.com", "Bob")
+	globex := e.createOrg(bob, "Globex")
+	domains := "/api/v1/orgs/" + acme + "/domains"
+
+	assert.Equal(t, "invalid_host", e.do("POST", domains, ana, map[string]string{"host": "https://go.acme.test/x"}).errCode())
+	assert.Equal(t, "invalid_host", e.do("POST", domains, ana, map[string]string{"host": "localhost"}).errCode())
+	assert.Equal(t, "host_taken", e.do("POST", domains, ana, map[string]string{"host": "short.test"}).errCode(), "the instance's own host is reserved")
+
+	res := e.do("POST", domains, ana, map[string]string{"host": "Go.Acme.Test"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	domainID := res.id()
+	assert.Equal(t, "go.acme.test", res.str("host"))
+	assert.Equal(t, false, res.body["verified"])
+	record := res.body["verification"].(map[string]any)
+	name, value := record["name"].(string), record["value"].(string)
+	assert.Equal(t, "_useshortly-verify.go.acme.test", name)
+
+	assert.Equal(t, "host_taken", e.do("POST", "/api/v1/orgs/"+globex+"/domains", bob, map[string]string{"host": "go.acme.test"}).errCode())
+
+	// A link cannot use the domain before it is verified, nor another organization's domain.
+	linkBody := map[string]any{"url": "https://example.com/a", "alias": "promo", "domain_id": mustInt(t, domainID)}
+	assert.Equal(t, "domain_not_verified", e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, linkBody).errCode())
+	assert.Equal(t, http.StatusNotFound, e.do("POST", "/api/v1/orgs/"+globex+"/links", bob, linkBody).status)
+
+	// Verification needs the record, and the one shown to another organization does not work.
+	assert.Equal(t, "verification_failed", e.do("POST", domains+"/"+domainID+"/verify", ana, nil).errCode())
+	e.dns[name] = []string{"useshortly-verify=wrong"}
+	assert.Equal(t, "verification_failed", e.do("POST", domains+"/"+domainID+"/verify", ana, nil).errCode())
+	e.dns[name] = []string{"v=spf1 -all", value}
+	res = e.do("POST", domains+"/"+domainID+"/verify", ana, nil)
+	require.Equal(t, http.StatusOK, res.status, res.raw)
+	assert.Equal(t, true, res.body["verified"])
+	assert.Nil(t, res.body["verification"])
+
+	// Same alias on the default host and on the domain: two different links.
+	res = e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, linkBody)
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	assert.Equal(t, "http://go.acme.test/promo", res.str("short_url"))
+	onDomainID := res.id()
+	res = e.do("POST", "/api/v1/orgs/"+acme+"/links", ana, map[string]any{"url": "https://example.com/default", "alias": "promo"})
+	require.Equal(t, http.StatusCreated, res.status, res.raw)
+	assert.Equal(t, "http://short.test/promo", res.str("short_url"))
+
+	at := e.doAt("go.acme.test:8080", "GET", "/promo", "", nil)
+	assert.Equal(t, http.StatusFound, at.status)
+	assert.Equal(t, "https://example.com/a", at.header.Get("Location"))
+	def := e.doAt("short.test", "GET", "/promo", "", nil)
+	assert.Equal(t, "https://example.com/default", def.header.Get("Location"))
+	unknown := e.doAt("elsewhere.test", "GET", "/promo", "", nil)
+	assert.Equal(t, "https://example.com/default", unknown.header.Get("Location"), "unknown hosts use the default links")
+
+	// The QR code encodes the address on the domain.
+	assert.Equal(t, http.StatusOK, e.do("GET", "/api/v1/orgs/"+acme+"/links/"+onDomainID+"/qr?format=svg", ana, nil).status)
+
+	// Deleting the domain takes its links with it.
+	assert.Equal(t, http.StatusNoContent, e.do("DELETE", domains+"/"+domainID, ana, nil).status)
+	assert.Equal(t, "https://example.com/default", e.doAt("go.acme.test", "GET", "/promo", "", nil).header.Get("Location"))
+	assert.Equal(t, http.StatusNotFound, e.do("GET", domains+"/"+domainID, ana, nil).status)
+}
+
+func mustInt(t *testing.T, s string) int64 {
+	t.Helper()
+	n, err := strconv.ParseInt(s, 10, 64)
+	require.NoError(t, err)
+	return n
 }

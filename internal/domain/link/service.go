@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
@@ -20,7 +21,20 @@ type Service struct {
 	gen     CodeGenerator
 	hasher  PasswordHasher
 	limiter AttemptLimiter
+	domains DomainChecker
 	now     func() time.Time
+}
+
+// DomainChecker says whether a tenant may serve links from a custom domain.
+type DomainChecker interface {
+	// RequireVerified returns an error unless the tenant owns the domain and it is verified.
+	RequireVerified(ctx context.Context, tenantID, domainID int64) error
+}
+
+// WithDomains enables links on custom domains; without it ShortenInput.DomainID is refused.
+func (s *Service) WithDomains(d DomainChecker) *Service {
+	s.domains = d
+	return s
 }
 
 func NewService(repo Repository, gen CodeGenerator, hasher PasswordHasher, limiter AttemptLimiter) *Service {
@@ -36,9 +50,11 @@ func NewService(repo Repository, gen CodeGenerator, hasher PasswordHasher, limit
 // ShortenInput is what a caller can set when creating a link. Alias, ExpiresAt and MaxClicks
 // are optional: empty or nil means "generate a code", "never expires" and "unlimited".
 type ShortenInput struct {
-	TenantID  int64
-	UserID    int64
-	URL       string
+	TenantID int64
+	UserID   int64
+	URL      string
+	// DomainID serves the link from one of the tenant's verified custom domains; nil is the default host.
+	DomainID  *int64
 	Alias     string
 	ExpiresAt *time.Time
 	MaxClicks *int64
@@ -59,6 +75,14 @@ func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
 	if in.MaxClicks != nil && *in.MaxClicks <= 0 {
 		return Link{}, ErrInvalidMaxClicks
 	}
+	if in.DomainID != nil {
+		if s.domains == nil {
+			return Link{}, ErrDomainsDisabled
+		}
+		if err := s.domains.RequireVerified(ctx, in.TenantID, *in.DomainID); err != nil {
+			return Link{}, err
+		}
+	}
 	var passwordHash string
 	if in.Password != "" {
 		if !validPassword(in.Password) {
@@ -74,6 +98,7 @@ func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
 		ExpiresAt:    expiresAt,
 		MaxClicks:    in.MaxClicks,
 		TenantID:     in.TenantID,
+		DomainID:     in.DomainID,
 		CreatedBy:    in.UserID,
 		CreatedAt:    s.now(),
 	}
@@ -127,13 +152,14 @@ func (s *Service) Delete(ctx context.Context, tenantID, id int64) error {
 	return s.repo.Delete(ctx, tenantID, id)
 }
 
-// Resolve returns the link a code points to, ready to redirect to l.OriginURL. It counts the
-// visit against max_clicks, so call it once per redirect.
+// Resolve returns the link a code points to in the domain (nil is the default
+// host), ready to redirect to l.OriginURL. It counts the visit against max_clicks, so call it once
+// per redirect.
 //
 // A protected link is not served: it returns the link with ErrPasswordRequired (so the caller can
 // show the right unlock page) and counts nothing. Use Unlock for those.
-func (s *Service) Resolve(ctx context.Context, code string) (Link, error) {
-	l, err := s.repo.FindByCode(ctx, code)
+func (s *Service) Resolve(ctx context.Context, domainID *int64, code string) (Link, error) {
+	l, err := s.repo.FindByCode(ctx, domainID, code)
 	if err != nil {
 		return Link{}, err
 	}
@@ -151,8 +177,8 @@ func (s *Service) Resolve(ctx context.Context, code string) (Link, error) {
 // that every try is followed by a wait that doubles from 30 seconds up to an hour, and a try made
 // during it fails with ErrTooManyAttempts (see RetryAfter) without looking at the password. A link
 // that is not protected is simply served.
-func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (Link, error) {
-	l, err := s.repo.FindByCode(ctx, code)
+func (s *Service) Unlock(ctx context.Context, domainID *int64, code, password, visitor string) (Link, error) {
+	l, err := s.repo.FindByCode(ctx, domainID, code)
 	if err != nil {
 		return Link{}, err
 	}
@@ -162,7 +188,11 @@ func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (L
 	if !l.Protected() {
 		return s.visit(ctx, l)
 	}
-	key := "unlock:" + code + ":" + visitor
+	scope := code
+	if domainID != nil {
+		scope = strconv.FormatInt(*domainID, 10) + "/" + code // the same code on another domain is another link
+	}
+	key := "unlock:" + scope + ":" + visitor
 	allowed, retryAfter, err := s.limiter.Take(ctx, key, unlockBackoff)
 	if err != nil {
 		return Link{}, err
@@ -186,7 +216,7 @@ func (s *Service) Unlock(ctx context.Context, code, password, visitor string) (L
 // visit counts the click against max_clicks and returns the link to redirect to.
 func (s *Service) visit(ctx context.Context, l Link) (Link, error) {
 	if l.MaxClicks != nil {
-		if err := s.repo.ConsumeClick(ctx, l.Code); err != nil {
+		if err := s.repo.ConsumeClick(ctx, l.ID); err != nil {
 			return Link{}, err
 		}
 	}

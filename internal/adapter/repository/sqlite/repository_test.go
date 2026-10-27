@@ -11,6 +11,7 @@ import (
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/page"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/unlockpage"
@@ -179,7 +180,7 @@ func TestLinkRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotZero(t, created.ID)
 
-	got, err := repo.FindByCode(ctx, "abc1234")
+	got, err := repo.FindByCode(ctx, nil, "abc1234")
 	require.NoError(t, err)
 	assert.Equal(t, created.ID, got.ID)
 	assert.Equal(t, "https://example.com/a", got.OriginURL)
@@ -191,7 +192,7 @@ func TestLinkRepository(t *testing.T) {
 	assert.True(t, got.ExpiresAt.Equal(exp))
 	assert.True(t, got.CreatedAt.Equal(now))
 
-	_, err = repo.FindByCode(ctx, "nope000")
+	_, err = repo.FindByCode(ctx, nil, "nope000")
 	assert.ErrorIs(t, err, link.ErrNotFound)
 
 	_, err = repo.Create(ctx, link.Link{Code: "abc1234", OriginURL: "https://other.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
@@ -212,19 +213,19 @@ func TestLinkRepositoryMaxClicks(t *testing.T) {
 	_, err = repo.Create(ctx, link.Link{Code: "free000", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
 	require.NoError(t, err)
 
-	got, err := repo.FindByCode(ctx, "limit00")
+	got, err := repo.FindByCode(ctx, nil, "limit00")
 	require.NoError(t, err)
 	assert.Equal(t, &two, got.MaxClicks)
 	assert.Zero(t, got.ClickCount)
 
-	require.NoError(t, repo.ConsumeClick(ctx, "limit00"))
-	require.NoError(t, repo.ConsumeClick(ctx, "limit00"))
-	assert.ErrorIs(t, repo.ConsumeClick(ctx, "limit00"), link.ErrExpired)
-	got, err = repo.FindByCode(ctx, "limit00")
+	require.NoError(t, repo.ConsumeClick(ctx, got.ID))
+	require.NoError(t, repo.ConsumeClick(ctx, got.ID))
+	assert.ErrorIs(t, repo.ConsumeClick(ctx, got.ID), link.ErrExpired)
+	got, err = repo.FindByCode(ctx, nil, "limit00")
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, got.ClickCount)
 
-	free, err := repo.FindByCode(ctx, "free000")
+	free, err := repo.FindByCode(ctx, nil, "free000")
 	require.NoError(t, err)
 	assert.Nil(t, free.MaxClicks)
 
@@ -283,10 +284,10 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	assert.Zero(t, total)
 
 	assert.ErrorIs(t, repo.Delete(ctx, 2, ids[0]), link.ErrNotFound, "another tenant's link is not found")
-	_, err = repo.FindByCode(ctx, "aaaaaaa")
+	_, err = repo.FindByCode(ctx, nil, "aaaaaaa")
 	require.NoError(t, err)
 	require.NoError(t, repo.Delete(ctx, 1, ids[0]))
-	_, err = repo.FindByCode(ctx, "aaaaaaa")
+	_, err = repo.FindByCode(ctx, nil, "aaaaaaa")
 	assert.ErrorIs(t, err, link.ErrNotFound)
 	assert.ErrorIs(t, repo.Delete(ctx, 1, ids[0]), link.ErrNotFound)
 }
@@ -404,11 +405,11 @@ func TestLinkRepositoryPasswordHash(t *testing.T) {
 	_, err = repo.Create(ctx, link.Link{Code: "open000", OriginURL: "https://example.com", TenantID: 1, CreatedBy: u.ID, CreatedAt: now})
 	require.NoError(t, err)
 
-	locked, err := repo.FindByCode(ctx, "locked0")
+	locked, err := repo.FindByCode(ctx, nil, "locked0")
 	require.NoError(t, err)
 	assert.Equal(t, "$argon2id$x", locked.PasswordHash)
 	assert.True(t, locked.Protected())
-	open, err := repo.FindByCode(ctx, "open000")
+	open, err := repo.FindByCode(ctx, nil, "open000")
 	require.NoError(t, err)
 	assert.False(t, open.Protected())
 
@@ -545,4 +546,74 @@ func TestAPIKeyScopeIsConstrainedByTheDatabase(t *testing.T) {
 	assert.Error(t, err, "the CHECK refuses a scope the domain would never create")
 	_, err = repo.Create(ctx, apikey.APIKey{TenantID: 1, CreatedBy: u.ID, Name: "x", Prefix: "p", KeyHash: "h2", CreatedAt: time.Now().UTC()})
 	assert.Error(t, err, "and an empty one")
+}
+
+func TestDomainRepositoryAndLinksPerDomain(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	domains, links := NewDomainRepository(db), NewLinkRepository(db)
+	u := newUser(t, NewUserRepository(db), "ana@example.com")
+	_, err := db.ExecContext(ctx, `INSERT INTO organizations (name) VALUES ('acme'), ('globex')`)
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	d, err := domains.Create(ctx, domain.Domain{TenantID: 1, Host: "go.acme.test", CreatedAt: now})
+	require.NoError(t, err)
+	_, err = domains.Create(ctx, domain.Domain{TenantID: 2, Host: "go.acme.test", CreatedAt: now})
+	assert.ErrorIs(t, err, domain.ErrHostTaken)
+
+	got, err := domains.FindByHost(ctx, "go.acme.test")
+	require.NoError(t, err)
+	assert.Equal(t, d.ID, got.ID)
+	assert.Nil(t, got.VerifiedAt)
+	_, err = domains.FindByID(ctx, 2, d.ID)
+	assert.ErrorIs(t, err, domain.ErrNotFound, "another tenant's id looks unknown")
+	_, err = domains.FindByHost(ctx, "nope.test")
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+
+	at := now.Add(time.Minute)
+	require.NoError(t, domains.MarkVerified(ctx, 1, d.ID, at))
+	assert.ErrorIs(t, domains.MarkVerified(ctx, 2, d.ID, at), domain.ErrNotFound)
+	got, err = domains.FindByID(ctx, 1, d.ID)
+	require.NoError(t, err)
+	assert.True(t, got.VerifiedAt.Equal(at))
+
+	list, total, err := domains.ListByTenant(ctx, 1, page.Params{Limit: 10})
+	require.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, list, 1)
+
+	// The same code is allowed once per domain, and each lookup finds its own link.
+	mk := func(domainID *int64, origin string) (link.Link, error) {
+		return links.Create(ctx, link.Link{Code: "promo00", OriginURL: origin, TenantID: 1, DomainID: domainID, CreatedBy: u.ID, CreatedAt: now})
+	}
+	onDefault, err := mk(nil, "https://example.com/default")
+	require.NoError(t, err)
+	onDomain, err := mk(&d.ID, "https://example.com/domain")
+	require.NoError(t, err)
+	assert.Equal(t, "go.acme.test", onDomain.DomainHost)
+	_, err = mk(nil, "https://example.com/again")
+	assert.ErrorIs(t, err, link.ErrCodeTaken)
+	_, err = mk(&d.ID, "https://example.com/again")
+	assert.ErrorIs(t, err, link.ErrCodeTaken)
+
+	f, err := links.FindByCode(ctx, nil, "promo00")
+	require.NoError(t, err)
+	assert.Equal(t, onDefault.ID, f.ID)
+	assert.Empty(t, f.DomainHost)
+	f, err = links.FindByCode(ctx, &d.ID, "promo00")
+	require.NoError(t, err)
+	assert.Equal(t, onDomain.ID, f.ID)
+	assert.Equal(t, "go.acme.test", f.DomainHost)
+	other := d.ID + 99
+	_, err = links.FindByCode(ctx, &other, "promo00")
+	assert.ErrorIs(t, err, link.ErrNotFound)
+
+	// Deleting the domain removes its links only.
+	require.NoError(t, domains.Delete(ctx, 1, d.ID))
+	assert.ErrorIs(t, domains.Delete(ctx, 1, d.ID), domain.ErrNotFound)
+	_, err = links.FindByCode(ctx, &d.ID, "promo00")
+	assert.ErrorIs(t, err, link.ErrNotFound)
+	_, err = links.FindByCode(ctx, nil, "promo00")
+	assert.NoError(t, err)
 }

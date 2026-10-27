@@ -39,9 +39,9 @@ func (r *fakeRepo) Create(_ context.Context, l Link) (Link, error) {
 	return l, nil
 }
 
-func (r *fakeRepo) FindByCode(_ context.Context, code string) (Link, error) {
+func (r *fakeRepo) FindByCode(_ context.Context, domainID *int64, code string) (Link, error) {
 	l, ok := r.links[code]
-	if !ok {
+	if !ok || (l.DomainID == nil) != (domainID == nil) || (domainID != nil && *l.DomainID != *domainID) {
 		return Link{}, ErrNotFound
 	}
 	return l, nil
@@ -79,18 +79,20 @@ func (r *fakeRepo) Delete(_ context.Context, tenantID, id int64) error {
 	return ErrNotFound
 }
 
-func (r *fakeRepo) ConsumeClick(_ context.Context, code string) error {
+func (r *fakeRepo) ConsumeClick(_ context.Context, id int64) error {
 	r.consumes++
-	l, ok := r.links[code]
-	if !ok {
-		return ErrNotFound
+	for code, l := range r.links {
+		if l.ID != id {
+			continue
+		}
+		if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
+			return ErrExpired
+		}
+		l.ClickCount++
+		r.links[code] = l
+		return nil
 	}
-	if l.MaxClicks != nil && l.ClickCount >= *l.MaxClicks {
-		return ErrExpired
-	}
-	l.ClickCount++
-	r.links[code] = l
-	return nil
+	return ErrNotFound
 }
 
 type fakeGen struct {
@@ -256,7 +258,7 @@ func TestResolve(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.Resolve(ctx, tt.code)
+			got, err := s.Resolve(ctx, nil, tt.code)
 			assert.ErrorIs(t, err, tt.wantErr)
 			assert.Equal(t, tt.want, got.OriginURL)
 		})
@@ -395,18 +397,18 @@ func TestResolveMaxClicks(t *testing.T) {
 
 	t.Run("serves the link until it uses all its clicks", func(t *testing.T) {
 		for range 2 {
-			got, err := s.Resolve(ctx, "limit00")
+			got, err := s.Resolve(ctx, nil, "limit00")
 			require.NoError(t, err)
 			assert.Equal(t, "https://example.com/limit", got.OriginURL)
 		}
-		_, err := s.Resolve(ctx, "limit00")
+		_, err := s.Resolve(ctx, nil, "limit00")
 		assert.ErrorIs(t, err, ErrExpired)
 		assert.EqualValues(t, 2, repo.links["limit00"].ClickCount)
 	})
 
 	t.Run("unlimited links never touch the counter", func(t *testing.T) {
 		before := repo.consumes
-		_, err := s.Resolve(ctx, "free000")
+		_, err := s.Resolve(ctx, nil, "free000")
 		require.NoError(t, err)
 		assert.Equal(t, before, repo.consumes)
 	})
@@ -414,7 +416,7 @@ func TestResolveMaxClicks(t *testing.T) {
 	t.Run("a link already out of clicks is expired before counting", func(t *testing.T) {
 		repo.links["spent00"] = Link{Code: "spent00", MaxClicks: &two, ClickCount: 2}
 		before := repo.consumes
-		_, err := s.Resolve(ctx, "spent00")
+		_, err := s.Resolve(ctx, nil, "spent00")
 		assert.ErrorIs(t, err, ErrExpired)
 		assert.Equal(t, before, repo.consumes)
 	})
@@ -498,7 +500,7 @@ func TestListAndDeleteAreScopedToTenant(t *testing.T) {
 
 	t.Run("owner deletes it and it stops resolving", func(t *testing.T) {
 		require.NoError(t, s.Delete(ctx, 1, mine[0].ID))
-		_, err := s.Resolve(ctx, mine[0].Code)
+		_, err := s.Resolve(ctx, nil, mine[0].Code)
 		assert.ErrorIs(t, err, ErrNotFound)
 		assert.ErrorIs(t, s.Delete(ctx, 1, mine[0].ID), ErrNotFound)
 	})
@@ -556,7 +558,7 @@ func TestResolveDoesNotServeAProtectedLink(t *testing.T) {
 	ctx := context.Background()
 	s, repo, _, _, _ := newProtected(t)
 
-	got, err := s.Resolve(ctx, "abc1234")
+	got, err := s.Resolve(ctx, nil, "abc1234")
 	assert.ErrorIs(t, err, ErrPasswordRequired)
 	assert.Equal(t, "abc1234", got.Code, "the link comes back so the caller can pick its unlock page")
 	assert.Zero(t, repo.consumes)
@@ -564,7 +566,7 @@ func TestResolveDoesNotServeAProtectedLink(t *testing.T) {
 	t.Run("an expired protected link is expired, not locked", func(t *testing.T) {
 		past := fixedNow.Add(-time.Hour)
 		repo.links["old0000"] = Link{Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
-		_, err := s.Resolve(ctx, "old0000")
+		_, err := s.Resolve(ctx, nil, "old0000")
 		assert.ErrorIs(t, err, ErrExpired)
 	})
 }
@@ -574,7 +576,7 @@ func TestUnlock(t *testing.T) {
 
 	t.Run("right password serves the link and clears the attempts", func(t *testing.T) {
 		s, _, _, limiter, _ := newProtected(t)
-		got, err := s.Unlock(ctx, "abc1234", "hunter22", "203.0.113.7")
+		got, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "203.0.113.7")
 		require.NoError(t, err)
 		assert.Equal(t, "https://example.com/secret", got.OriginURL)
 		assert.Equal(t, []string{"unlock:abc1234:203.0.113.7"}, limiter.resets)
@@ -583,7 +585,7 @@ func TestUnlock(t *testing.T) {
 
 	t.Run("wrong password", func(t *testing.T) {
 		s, _, _, limiter, _ := newProtected(t)
-		got, err := s.Unlock(ctx, "abc1234", "nope", "203.0.113.7")
+		got, err := s.Unlock(ctx, nil, "abc1234", "nope", "203.0.113.7")
 		assert.ErrorIs(t, err, ErrWrongPassword)
 		assert.Equal(t, "abc1234", got.Code, "the link comes back to render the page again")
 		assert.Equal(t, 1, limiter.counts["unlock:abc1234:203.0.113.7"])
@@ -593,10 +595,10 @@ func TestUnlock(t *testing.T) {
 	t.Run("three free tries, then a wait even for the right password", func(t *testing.T) {
 		s, _, hasher, _, _ := newProtected(t)
 		for range 3 {
-			_, err := s.Unlock(ctx, "abc1234", "nope", "203.0.113.7")
+			_, err := s.Unlock(ctx, nil, "abc1234", "nope", "203.0.113.7")
 			assert.ErrorIs(t, err, ErrWrongPassword)
 		}
-		got, err := s.Unlock(ctx, "abc1234", "hunter22", "203.0.113.7")
+		got, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "203.0.113.7")
 		assert.ErrorIs(t, err, ErrTooManyAttempts)
 		assert.Equal(t, "abc1234", got.Code, "the link comes back to render the page")
 		wait, ok := RetryAfter(err)
@@ -608,15 +610,15 @@ func TestUnlock(t *testing.T) {
 	t.Run("each wrong try after the free ones doubles the wait", func(t *testing.T) {
 		s, _, _, limiter, _ := newProtected(t)
 		for range 3 {
-			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+			_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 		}
 		for _, want := range []time.Duration{30 * time.Second, time.Minute, 2 * time.Minute} {
-			_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+			_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 			wait, ok := RetryAfter(err)
 			require.True(t, ok, "still waiting")
 			assert.Equal(t, want, wait)
 			limiter.now = limiter.now.Add(wait) // the visitor waits it out
-			_, err = s.Unlock(ctx, "abc1234", "nope", "v")
+			_, err = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 			assert.ErrorIs(t, err, ErrWrongPassword, "and may try again")
 		}
 	})
@@ -624,10 +626,10 @@ func TestUnlock(t *testing.T) {
 	t.Run("a visitor who waits and gets it right is let in", func(t *testing.T) {
 		s, _, _, limiter, _ := newProtected(t)
 		for range 3 {
-			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+			_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 		}
 		limiter.now = limiter.now.Add(30 * time.Second)
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		require.NoError(t, err)
 		assert.Empty(t, limiter.counts, "the right password clears the count")
 	})
@@ -635,13 +637,13 @@ func TestUnlock(t *testing.T) {
 	t.Run("a right try counts too, but clears the count", func(t *testing.T) {
 		s, _, _, limiter, _ := newProtected(t)
 		for range 2 {
-			_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+			_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 		}
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		require.NoError(t, err, "the third try is still free")
 		assert.Empty(t, limiter.counts)
 		for range 3 {
-			_, err = s.Unlock(ctx, "abc1234", "nope", "v")
+			_, err = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 			assert.ErrorIs(t, err, ErrWrongPassword, "three more free tries after a success")
 		}
 	})
@@ -650,11 +652,11 @@ func TestUnlock(t *testing.T) {
 		s, repo, _, _, _ := newProtected(t)
 		repo.links["other00"] = Link{Code: "other00", OriginURL: "https://example.com/o", PasswordHash: "hash:pw12"}
 		for range 3 {
-			_, _ = s.Unlock(ctx, "abc1234", "nope", "1.1.1.1")
+			_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "1.1.1.1")
 		}
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "2.2.2.2")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "2.2.2.2")
 		assert.NoError(t, err, "another visitor")
-		_, err = s.Unlock(ctx, "other00", "pw12", "1.1.1.1")
+		_, err = s.Unlock(ctx, nil, "other00", "pw12", "1.1.1.1")
 		assert.NoError(t, err, "another link")
 	})
 
@@ -664,22 +666,22 @@ func TestUnlock(t *testing.T) {
 		l := repo.links["abc1234"]
 		l.MaxClicks = &one
 		repo.links["abc1234"] = l
-		_, _ = s.Unlock(ctx, "abc1234", "nope", "v")
+		_, _ = s.Unlock(ctx, nil, "abc1234", "nope", "v")
 		assert.Zero(t, repo.consumes)
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		require.NoError(t, err)
 		assert.Equal(t, 1, repo.consumes)
-		_, err = s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err = s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		assert.ErrorIs(t, err, ErrExpired, "the link used its only click")
 	})
 
 	t.Run("unknown and expired links are not attempts", func(t *testing.T) {
 		s, repo, _, limiter, _ := newProtected(t)
-		_, err := s.Unlock(ctx, "nope000", "x", "v")
+		_, err := s.Unlock(ctx, nil, "nope000", "x", "v")
 		assert.ErrorIs(t, err, ErrNotFound)
 		past := fixedNow.Add(-time.Hour)
 		repo.links["old0000"] = Link{Code: "old0000", PasswordHash: "hash:x", ExpiresAt: &past}
-		_, err = s.Unlock(ctx, "old0000", "x", "v")
+		_, err = s.Unlock(ctx, nil, "old0000", "x", "v")
 		assert.ErrorIs(t, err, ErrExpired)
 		assert.Empty(t, limiter.counts)
 	})
@@ -687,7 +689,7 @@ func TestUnlock(t *testing.T) {
 	t.Run("a link without password is just served", func(t *testing.T) {
 		s, repo, _, limiter, _ := newProtected(t)
 		repo.links["open000"] = Link{Code: "open000", OriginURL: "https://example.com/open"}
-		got, err := s.Unlock(ctx, "open000", "whatever", "v")
+		got, err := s.Unlock(ctx, nil, "open000", "whatever", "v")
 		require.NoError(t, err)
 		assert.Equal(t, "https://example.com/open", got.OriginURL)
 		assert.Empty(t, limiter.counts)
@@ -696,7 +698,7 @@ func TestUnlock(t *testing.T) {
 	t.Run("fails closed when the limiter is down", func(t *testing.T) {
 		s, _, hasher, limiter, _ := newProtected(t)
 		limiter.err = errors.New("redis down")
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		assert.Error(t, err)
 		assert.NotErrorIs(t, err, ErrWrongPassword)
 		assert.Zero(t, hasher.verifies, "no unlimited guessing while the limiter is unavailable")
@@ -705,7 +707,7 @@ func TestUnlock(t *testing.T) {
 	t.Run("a broken stored hash is an error, not a wrong password", func(t *testing.T) {
 		s, _, hasher, _, _ := newProtected(t)
 		hasher.err = errors.New("malformed hash")
-		_, err := s.Unlock(ctx, "abc1234", "hunter22", "v")
+		_, err := s.Unlock(ctx, nil, "abc1234", "hunter22", "v")
 		assert.Error(t, err)
 		assert.NotErrorIs(t, err, ErrWrongPassword)
 	})

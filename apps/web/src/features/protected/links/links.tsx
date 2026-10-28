@@ -1,6 +1,180 @@
+import { useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { getListLinksQueryKey, useDeleteLink, useListLinks } from '~/api/endpoints/links/links';
+import type { Link } from '~/api/model';
+import { Button } from '~/components/ui/actions-controls/button/button';
+import { Badge } from '~/components/ui/data-display/badge/badge';
+import { DataTable, type DataTableFeatures } from '~/components/ui/data-display/data-table/data-table';
+import { TableToolbar } from '~/components/ui/data-display/table-toolbar/table-toolbar';
 import { Page } from '~/components/ui/layout/page/page';
+import { ConfirmDialog } from '~/components/ui/overlays-feedback/confirm-dialog/confirm-dialog';
+import { useLanguage } from '~/hooks/use-language';
+import { useTranslate } from '~/hooks/use-translate';
+import { formatDateTime } from '~/lib/date-time';
+import { useDownloadQr } from '../share/download-qr';
 import { OrganizationGate } from '../share/organization-gate';
+import { CreateLinkDialog } from './create-link-dialog';
+import { LinkActions } from './link-actions';
+import { LinkDrawer } from './link-drawer';
+
+const PAGE_SIZE = 25;
 
 export default function LinksPage() {
-	return <OrganizationGate>{() => <Page.Root className='h-full' size='full' />}</OrganizationGate>;
+	return <OrganizationGate>{organization => <LinksContent orgID={organization.id} />}</OrganizationGate>;
+}
+
+function LinksContent({ orgID }: { orgID: number }) {
+	const t = useTranslate();
+	const downloadQr = useDownloadQr();
+	const { locale } = useLanguage();
+	const queryClient = useQueryClient();
+	const [page, setPage] = useState(1);
+	const [creating, setCreating] = useState(false);
+	const [selectedID, setSelectedID] = useState<number>();
+	const [deleting, setDeleting] = useState<Link>();
+	const links = useListLinks(orgID, {
+		limit: PAGE_SIZE,
+		offset: (page - 1) * PAGE_SIZE,
+	});
+	const deleteLink = useDeleteLink();
+	const total = links.data?.meta?.total ?? 0;
+	const rows = links.data?.data ?? [];
+	const selected = rows.find(link => link.id === selectedID);
+
+	const columns = useMemo<ColumnDef<DataTableFeatures, Link>[]>(
+		() => [
+			{
+				cell: ({ row }) => <span className='font-medium'>{row.original.short_url?.replace(/^https?:\/\//, '')}</span>,
+				header: t('protected.links.columns.shortUrl'),
+				id: 'shortUrl',
+				size: 240,
+			},
+			{
+				cell: ({ row }) => (
+					<span className='block max-w-md truncate text-muted-foreground' title={row.original.origin_url}>
+						{row.original.origin_url}
+					</span>
+				),
+				header: t('protected.links.columns.destination'),
+				id: 'destination',
+				size: 320,
+			},
+			{
+				cell: ({ row }) => {
+					const expired = row.original.expires_at ? new Date(row.original.expires_at).getTime() < Date.now() : false;
+					return (
+						<div className='flex gap-1.5'>
+							{row.original.protected && (
+								<Badge variant='warning'>
+									<Badge.Text>{t('protected.links.badges.protected')}</Badge.Text>
+								</Badge>
+							)}
+							{expired && (
+								<Badge variant='destructive'>
+									<Badge.Text>{t('protected.links.badges.expired')}</Badge.Text>
+								</Badge>
+							)}
+						</div>
+					);
+				},
+				header: t('protected.links.columns.access'),
+				id: 'access',
+				size: 160,
+			},
+			{
+				cell: ({ row }) => row.original.max_clicks ?? t('protected.links.noLimit'),
+				header: t('protected.links.columns.clicks'),
+				id: 'clicks',
+				size: 130,
+			},
+			{
+				cell: ({ row }) => formatDateTime(row.original.expires_at, locale, t('protected.links.never')),
+				header: t('protected.links.columns.expires'),
+				id: 'expires',
+				size: 180,
+			},
+			{
+				cell: ({ row }) => formatDateTime(row.original.created_at, locale),
+				header: t('protected.links.columns.createdAt'),
+				id: 'createdAt',
+				size: 180,
+			},
+			{
+				cell: ({ row }) => (
+					<LinkActions onDelete={() => setDeleting(row.original)} onDownloadQr={() => row.original.short_url && void downloadQr(row.original.short_url, row.original.code ?? 'qr')} />
+				),
+				header: '',
+				id: 'actions',
+				size: 64,
+			},
+		],
+		[t, locale]
+	);
+
+	return (
+		<Page.Root className='h-full' size='full'>
+			<Page.Header>
+				<div>
+					<Page.Title>{t('protected.links.title')}</Page.Title>
+					<Page.Description>{t('protected.links.description')}</Page.Description>
+				</div>
+				<Page.Actions>
+					<Button onClick={() => setCreating(true)}>
+						<Button.Icon icon={Plus} />
+						<Button.Text>{t('protected.links.create.action')}</Button.Text>
+					</Button>
+				</Page.Actions>
+			</Page.Header>
+			<Page.Body className='min-h-0 flex-1'>
+				<DataTable
+					columns={columns}
+					data={rows}
+					emptyMessage={t('protected.links.empty')}
+					isLoading={links.isLoading}
+					onRowClick={link => setSelectedID(link.id)}
+					pagination={{
+						onPageChange: setPage,
+						page,
+						pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+						pageSize: PAGE_SIZE,
+						total,
+					}}
+					toolbar={
+						<TableToolbar>
+							<span />
+							<TableToolbar.RefreshButton isRefreshing={links.isFetching} label={t('protected.table.refresh')} onRefresh={() => void links.refetch()} />
+						</TableToolbar>
+					}
+				/>
+			</Page.Body>
+			<CreateLinkDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
+			<LinkDrawer link={selected} onClose={() => setSelectedID(undefined)} onDelete={setDeleting} orgID={orgID} />
+			<ConfirmDialog.Root
+				lang={{ cancel: t('protected.confirm.cancel'), confirm: t('protected.confirm.delete') }}
+				onConfirm={async () => {
+					if (deleting?.id === undefined) return;
+					await deleteLink.mutateAsync({ linkID: deleting.id, orgID });
+					toast.success(t('protected.toast.linkDeleted'));
+					setSelectedID(undefined);
+					await queryClient.invalidateQueries({ queryKey: getListLinksQueryKey(orgID) });
+				}}
+				onOpenChange={open => !open && setDeleting(undefined)}
+				open={deleting !== undefined}
+				variant='destructive'
+			>
+				<ConfirmDialog.Content>
+					<ConfirmDialog.Icon />
+					<ConfirmDialog.Title>{t('protected.links.delete.title', { code: deleting?.code ?? '' })}</ConfirmDialog.Title>
+					<ConfirmDialog.Description>{t('protected.links.delete.description')}</ConfirmDialog.Description>
+					<ConfirmDialog.Footer>
+						<ConfirmDialog.Cancel />
+						<ConfirmDialog.Confirm />
+					</ConfirmDialog.Footer>
+				</ConfirmDialog.Content>
+			</ConfirmDialog.Root>
+		</Page.Root>
+	);
 }

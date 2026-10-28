@@ -1,4 +1,4 @@
-import { Code, KeyRound, LayoutDashboard, Link2, Megaphone, Menu, Plug, QrCode, Users } from 'lucide-react';
+import { Code, Globe, KeyRound, LayoutDashboard, Link2, Megaphone, Menu, Plug, QrCode, Users } from 'lucide-react';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v8';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -68,6 +68,7 @@ function ProtectedShell() {
 					<SidebarFloat.Item active={pathname.startsWith('/links')} as={Link} icon={Link2} label={t('protected.nav.links')} to={toOrganization('/links')} />
 					<SidebarFloat.Item active={pathname.startsWith('/qr-code')} as={Link} icon={QrCode} label={t('protected.nav.qrCode')} to={toOrganization('/qr-code')} />
 					<SidebarFloat.Item active={pathname.startsWith('/campaigns')} as={Link} icon={Megaphone} label={t('protected.nav.campaigns')} to={toOrganization('/campaigns')} />
+					<SidebarFloat.Item active={pathname.startsWith('/domains')} as={Link} icon={Globe} label={t('protected.nav.domains')} to={toOrganization('/domains')} />
 					<SidebarFloat.Item active={pathname.startsWith('/users')} as={Link} icon={Users} label={t('protected.nav.users')} to={toOrganization('/users')} />
 					<SidebarFloat.Item active={pathname.startsWith('/api-keys')} as={Link} icon={KeyRound} label={t('protected.nav.apiKeys')} to={toOrganization('/api-keys')} />
 					<SidebarFloat.Item active={pathname.startsWith('/docs')} as={Link} icon={Code} label={t('protected.nav.docs')} to={toOrganization('/docs')} />

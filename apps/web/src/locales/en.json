@@ -130,7 +130,8 @@
 			"campaigns": "Campaigns",
 			"qrCode": "QR Codes",
 			"docs": "Docs",
-			"mcp": "MCP"
+			"mcp": "MCP",
+			"domains": "Domains"
 		},
 		"command": {
 			"empty": "No results",
@@ -309,6 +310,162 @@
 				"submit": "Delete account",
 				"submitting": "Deleting..."
 			}
+		},
+		"links": {
+			"title": "Links",
+			"description": "Short links of this organization.",
+			"empty": "No links yet. Create the first one.",
+			"never": "Never",
+			"noLimit": "No limit",
+			"open": "Open details",
+			"columns": {
+				"shortUrl": "Short link",
+				"destination": "Destination",
+				"clicks": "Click limit",
+				"expires": "Expires",
+				"createdAt": "Created",
+				"access": "Access"
+			},
+			"badges": {
+				"protected": "Password",
+				"expired": "Expired"
+			},
+			"create": {
+				"action": "Create link",
+				"title": "New link",
+				"description": "Paste a long URL and, if you want, shape how the short link behaves.",
+				"url": {
+					"label": "Destination URL",
+					"placeholder": "https://example.com/a/very/long/path",
+					"required": "Enter a URL",
+					"invalid": "Enter a valid http(s) URL"
+				},
+				"alias": {
+					"label": "Custom alias",
+					"placeholder": "summer-sale",
+					"hint": "Leave empty for a random code. Up to 15 letters, numbers, - or _.",
+					"invalid": "Use only letters, numbers, - or _ (max 15)"
+				},
+				"domain": {
+					"label": "Domain",
+					"placeholder": "Default domain",
+					"hint": "Type a new domain to add it. Verify it in Domains before use.",
+					"clear": "Clear",
+					"creating": "Adding domain..."
+				},
+				"expires": {
+					"label": "Expires on"
+				},
+				"maxClicks": {
+					"label": "Click limit",
+					"invalid": "Use a whole number above 0"
+				},
+				"password": {
+					"label": "Password",
+					"placeholder": "Ask for a password to open it"
+				},
+				"submit": "Create link",
+				"submitting": "Creating..."
+			},
+			"actions": {
+				"label": "Link actions",
+				"downloadQr": "Download QR",
+				"delete": "Delete link"
+			},
+			"delete": {
+				"label": "Delete link",
+				"title": "Delete /{{code}}?",
+				"description": "The short link will stop working. It can't be undone."
+			},
+			"drawer": {
+				"title": "Link details",
+				"copy": "Copy",
+				"copied": "Copied",
+				"origin": "Destination",
+				"shortUrl": "Short link",
+				"created": "Created",
+				"expires": "Expires",
+				"maxClicks": "Click limit",
+				"qr": {
+					"title": "QR code",
+					"download": "Download QR code"
+				},
+				"unlock": {
+					"title": "Unlock page",
+					"description": "Custom HTML shown to visitors who must enter the password.",
+					"label": "HTML",
+					"placeholder": "<h1>Enter the password</h1>",
+					"save": "Save page",
+					"saving": "Saving...",
+					"remove": "Use default page",
+					"notProtected": "This link has no password, so visitors never see this page."
+				},
+				"close": "Close"
+			}
+		},
+		"domains": {
+			"title": "Domains",
+			"description": "Use your own domain for short links.",
+			"empty": "No domains yet.",
+			"never": "—",
+			"columns": {
+				"host": "Domain",
+				"status": "Status",
+				"record": "DNS record",
+				"createdAt": "Added"
+			},
+			"status": {
+				"verified": "Verified",
+				"pending": "Pending"
+			},
+			"create": {
+				"action": "Add domain",
+				"title": "Add a domain",
+				"description": "Enter the domain, then create the DNS record we show you.",
+				"host": {
+					"label": "Domain",
+					"placeholder": "go.example.com",
+					"required": "Enter a domain",
+					"invalid": "Enter a valid domain, without https://"
+				},
+				"submit": "Add domain",
+				"submitting": "Adding..."
+			},
+			"record": {
+				"type": "Type",
+				"name": "Name",
+				"value": "Value",
+				"hint": "Create this record, then verify.",
+				"copied": "Copied",
+				"copy": "Copy"
+			},
+			"verify": {
+				"label": "Verify domain",
+				"failed": "We couldn't find the DNS record yet. DNS changes can take a while."
+			},
+			"delete": {
+				"label": "Delete domain",
+				"title": "Delete {{host}}?",
+				"description": "Links using this domain will stop working. It can't be undone."
+			}
+		},
+		"toast": {
+			"organizationCreated": "Organization created",
+			"organizationUpdated": "Organization updated",
+			"apiKeyCreated": "API key created",
+			"domainCreated": "Domain added",
+			"linkCreated": "Link created",
+			"memberInvited": "Invitation sent",
+			"unlockSaved": "Unlock page saved",
+			"unlockRemoved": "Unlock page removed",
+			"qrDownloaded": "QR code downloaded",
+			"qrFailed": "Could not download the QR code",
+			"organizationDeleted": "Organization deleted",
+			"linkDeleted": "Link deleted",
+			"domainDeleted": "Domain deleted",
+			"apiKeyDeleted": "API key deleted",
+			"memberRemoved": "Member removed",
+			"accountDeleted": "Account deleted"
 		}
 	},
 	"errors": {

@@ -123,8 +123,10 @@
 		"nav": {
 			"dashboard": "Panel",
 			"links": "Enlaces",
-			"search": "Buscar",
-			"settings": "Configuración"
+			"search": "Abrir búsqueda",
+			"settings": "Configuración",
+			"users": "Usuarios",
+			"apiKeys": "Claves de API"
 		},
 		"command": {
 			"empty": "Sin resultados",
@@ -157,6 +159,27 @@
 			"validation": {
 				"nameRequired": "Ingresa un nombre",
 				"tooLong": "Usa como máximo {{max}} caracteres"
+			},
+			"actions": "Acciones de la organización",
+			"add": "Añadir",
+			"editAction": "Editar",
+			"deleteAction": "Eliminar",
+			"edit": {
+				"title": "Editar organización",
+				"description": "Cambia el nombre o la descripción de esta organización.",
+				"submit": "Guardar cambios",
+				"submitting": "Guardando..."
+			},
+			"delete": {
+				"title": "¿Eliminar {{name}}?",
+				"description": "Se eliminará permanentemente la organización con sus enlaces, dominios y claves de API. No se puede deshacer.",
+				"cancel": "Cancelar",
+				"confirm": "Eliminar"
+			},
+			"loading": "Cargando...",
+			"empty": {
+				"title": "Primero crea una organización",
+				"description": "Las organizaciones agrupan tus enlaces, usuarios y claves de API. Crea una para empezar a usar esta página."
 			}
 		},
 		"settings": {
@@ -169,6 +192,84 @@
 			"expand": "Expandir barra lateral",
 			"primary": "Principal",
 			"openMenu": "Abrir menú"
+		},
+		"confirm": {
+			"cancel": "Cancelar",
+			"delete": "Eliminar"
+		},
+		"table": {
+			"refresh": "Actualizar",
+			"clearSearch": "Limpiar búsqueda"
+		},
+		"users": {
+			"title": "Usuarios",
+			"description": "Personas con acceso a esta organización.",
+			"search": "Buscar por nombre o correo",
+			"empty": "No se encontraron usuarios.",
+			"columns": {
+				"name": "Nombre",
+				"email": "Correo",
+				"role": "Rol",
+				"createdAt": "Se unió"
+			},
+			"roles": {
+				"OWNER": "Propietario",
+				"ADMIN": "Administrador"
+			},
+			"invite": {
+				"action": "Añadir usuario",
+				"title": "Invitar a un usuario",
+				"description": "Le enviaremos por correo una invitación para unirse a esta organización.",
+				"email": "Correo",
+				"emailInvalid": "Ingresa un correo válido",
+				"submit": "Enviar invitación",
+				"submitting": "Enviando..."
+			},
+			"delete": {
+				"label": "Quitar usuario",
+				"title": "¿Quitar a {{name}}?",
+				"description": "Perderá el acceso a esta organización."
+			}
+		},
+		"apiKeys": {
+			"title": "Claves de API",
+			"description": "Claves para usar la API desde tus propias aplicaciones.",
+			"empty": "Aún no hay claves de API.",
+			"never": "Nunca",
+			"columns": {
+				"name": "Nombre",
+				"key": "Clave",
+				"scope": "Alcance",
+				"lastUsed": "Último uso",
+				"expires": "Expira",
+				"createdAt": "Creada"
+			},
+			"scopes": {
+				"read": "Lectura",
+				"write": "Escritura"
+			},
+			"create": {
+				"action": "Crear clave de API",
+				"title": "Nueva clave de API",
+				"description": "Elige un nombre y lo que la clave puede hacer.",
+				"namePlaceholder": "Servidor de producción",
+				"nameRequired": "Ingresa un nombre",
+				"submit": "Crear clave",
+				"submitting": "Creando..."
+			},
+			"created": {
+				"title": "Tu clave de API",
+				"description": "Cópiala ahora: por seguridad no se mostrará de nuevo.",
+				"label": "Clave de API",
+				"copy": "Copiar",
+				"copied": "Copiada",
+				"done": "Listo"
+			},
+			"delete": {
+				"label": "Eliminar clave de API",
+				"title": "¿Eliminar {{name}}?",
+				"description": "Las aplicaciones que usen esta clave dejarán de funcionar. No se puede deshacer."
+			}
 		}
 	},
 	"errors": {

@@ -123,8 +123,10 @@
 		"nav": {
 			"dashboard": "Dashboard",
 			"links": "Links",
-			"search": "Search",
-			"settings": "Settings"
+			"search": "Open to search",
+			"settings": "Settings",
+			"users": "Users",
+			"apiKeys": "API Keys"
 		},
 		"command": {
 			"empty": "No results",
@@ -157,6 +159,27 @@
 			"validation": {
 				"nameRequired": "Enter a name",
 				"tooLong": "Use at most {{max}} characters"
+			},
+			"actions": "Organization actions",
+			"add": "Add",
+			"editAction": "Edit",
+			"deleteAction": "Delete",
+			"edit": {
+				"title": "Edit organization",
+				"description": "Change the name or description of this organization.",
+				"submit": "Save changes",
+				"submitting": "Saving..."
+			},
+			"delete": {
+				"title": "Delete {{name}}?",
+				"description": "This permanently deletes the organization with its links, domains and API keys. It can't be undone.",
+				"cancel": "Cancel",
+				"confirm": "Delete"
+			},
+			"loading": "Loading...",
+			"empty": {
+				"title": "Create an organization first",
+				"description": "Organizations hold your links, users and API keys. Create one to start using this page."
 			}
 		},
 		"settings": {
@@ -169,6 +192,84 @@
 			"expand": "Expand sidebar",
 			"primary": "Primary",
 			"openMenu": "Open menu"
+		},
+		"confirm": {
+			"cancel": "Cancel",
+			"delete": "Delete"
+		},
+		"table": {
+			"refresh": "Refresh",
+			"clearSearch": "Clear search"
+		},
+		"users": {
+			"title": "Users",
+			"description": "People with access to this organization.",
+			"search": "Search by name or email",
+			"empty": "No users found.",
+			"columns": {
+				"name": "Name",
+				"email": "Email",
+				"role": "Role",
+				"createdAt": "Joined"
+			},
+			"roles": {
+				"OWNER": "Owner",
+				"ADMIN": "Admin"
+			},
+			"invite": {
+				"action": "Add user",
+				"title": "Invite a user",
+				"description": "We will email them an invitation to join this organization.",
+				"email": "Email",
+				"emailInvalid": "Enter a valid email",
+				"submit": "Send invitation",
+				"submitting": "Sending..."
+			},
+			"delete": {
+				"label": "Remove user",
+				"title": "Remove {{name}}?",
+				"description": "They will lose access to this organization."
+			}
+		},
+		"apiKeys": {
+			"title": "API Keys",
+			"description": "Keys to use the API from your own apps.",
+			"empty": "No API keys yet.",
+			"never": "Never",
+			"columns": {
+				"name": "Name",
+				"key": "Key",
+				"scope": "Scope",
+				"lastUsed": "Last used",
+				"expires": "Expires",
+				"createdAt": "Created"
+			},
+			"scopes": {
+				"read": "Read",
+				"write": "Write"
+			},
+			"create": {
+				"action": "Create API key",
+				"title": "New API key",
+				"description": "Pick a name and what the key is allowed to do.",
+				"namePlaceholder": "Production server",
+				"nameRequired": "Enter a name",
+				"submit": "Create key",
+				"submitting": "Creating..."
+			},
+			"created": {
+				"title": "Your API key",
+				"description": "Copy it now: for security it won't be shown again.",
+				"label": "API key",
+				"copy": "Copy",
+				"copied": "Copied",
+				"done": "Done"
+			},
+			"delete": {
+				"label": "Delete API key",
+				"title": "Delete {{name}}?",
+				"description": "Apps using this key will stop working. It can't be undone."
+			}
 		}
 	},
 	"errors": {

@@ -39,6 +39,7 @@
 		"nuqs": "2.10.2",
 		"qrcode.react": "4.2.0",
 		"react": "19.2.8",
+		"react-colorful": "5.8.1",
 		"react-dom": "19.2.8",
 		"react-hook-form": "7.88.0",
 		"react-i18next": "17.1.9",

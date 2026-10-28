@@ -129,7 +129,8 @@
 			"apiKeys": "Claves de API",
 			"campaigns": "Campañas",
 			"qrCode": "Códigos QR",
-			"docs": "Documentación"
+			"docs": "Documentación",
+			"mcp": "MCP"
 		},
 		"command": {
 			"empty": "Sin resultados",
@@ -187,7 +188,13 @@
 		},
 		"settings": {
 			"logout": "Cerrar sesión",
-			"loggingOut": "Cerrando sesión..."
+			"loggingOut": "Cerrando sesión...",
+			"general": "General",
+			"account": "Cuenta",
+			"search": "Buscar",
+			"noResults": "Sin resultados",
+			"close": "Cerrar",
+			"appearance": "Apariencia"
 		},
 		"sidebar": {
 			"closeMenu": "Cerrar menú",
@@ -272,6 +279,35 @@
 				"label": "Eliminar clave de API",
 				"title": "¿Eliminar {{name}}?",
 				"description": "Las aplicaciones que usen esta clave dejarán de funcionar. No se puede deshacer."
+			}
+		},
+		"account": {
+			"profile": {
+				"title": "Perfil",
+				"name": "Nombre completo",
+				"email": "Correo",
+				"provider": "Método de acceso",
+				"photo": "Foto de perfil"
+			},
+			"providers": {
+				"DEFAULT": "Correo y contraseña",
+				"GOOGLE": "Google"
+			},
+			"danger": {
+				"title": "Zona de peligro",
+				"label": "Eliminar cuenta",
+				"description": "Elimina tu cuenta de forma permanente. Perderás los datos y accesos que has creado, y no se puede deshacer.",
+				"action": "Eliminar cuenta"
+			},
+			"confirm": {
+				"title": "¿Eliminar tu cuenta?",
+				"continue": "Continuar"
+			},
+			"code": {
+				"title": "Confirma con el código",
+				"description": "Te enviamos un código de verificación por correo. Ingrésalo para eliminar tu cuenta.",
+				"submit": "Eliminar cuenta",
+				"submitting": "Eliminando..."
 			}
 		}
 	},

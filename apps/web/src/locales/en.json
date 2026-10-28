@@ -129,7 +129,8 @@
 			"apiKeys": "API Keys",
 			"campaigns": "Campaigns",
 			"qrCode": "QR Codes",
-			"docs": "Docs"
+			"docs": "Docs",
+			"mcp": "MCP"
 		},
 		"command": {
 			"empty": "No results",
@@ -187,7 +188,13 @@
 		},
 		"settings": {
 			"logout": "Log out",
-			"loggingOut": "Logging out..."
+			"loggingOut": "Logging out...",
+			"general": "General",
+			"account": "Account",
+			"search": "Search",
+			"noResults": "No results",
+			"close": "Close",
+			"appearance": "Appearance"
 		},
 		"sidebar": {
 			"closeMenu": "Close menu",
@@ -272,6 +279,35 @@
 				"label": "Delete API key",
 				"title": "Delete {{name}}?",
 				"description": "Apps using this key will stop working. It can't be undone."
+			}
+		},
+		"account": {
+			"profile": {
+				"title": "Profile",
+				"name": "Full name",
+				"email": "Email",
+				"provider": "Sign-in method",
+				"photo": "Profile photo"
+			},
+			"providers": {
+				"DEFAULT": "Email and password",
+				"GOOGLE": "Google"
+			},
+			"danger": {
+				"title": "Danger zone",
+				"label": "Delete account",
+				"description": "Permanently deletes your account. You will lose the data and access you have created, and this can't be undone.",
+				"action": "Delete account"
+			},
+			"confirm": {
+				"title": "Delete your account?",
+				"continue": "Continue"
+			},
+			"code": {
+				"title": "Confirm with the code",
+				"description": "We emailed you a verification code. Enter it to delete your account.",
+				"submit": "Delete account",
+				"submitting": "Deleting..."
 			}
 		}
 	},

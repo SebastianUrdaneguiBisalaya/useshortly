@@ -7,12 +7,12 @@ import { Button } from '~/components/ui/actions-controls/button/button';
 import { Badge } from '~/components/ui/data-display/badge/badge';
 import { Input } from '~/components/ui/forms-inputs/input/input';
 import { Separator } from '~/components/ui/foundations/separator/separator';
-import { ScanCode } from '~/components/ui/media-files/scan-code/scan-code';
 import { Drawer } from '~/components/ui/overlays-feedback/drawer/drawer';
 import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useDownloadQr } from '../share/download-qr';
+import { QrImage } from '../share/qr-image';
 import { UnlockPageDialog } from './unlock-page-dialog';
 
 /** Side panel with everything about one link: short URL, settings, QR code and (for protected links) the unlock page. */
@@ -63,22 +63,16 @@ export function LinkDrawer({ orgID, link, onClose, onDelete }: { orgID: number; 
 							<section aria-label={t('protected.links.drawer.qr.title')} className='flex flex-col gap-3'>
 								<h3 className='font-primary text-sm font-semibold'>{t('protected.links.drawer.qr.title')}</h3>
 								{link.short_url && (
-									<ScanCode
-										lang={{ download: t('protected.links.drawer.qr.download'), qr: t('protected.links.drawer.qr.title') }}
-										onDownload={({ value }) => void downloadQr(value, link.code ?? 'qr')}
-										scheme='fixed'
-										value={link.short_url}
-									>
-										<ScanCode.Canvas size={176} />
-										<ScanCode.DownloadButton />
-									</ScanCode>
+									<div className='w-fit overflow-hidden rounded-lg border border-border'>
+										<QrImage size={176} style={link.qr_style} value={link.short_url} />
+									</div>
 								)}
 							</section>
 							<Separator />
 							<UnlockPageEditor key={link.id} link={link} orgID={orgID} />
 						</Drawer.Body>
 						<Drawer.Footer className='flex items-center justify-between gap-2'>
-							<Button onClick={() => link.short_url && void downloadQr(link.short_url, link.code ?? 'qr')} variant='secondary'>
+							<Button onClick={() => link.short_url && void downloadQr(link.short_url, link.code ?? 'qr', link.qr_style)} variant='secondary'>
 								<Button.Icon icon={Download} />
 								<Button.Text>{t('protected.links.actions.downloadQr')}</Button.Text>
 							</Button>

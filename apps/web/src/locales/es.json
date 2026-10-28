@@ -571,7 +571,30 @@
 			"domainDeleted": "Dominio eliminado",
 			"apiKeyDeleted": "Clave de API eliminada",
 			"memberRemoved": "Miembro eliminado",
-			"accountDeleted": "Cuenta eliminada"
+			"accountDeleted": "Cuenta eliminada",
+			"qrStyleSaved": "Estilo del QR guardado"
+		},
+		"qr": {
+			"title": "Códigos QR",
+			"description": "El código QR de cada enlace. Descárgalo o personalízalo con tus colores y logo.",
+			"create": "Crear código QR",
+			"loading": "Cargando códigos QR",
+			"empty": "Aún no hay códigos QR. Crea un enlace y su código QR aparecerá aquí.",
+			"download": "Descargar",
+			"customize": "Personalizar código QR",
+			"style": {
+				"title": "Personalizar código QR",
+				"foreground": "Color del código",
+				"background": "Color de fondo",
+				"logo": "Logo (opcional)",
+				"logoHint": "Una imagen https que se muestra en el centro del código. Si el servidor bloquea descargas desde otros sitios, el PNG se guarda sin él.",
+				"invalidColor": "Usa colores como #1a2b3c.",
+				"lowContrast": "El código debe ser más oscuro que el fondo, con suficiente contraste para escanearse.",
+				"invalidLogo": "Usa una URL https.",
+				"reset": "Usar predeterminado",
+				"save": "Guardar estilo",
+				"saving": "Guardando..."
+			}
 		}
 	},
 	"errors": {

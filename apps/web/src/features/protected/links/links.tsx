@@ -114,7 +114,10 @@ function LinksContent({ orgID }: { orgID: number }) {
 			},
 			{
 				cell: ({ row }) => (
-					<LinkActions onDelete={() => setDeleting(row.original)} onDownloadQr={() => row.original.short_url && void downloadQr(row.original.short_url, row.original.code ?? 'qr')} />
+					<LinkActions
+						onDelete={() => setDeleting(row.original)}
+						onDownloadQr={() => row.original.short_url && void downloadQr(row.original.short_url, row.original.code ?? 'qr', row.original.qr_style)}
+					/>
 				),
 				header: '',
 				id: 'actions',

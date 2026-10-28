@@ -571,7 +571,30 @@
 			"domainDeleted": "Domain deleted",
 			"apiKeyDeleted": "API key deleted",
 			"memberRemoved": "Member removed",
-			"accountDeleted": "Account deleted"
+			"accountDeleted": "Account deleted",
+			"qrStyleSaved": "QR style saved"
+		},
+		"qr": {
+			"title": "QR Codes",
+			"description": "The QR code of every link. Download it or style it with your colors and logo.",
+			"create": "Create QR code",
+			"loading": "Loading QR codes",
+			"empty": "No QR codes yet. Create a link and its QR code appears here.",
+			"download": "Download",
+			"customize": "Customize QR code",
+			"style": {
+				"title": "Customize QR code",
+				"foreground": "Code color",
+				"background": "Background color",
+				"logo": "Logo (optional)",
+				"logoHint": "An https image shown in the middle of the code. If the host blocks downloads from other sites, the PNG is saved without it.",
+				"invalidColor": "Use colors like #1a2b3c.",
+				"lowContrast": "The code must be darker than the background, with enough contrast to scan.",
+				"invalidLogo": "Use an https URL.",
+				"reset": "Use default",
+				"save": "Save style",
+				"saving": "Saving..."
+			}
 		}
 	},
 	"errors": {

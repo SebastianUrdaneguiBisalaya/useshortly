@@ -1,8 +1,9 @@
 'use client';
 
-import { Eye, EyeOff, type LucideIcon } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, type LucideIcon } from 'lucide-react';
 import * as React from 'react';
 import { Icon } from '../../foundations/icon/icon';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { cn } from '../../utils/tailwind/cn';
 
 const inputClassNames = {
@@ -15,13 +16,14 @@ const inputClassNames = {
 } as const;
 
 interface InputContextValue {
-	inputId: string;
-	errorId: string;
-	maxLength?: number;
 	currentLength: number;
+	errorId: string;
+	fieldRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+	handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+	inputId: string;
+	maxLength?: number;
 	passwordVisible: boolean;
 	togglePasswordVisibility: () => void;
-	handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
 const InputContext = React.createContext<InputContextValue | null>(null);
@@ -32,6 +34,15 @@ function useInputContext() {
 		throw new Error('Input compound components must be used inside <Input>.');
 	}
 	return context;
+}
+
+function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+	return (node: T | null) => {
+		for (const ref of refs) {
+			if (typeof ref === 'function') ref(node);
+			else if (ref) (ref as React.RefObject<T | null>).current = node;
+		}
+	};
 }
 
 export interface InputRootProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -49,6 +60,7 @@ export interface InputRootProps extends React.HTMLAttributes<HTMLDivElement> {
 function InputRoot({ children, className, errorMessage, maxLength, ...props }: InputRootProps) {
 	const inputId = React.useId();
 	const errorId = `${inputId}-error`;
+	const fieldRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 	const [currentLength, setCurrentLength] = React.useState(0);
 	const [passwordVisible, setPasswordVisible] = React.useState(false);
 
@@ -68,6 +80,7 @@ function InputRoot({ children, className, errorMessage, maxLength, ...props }: I
 			value={{
 				currentLength,
 				errorId,
+				fieldRef,
 				handleChange,
 				inputId,
 				maxLength,
@@ -91,8 +104,8 @@ function InputRoot({ children, className, errorMessage, maxLength, ...props }: I
 	);
 }
 
-function InputField({ className, id, type, onChange, 'aria-invalid': ariaInvalid, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-	const { inputId, errorId, handleChange, maxLength, passwordVisible } = useInputContext();
+function InputField({ className, id, type, onChange, ref, 'aria-invalid': ariaInvalid, ...props }: React.ComponentProps<'input'>) {
+	const { inputId, errorId, fieldRef, handleChange, maxLength, passwordVisible } = useInputContext();
 	const isPasswordField = type === 'password';
 
 	const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,14 +121,15 @@ function InputField({ className, id, type, onChange, 'aria-invalid': ariaInvalid
 			id={id ?? inputId}
 			maxLength={maxLength}
 			onChange={handleFieldChange}
+			ref={mergeRefs(fieldRef, ref)}
 			type={isPasswordField ? (passwordVisible ? 'text' : 'password') : type}
 			{...props}
 		/>
 	);
 }
 
-function InputTextarea({ className, id, onChange, 'aria-invalid': ariaInvalid, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-	const { inputId, errorId, handleChange, maxLength } = useInputContext();
+function InputTextarea({ className, id, onChange, ref, 'aria-invalid': ariaInvalid, ...props }: React.ComponentProps<'textarea'>) {
+	const { inputId, errorId, fieldRef, handleChange, maxLength } = useInputContext();
 
 	const handleFieldChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		handleChange(event);
@@ -130,6 +144,7 @@ function InputTextarea({ className, id, onChange, 'aria-invalid': ariaInvalid, .
 			id={id ?? inputId}
 			maxLength={maxLength}
 			onChange={handleFieldChange}
+			ref={mergeRefs(fieldRef, ref)}
 			{...props}
 		/>
 	);
@@ -156,11 +171,11 @@ function InputLabel({ children, className, required, ...props }: InputLabelProps
 }
 
 export interface InputIconProps {
-	/** Lucide icon component to render. */
-	icon: LucideIcon;
-	className?: string;
 	/** Accessible name; omit for a purely decorative icon. */
 	'aria-label'?: string;
+	className?: string;
+	/** Lucide icon component to render. */
+	icon: LucideIcon;
 }
 
 function InputIcon({ icon, className, 'aria-label': ariaLabel }: InputIconProps) {
@@ -172,6 +187,7 @@ function InputIcon({ icon, className, 'aria-label': ariaLabel }: InputIconProps)
 }
 
 export interface InputPasswordToggleProps {
+	className?: string;
 	/**
 	 * Accessible name/tooltip while the password is visible.
 	 * @default "Hide password"
@@ -182,7 +198,6 @@ export interface InputPasswordToggleProps {
 	 * @default "Show password"
 	 */
 	showLabel?: string;
-	className?: string;
 }
 
 /** Toggles the sibling `Input.Field type="password"` between masked and visible. */
@@ -201,6 +216,66 @@ function InputPasswordToggle({ hideLabel = 'Hide password', showLabel = 'Show pa
 				<Icon icon={passwordVisible ? EyeOff : Eye} size='sm' />
 			</span>
 		</button>
+	);
+}
+
+/** Texts rendered by `Input.CopyButton`. Pass `lang` to override any of them. */
+export interface InputCopyButtonLang {
+	/** Accessible label right after copying. */
+	copied: string;
+	/** Accessible label before copying. */
+	copy: string;
+}
+
+/** English defaults for `InputCopyButtonLang`. */
+export const defaultInputCopyButtonLang: InputCopyButtonLang = {
+	copied: 'Copied',
+	copy: 'Copy',
+};
+
+export interface InputCopyButtonProps {
+	/** Additional classes for the button. */
+	className?: string;
+	/**
+	 * Texts rendered by this component. Merges over English defaults.
+	 * @default defaultInputCopyButtonLang
+	 */
+	lang?: Partial<InputCopyButtonLang>;
+	/**
+	 * Text to copy. When omitted, the current value of the sibling `Input.Field` / `Input.Textarea` is copied.
+	 */
+	value?: string;
+}
+
+/**
+ * Copies the field's value to the clipboard and briefly swaps the icon for a check. Pair it with
+ * `Input.Field readOnly` to show a value the user can copy but not edit. For a secret such as an API token, use
+ * `type="password"` and omit `Input.PasswordToggle`: the value stays masked and is still copied in full.
+ */
+function InputCopyButton({ className, lang, value }: InputCopyButtonProps) {
+	const resolvedLang = {
+		...defaultInputCopyButtonLang,
+		...lang,
+	};
+	const { fieldRef } = useInputContext();
+	const { copied, copy } = useCopyToClipboard();
+
+	return (
+		<>
+			<button
+				aria-label={copied ? resolvedLang.copied : resolvedLang.copy}
+				className={cn(inputClassNames.passwordToggle, 'cursor-pointer rounded-sm focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!', className)}
+				onClick={() => copy(value ?? fieldRef.current?.value ?? '')}
+				type='button'
+			>
+				<span className='flex animate-fade-scale-in' key={copied ? 'copied' : 'copy'}>
+					<Icon icon={copied ? Check : Copy} size='sm' />
+				</span>
+			</button>
+			<span className='sr-only' role='status'>
+				{copied ? resolvedLang.copied : ''}
+			</span>
+		</>
 	);
 }
 
@@ -233,6 +308,7 @@ function Counter() {
  * ```
  */
 export const Input = Object.assign(InputRoot, {
+	CopyButton: InputCopyButton,
 	Counter,
 	Field: InputField,
 	Icon: InputIcon,

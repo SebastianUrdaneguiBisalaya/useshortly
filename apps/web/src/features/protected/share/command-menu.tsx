@@ -1,6 +1,6 @@
 import { formatHotkey } from '@usehotkeys/core';
 import { useBindings, useHotkeys } from '@usehotkeys/react';
-import { LayoutDashboard, Link2, type LucideIcon, Search, Settings } from 'lucide-react';
+import { KeyRound, LayoutDashboard, Link2, type LucideIcon, Search, Users } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
@@ -8,10 +8,10 @@ import { Kbd } from '~/components/ui/foundations/kbd/kbd';
 import { Command } from '~/components/ui/navigation/command/command';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
 import { useTranslate } from '~/hooks/use-translate';
-import { useOrganizationTo } from './organization/use-current-organization';
+import { useOrganizationTo } from '../organization/use-current-organization';
 
 /** One `Kbd` per key, in the user's platform: `⌘ + K` on a Mac, `Ctrl + K` on Windows and Linux. A sequence (`g i`) keeps its steps apart. */
-function HotkeyKeys({ combo }: { combo: string }) {
+export function HotkeyKeys({ combo }: { combo: string }) {
 	return (
 		<span className='flex items-center gap-1.5'>
 			{combo.split(' ').map((step, stepIndex) => (
@@ -63,13 +63,13 @@ export function CommandMenu() {
 	const destinations: Destination[] = [
 		{ icon: LayoutDashboard, label: t('protected.nav.dashboard'), to: '/' },
 		{ icon: Link2, label: t('protected.nav.links'), to: '/links' },
-		{ icon: Settings, label: t('protected.nav.settings'), to: '/settings' },
+		{ icon: Users, label: t('protected.nav.users'), to: '/users' },
+		{ icon: KeyRound, label: t('protected.nav.apiKeys'), to: '/api-keys' },
 	].filter(destination => matches(destination.label));
 	const shortcuts = bindings.filter(binding => matches(binding.label ?? ''));
 
 	return (
 		<>
-			<SidebarFloat.Item as='button' className='border border-border' icon={Search} label={t('protected.nav.search')} onClick={() => setOpen(true)} type='button' />
 			<Command
 				onOpenChange={next => {
 					setOpen(next);
@@ -78,6 +78,9 @@ export function CommandMenu() {
 				open={open}
 				shortcut={null}
 			>
+				<Command.Trigger>
+					<SidebarFloat.Item as='button' className='border border-border' icon={Search} label={t('protected.nav.search')} type='button' />
+				</Command.Trigger>
 				<Command.Content>
 					<Command.Search hint={<Kbd>Esc</Kbd>} onValueChange={setQuery} placeholder={t('protected.command.placeholder')} value={query} />
 					{destinations.length === 0 && shortcuts.length === 0 ? (

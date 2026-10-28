@@ -1,17 +1,17 @@
-import { LayoutDashboard, Link2, Menu, Settings } from 'lucide-react';
+import { KeyRound, LayoutDashboard, Link2, Menu, Users } from 'lucide-react';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v8';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
 import { useTranslate } from '~/hooks/use-translate';
-import { CommandMenu } from './command-menu';
 import { OrganizationMenu } from './organization/organization-menu';
 import { useOrganizationTo } from './organization/use-current-organization';
-import { requireSession } from './require-session';
-import { UserMenu } from './user-menu';
+import { CommandMenu } from './share/command-menu';
+import { requireSession } from './share/require-session';
+import { UserMenu } from './share/user-menu';
 
-/** Runs before any `/`, `/links` or `/settings` page renders: unauthenticated visitors are redirected to sign-in. */
+/** Runs before any `/`, `/links`, ... page renders: unauthenticated visitors are redirected to sign-in. */
 export async function clientLoader() {
 	await requireSession();
 	return null;
@@ -63,7 +63,8 @@ function ProtectedShell() {
 				<SidebarFloat.Nav>
 					<SidebarFloat.Item active={pathname === '/'} as={Link} icon={LayoutDashboard} label={t('protected.nav.dashboard')} to={toOrganization('/')} />
 					<SidebarFloat.Item active={pathname.startsWith('/links')} as={Link} icon={Link2} label={t('protected.nav.links')} to={toOrganization('/links')} />
-					<SidebarFloat.Item active={pathname.startsWith('/settings')} as={Link} icon={Settings} label={t('protected.nav.settings')} to={toOrganization('/settings')} />
+					<SidebarFloat.Item active={pathname.startsWith('/users')} as={Link} icon={Users} label={t('protected.nav.users')} to={toOrganization('/users')} />
+					<SidebarFloat.Item active={pathname.startsWith('/api-keys')} as={Link} icon={KeyRound} label={t('protected.nav.apiKeys')} to={toOrganization('/api-keys')} />
 				</SidebarFloat.Nav>
 				<SidebarFloat.Footer>
 					<CommandMenu />
@@ -71,7 +72,7 @@ function ProtectedShell() {
 					<UserMenu collapsed={collapsed} />
 				</SidebarFloat.Footer>
 			</SidebarFloat>
-			<main className='h-full overflow-y-auto p-4 md:pl-24'>
+			<div className='flex h-full flex-col overflow-y-auto md:pl-24'>
 				<button
 					aria-label={t('protected.sidebar.openMenu')}
 					className='mb-4 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden'
@@ -80,8 +81,10 @@ function ProtectedShell() {
 				>
 					<Icon icon={Menu} size='md' />
 				</button>
-				<Outlet />
-			</main>
+				<main className='min-h-0 flex-1'>
+					<Outlet />
+				</main>
+			</div>
 		</div>
 	);
 }

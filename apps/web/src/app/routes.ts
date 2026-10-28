@@ -4,7 +4,8 @@ export default [
 	layout('../features/protected/layout.tsx', [
 		index('../features/protected/dashboard/dashboard.tsx'),
 		route('links', '../features/protected/links/links.tsx'),
-		route('settings', '../features/protected/settings/settings.tsx'),
+		route('users', '../features/protected/users/users.tsx'),
+		route('api-keys', '../features/protected/api-keys/api-keys.tsx'),
 	]),
 	layout('../features/auth/layout.tsx', [
 		route('auth/sign-in', '../features/auth/sign-in.tsx'),

@@ -1,3 +1,5 @@
+import { OrganizationGate } from '../share/organization-gate';
+
 export default function LinksPage() {
-	return <></>;
+	return <OrganizationGate>{() => <></>}</OrganizationGate>;
 }

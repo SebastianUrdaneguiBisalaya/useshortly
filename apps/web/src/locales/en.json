@@ -343,8 +343,8 @@
 				"alias": {
 					"label": "Custom alias",
 					"placeholder": "summer-sale",
-					"hint": "Leave empty for a random code. Up to 15 letters, numbers, - or _.",
-					"invalid": "Use only letters, numbers, - or _ (max 15)"
+					"hint": "Leave empty for a random code. 3 to 15 letters, numbers, - or _ (not 7 characters).",
+					"invalid": "Use 3 to 15 letters, numbers, - or _ (not 7 characters)"
 				},
 				"domain": {
 					"label": "Domain",

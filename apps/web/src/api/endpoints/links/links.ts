@@ -205,3 +205,78 @@ export const useDeleteLink = <TError = ErrorType<ErrorResponse>, TContext = unkn
 ): UseMutationResult<Awaited<ReturnType<typeof deleteLink>>, TError, DeleteLinkMutationVariables, TContext> => {
 	return useMutation(getDeleteLinkMutationOptions(options), queryClient);
 };
+/**
+ * Needs a JWT or an API key with the read scope.
+ * @summary Get a link
+ */
+export const getLink = (orgID: number, linkID: number, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<LinkResponse>({ url: `/orgs/${orgID}/links/${linkID}`, method: 'GET', signal }, options);
+};
+
+export const getGetLinkQueryKey = (orgID: number, linkID: number) => {
+	return [`/orgs/${orgID}/links/${linkID}`] as const;
+};
+
+export const getGetLinkQueryOptions = <TData = Awaited<ReturnType<typeof getLink>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	linkID: number,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getLink>>, TError, TData>>; request?: SecondParameter<typeof customInstance> }
+) => {
+	const { query: queryOptions, request: requestOptions } = options ?? {};
+
+	const queryKey = queryOptions?.queryKey ?? getGetLinkQueryKey(orgID, linkID);
+
+	const queryFn: QueryFunction<Awaited<ReturnType<typeof getLink>>> = ({ signal }) => getLink(orgID, linkID, requestOptions, signal);
+
+	return { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && linkID !== null && linkID !== undefined, ...queryOptions } as UseQueryOptions<
+		Awaited<ReturnType<typeof getLink>>,
+		TError,
+		TData
+	> & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getLink>>>;
+export type GetLinkQueryError = ErrorType<ErrorResponse>;
+
+export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	linkID: number,
+	options: {
+		query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getLink>>, TError, TData>> &
+			Pick<DefinedInitialDataOptions<Awaited<ReturnType<typeof getLink>>, TError, Awaited<ReturnType<typeof getLink>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	linkID: number,
+	options?: {
+		query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getLink>>, TError, TData>> &
+			Pick<UndefinedInitialDataOptions<Awaited<ReturnType<typeof getLink>>, TError, Awaited<ReturnType<typeof getLink>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	linkID: number,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getLink>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Get a link
+ */
+
+export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	linkID: number,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getLink>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	const queryOptions = getGetLinkQueryOptions(orgID, linkID, options);
+
+	const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+	return withQueryKey(query, queryOptions.queryKey);
+}

@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { getListLinksQueryKey, useDeleteLink, useListLinks } from '~/api/endpoints/links/links';
+import { getListLinksQueryKey, useDeleteLink, useGetLink, useListLinks } from '~/api/endpoints/links/links';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { Badge } from '~/components/ui/data-display/badge/badge';
@@ -44,12 +44,15 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const deleteLink = useDeleteLink();
 	const total = links.data?.meta?.total ?? 0;
 	const rows = links.data?.data ?? [];
-	const selected = rows.find(link => link.id === selectedID);
+	// The drawer opens from the loaded page when the link is there; otherwise (a shared URL, another page) it is fetched by id.
+	const inPage = rows.find(link => link.id === selectedID);
+	const fetched = useGetLink(orgID, selectedID ?? 0, { query: { enabled: selectedID !== null && !inPage && !links.isLoading, retry: false } });
+	const selected = inPage ?? fetched.data?.data;
 
-	// A `?link=` that is not on the loaded page (deleted, another organization, another page) would leave the URL pointing at nothing.
+	// A `?link=` that does not exist (deleted, another organization) would leave the URL pointing at nothing.
 	useEffect(() => {
-		if (selectedID !== null && !links.isFetching && !selected) void setSelectedID(null, { history: 'replace' });
-	}, [selectedID, selected, links.isFetching, setSelectedID]);
+		if (fetched.isError) void setSelectedID(null, { history: 'replace' });
+	}, [fetched.isError, setSelectedID]);
 
 	const columns = useMemo<ColumnDef<DataTableFeatures, Link>[]>(
 		() => [

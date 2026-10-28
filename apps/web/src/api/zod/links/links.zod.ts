@@ -90,3 +90,28 @@ export const DeleteLinkParams = zod.object({
 });
 
 export const DeleteLinkResponse = zod.void();
+
+/**
+ * Needs a JWT or an API key with the read scope.
+ * @summary Get a link
+ */
+export const GetLinkParams = zod.object({
+	orgID: zod.int().describe('Organization id'),
+	linkID: zod.int().describe('Link id'),
+});
+
+export const GetLinkResponse = zod.object({
+	data: zod
+		.object({
+			code: zod.string().optional(),
+			created_at: zod.string().optional(),
+			domain_id: zod.int().optional(),
+			expires_at: zod.string().optional(),
+			id: zod.int().optional(),
+			max_clicks: zod.int().optional(),
+			origin_url: zod.string().optional(),
+			protected: zod.boolean().optional(),
+			short_url: zod.string().optional(),
+		})
+		.optional(),
+});

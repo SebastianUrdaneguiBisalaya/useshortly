@@ -343,8 +343,8 @@
 				"alias": {
 					"label": "Alias personalizado",
 					"placeholder": "oferta-verano",
-					"hint": "Déjalo vacío para un código aleatorio. Hasta 15 letras, números, - o _.",
-					"invalid": "Usa solo letras, números, - o _ (máx. 15)"
+					"hint": "Déjalo vacío para un código aleatorio. De 3 a 15 letras, números, - o _ (no de 7 caracteres).",
+					"invalid": "Usa de 3 a 15 letras, números, - o _ (no de 7 caracteres)"
 				},
 				"domain": {
 					"label": "Dominio",

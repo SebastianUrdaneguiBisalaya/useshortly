@@ -10,7 +10,8 @@ export default defineConfig({
 	server: {
 		// The backend has no CORS: in development the browser talks to Vite, which forwards the API.
 		proxy: {
-			'/api': process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
+			// Regex (leading `^`) so `/api-keys`, a page, is not forwarded as if it were `/api/...`.
+			'^/api/': process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
 		},
 	},
 });

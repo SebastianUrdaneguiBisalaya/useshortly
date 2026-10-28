@@ -4,7 +4,7 @@ import { registerLinkQr, registerLinkStats } from './tools/analytics.js';
 import { registerAddDomain, registerListDomains, registerVerifyDomain } from './tools/domains.js';
 import { registerPerformanceReportPrompt } from './prompts/performance-report.js';
 import { registerShortenUrlPrompt } from './prompts/shorten-url.js';
-import { registerListLinks } from './tools/links.js';
+import { registerGetLink, registerListLinks } from './tools/links.js';
 import { registerListOrganizations } from './tools/organizations.js';
 import { registerCreateLink, registerDeleteLink } from './tools/write-links.js';
 import { registerWhoami } from './tools/whoami.js';
@@ -20,6 +20,7 @@ export function createMcpServer(api: UserApi): McpServer {
 	registerWhoami(server, context);
 	registerListOrganizations(server, context);
 	registerListLinks(server, context);
+	registerGetLink(server, context);
 	registerLinkStats(server, context);
 	registerLinkQr(server, context);
 	registerListDomains(server, context);

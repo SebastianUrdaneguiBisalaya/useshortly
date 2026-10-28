@@ -59,6 +59,34 @@ describe('list_organizations', () => {
 	});
 });
 
+describe('get_link', () => {
+	it('returns one link by id', async () => {
+		h.apiReplies['GET /orgs/3/links/9'] = () => Response.json({ data: linkOf(9, { protected: true, max_clicks: 5 }) });
+		const out = await h.callTool(token, 'get_link', { organization_id: 3, link_id: 9 });
+		expect(out.isError).toBeFalsy();
+		expect(out.content[0].text).toBe('- id 9: http://short.test/c9 -> https://example.com/page/9 (password protected, max 5 clicks)');
+		expect(out.structuredContent.link).toMatchObject({ id: 9, code: 'c9', password_protected: true, max_clicks: 5 });
+	});
+
+	it('reports an unknown link as not found', async () => {
+		h.apiReplies['GET /orgs/3/links/99'] = apiError(404, 'not_found', 'resource not found');
+		const out = await h.callTool(token, 'get_link', { organization_id: 3, link_id: 99 });
+		expect(out.isError).toBe(true);
+		expect(out.content[0].text).toContain('Not found');
+	});
+
+	it.each([
+		['a zero link', { organization_id: 3, link_id: 0 }],
+		['a text link', { organization_id: 3, link_id: '9' }],
+		['a missing link', { organization_id: 3 }],
+	])('rejects %s without calling the API', async (_name, args) => {
+		const res = await h.rpc(token, 'tools/call', { name: 'get_link', arguments: args });
+		const body = (await res.json()) as { result?: { isError?: boolean }; error?: unknown };
+		expect(body.error !== undefined || body.result?.isError === true).toBe(true);
+		expect(h.apiCalls).toHaveLength(0);
+	});
+});
+
 describe('list_links', () => {
 	it('lists a page and says where the next one starts', async () => {
 		h.apiReplies['GET /orgs/3/links?limit=2'] = apiList([linkOf(10), linkOf(9, { protected: true, max_clicks: 5 })], { limit: 2, offset: 0, total: 5 });

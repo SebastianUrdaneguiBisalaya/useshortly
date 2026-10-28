@@ -8,7 +8,11 @@
 
 export interface Member {
 	created_at?: string;
+	email?: string;
+	first_name?: string;
 	id?: number;
+	image_url?: string;
+	last_name?: string;
 	role?: string;
 	user_id?: number;
 }

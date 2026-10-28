@@ -5,7 +5,7 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
+
 import type {
 	DataTag,
 	DefinedInitialDataOptions,
@@ -20,7 +20,10 @@ import type {
 	UseQueryOptions,
 	UseQueryResult,
 } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import type { BodyType, ErrorType } from '../../axios-instance';
 
+import { customInstance } from '../../axios-instance';
 import type {
 	CreateOrganizationRequest,
 	ErrorResponse,
@@ -30,10 +33,8 @@ import type {
 	MemberListResponse,
 	OrganizationListResponse,
 	OrganizationResponse,
+	UpdateOrganizationRequest,
 } from '../../model';
-
-import { customInstance } from '../../axios-instance';
-import type { ErrorType, BodyType } from '../../axios-instance';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -274,6 +275,52 @@ export function useGetOrganization<TData = Awaited<ReturnType<typeof getOrganiza
 	return withQueryKey(query, queryOptions.queryKey);
 }
 
+/**
+ * @summary Update an organization
+ */
+export const updateOrganization = (orgID: number, updateOrganizationRequest: BodyType<UpdateOrganizationRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<OrganizationResponse>({ url: `/orgs/${orgID}`, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, data: updateOrganizationRequest, signal }, options);
+};
+
+export const getUpdateOrganizationMutationKey = () => ['updateOrganization'] as const;
+
+export const getUpdateOrganizationMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateOrganization>>, TError, UpdateOrganizationMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof updateOrganization>>, TError, UpdateOrganizationMutationVariables, TContext> => {
+	const mutationKey = getUpdateOrganizationMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
+
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrganization>>, UpdateOrganizationMutationVariables> = props => {
+		const { orgID, data } = props ?? {};
+
+		return updateOrganization(orgID, data, requestOptions);
+	};
+
+	return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrganizationMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrganization>>>;
+export type UpdateOrganizationMutationBody = BodyType<UpdateOrganizationRequest>;
+export type UpdateOrganizationMutationError = ErrorType<ErrorResponse>;
+export type UpdateOrganizationMutationVariables = { orgID: number; data: BodyType<UpdateOrganizationRequest> };
+
+/**
+ * @summary Update an organization
+ */
+export const useUpdateOrganization = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: {
+		mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateOrganization>>, TError, UpdateOrganizationMutationVariables, TContext>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof updateOrganization>>, TError, UpdateOrganizationMutationVariables, TContext> => {
+	return useMutation(getUpdateOrganizationMutationOptions(options), queryClient);
+};
 /**
  * @summary List pending invitations
  */

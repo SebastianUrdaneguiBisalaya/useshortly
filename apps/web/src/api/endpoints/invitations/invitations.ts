@@ -5,13 +5,13 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
-import { useMutation } from '@tanstack/react-query';
-import type { MutationFunction, QueryClient, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 
-import type { ErrorResponse, MemberResponse } from '../../model';
+import type { MutationFunction, QueryClient, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import type { ErrorType } from '../../axios-instance';
 
 import { customInstance } from '../../axios-instance';
-import type { ErrorType } from '../../axios-instance';
+import type { ErrorResponse, MemberResponse } from '../../model';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 

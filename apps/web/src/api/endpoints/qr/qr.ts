@@ -5,7 +5,7 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
-import { useQuery } from '@tanstack/react-query';
+
 import type {
 	DataTag,
 	DefinedInitialDataOptions,
@@ -17,11 +17,11 @@ import type {
 	UseQueryOptions,
 	UseQueryResult,
 } from '@tanstack/react-query';
-
-import type { GetLinkQrParams } from '../../model';
+import { useQuery } from '@tanstack/react-query';
+import type { ErrorType } from '../../axios-instance';
 
 import { customInstance } from '../../axios-instance';
-import type { ErrorType } from '../../axios-instance';
+import type { GetLinkQrParams } from '../../model';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 

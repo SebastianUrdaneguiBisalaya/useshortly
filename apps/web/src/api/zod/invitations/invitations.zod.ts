@@ -18,7 +18,11 @@ export const AcceptInvitationResponse = zod.object({
 	data: zod
 		.object({
 			created_at: zod.string().optional(),
+			email: zod.string().optional(),
+			first_name: zod.string().optional(),
 			id: zod.int().optional(),
+			image_url: zod.string().optional(),
+			last_name: zod.string().optional(),
 			role: zod.string().optional(),
 			user_id: zod.int().optional(),
 		})

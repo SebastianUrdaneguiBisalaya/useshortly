@@ -75,6 +75,32 @@ export const GetOrganizationResponse = zod.object({
 });
 
 /**
+ * @summary Update an organization
+ */
+export const UpdateOrganizationParams = zod.object({
+	orgID: zod.int().describe('Organization id'),
+});
+
+export const UpdateOrganizationBody = zod
+	.object({
+		description: zod.string().optional(),
+		name: zod.string().optional(),
+	})
+	.describe('Organization data');
+
+export const UpdateOrganizationResponse = zod.object({
+	data: zod
+		.object({
+			created_at: zod.string().optional(),
+			description: zod.string().optional(),
+			id: zod.int().optional(),
+			logo_url: zod.string().optional(),
+			name: zod.string().optional(),
+		})
+		.optional(),
+});
+
+/**
  * @summary List pending invitations
  */
 export const ListInvitationsParams = zod.object({
@@ -138,7 +164,11 @@ export const ListMembersResponse = zod.object({
 		.array(
 			zod.object({
 				created_at: zod.string().optional(),
+				email: zod.string().optional(),
+				first_name: zod.string().optional(),
 				id: zod.int().optional(),
+				image_url: zod.string().optional(),
+				last_name: zod.string().optional(),
 				role: zod.string().optional(),
 				user_id: zod.int().optional(),
 			})

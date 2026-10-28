@@ -62,6 +62,7 @@ export * from './unlockPage';
 export * from './unlockPageEvent';
 export * from './unlockPageHistoryResponse';
 export * from './unlockPageResponse';
+export * from './updateOrganizationRequest';
 export * from './user';
 export * from './userResponse';
 export * from './verifyRegistrationRequest';

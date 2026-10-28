@@ -1,8 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Download, Trash2, X } from 'lucide-react';
+import { Code, Download, Trash2, X } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
-import { getGetLinkUnlockPageQueryKey, useDeleteLinkUnlockPage, useGetLinkUnlockPage, useSetLinkUnlockPage } from '~/api/endpoints/unlock-page/unlock-page';
+import { useGetLinkUnlockPage } from '~/api/endpoints/unlock-page/unlock-page';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { Badge } from '~/components/ui/data-display/badge/badge';
@@ -14,6 +13,7 @@ import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useDownloadQr } from '../share/download-qr';
+import { UnlockPageDialog } from './unlock-page-dialog';
 
 /** Side panel with everything about one link: short URL, settings, QR code and (for protected links) the unlock page. */
 export function LinkDrawer({ orgID, link, onClose, onDelete }: { orgID: number; link: Link | undefined; onClose: () => void; onDelete: (link: Link) => void }) {
@@ -103,17 +103,12 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 	);
 }
 
-/** Custom HTML page shown to visitors who must type the password. Only protected links ever show it. */
+/** Custom HTML page shown to visitors who must type the password. Only protected links ever show it; editing happens in a large dialog. */
 function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 	const t = useTranslate();
-	const queryClient = useQueryClient();
-	const linkID = link.id as number;
-	const page = useGetLinkUnlockPage(orgID, linkID, { query: { enabled: Boolean(link.protected), retry: false } });
-	const save = useSetLinkUnlockPage();
-	const remove = useDeleteLinkUnlockPage();
-	const [draft, setDraft] = useState<string>();
-	const html = draft ?? page.data?.data?.html ?? '';
-	const refresh = () => queryClient.invalidateQueries({ queryKey: getGetLinkUnlockPageQueryKey(orgID, linkID) });
+	const page = useGetLinkUnlockPage(orgID, link.id as number, { query: { enabled: Boolean(link.protected), retry: false } });
+	const [editing, setEditing] = useState(false);
+	const saved = page.data?.data?.html || undefined;
 
 	return (
 		<section className='flex flex-col gap-3'>
@@ -123,53 +118,17 @@ function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 			</div>
 			{link.protected && (
 				<>
-					<Input>
-						<Input.Label>{t('protected.links.drawer.unlock.label')}</Input.Label>
-						<Input.Textarea
-							className='font-mono text-xs'
-							onChange={event => setDraft(event.target.value)}
-							placeholder={t('protected.links.drawer.unlock.placeholder')}
-							rows={8}
-							value={html}
-						/>
-					</Input>
-					<div className='flex gap-2'>
-						<Button
-							disabled={!html.trim()}
-							onClick={() =>
-								save.mutate(
-									{ data: { html }, linkID, orgID },
-									{
-										onSuccess: async () => {
-											toast.success(t('protected.toast.unlockSaved'));
-											setDraft(undefined);
-											await refresh();
-										},
-									}
-								)
-							}
-						>
-							<Button.Text>{save.isPending ? t('protected.links.drawer.unlock.saving') : t('protected.links.drawer.unlock.save')}</Button.Text>
-						</Button>
-						<Button
-							disabled={!page.data?.data?.html || remove.isPending}
-							onClick={() =>
-								remove.mutate(
-									{ linkID, orgID },
-									{
-										onSuccess: async () => {
-											toast.success(t('protected.toast.unlockRemoved'));
-											setDraft(undefined);
-											await refresh();
-										},
-									}
-								)
-							}
-							variant='secondary'
-						>
-							<Button.Text>{t('protected.links.drawer.unlock.remove')}</Button.Text>
+					<div className='flex items-center gap-3'>
+						<Badge variant={saved ? 'success' : 'default'}>
+							<Badge.Text>{saved ? t('protected.links.drawer.unlock.custom') : t('protected.links.drawer.unlock.default')}</Badge.Text>
+						</Badge>
+						<Button disabled={page.isLoading} onClick={() => setEditing(true)} variant='secondary'>
+							<Button.Icon icon={Code} />
+							<Button.Text>{t('protected.links.drawer.unlock.edit')}</Button.Text>
 						</Button>
 					</div>
+					{/* Remounted on every open so the draft always starts from the saved page. */}
+					{editing && <UnlockPageDialog link={link} onOpenChange={setEditing} open orgID={orgID} saved={saved} />}
 				</>
 			)}
 		</section>

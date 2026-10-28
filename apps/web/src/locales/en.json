@@ -394,11 +394,23 @@
 					"title": "Unlock page",
 					"description": "Custom HTML shown to visitors who must enter the password.",
 					"label": "HTML",
-					"placeholder": "<h1>Enter the password</h1>",
 					"save": "Save page",
 					"saving": "Saving...",
 					"remove": "Use default page",
-					"notProtected": "This link has no password, so visitors never see this page."
+					"notProtected": "This link has no password, so visitors never see this page.",
+					"custom": "Custom page",
+					"default": "Default page",
+					"edit": "Edit page",
+					"preview": {
+						"title": "Preview",
+						"reset": "Reset code",
+						"run": "Run",
+						"error": "Error",
+						"device": "Preview width",
+						"full": "Full width",
+						"tablet": "Tablet",
+						"mobile": "Mobile"
+					}
 				},
 				"close": "Close"
 			}

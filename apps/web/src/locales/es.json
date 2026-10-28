@@ -394,11 +394,23 @@
 					"title": "Página de desbloqueo",
 					"description": "HTML personalizado que ven quienes deben ingresar la contraseña.",
 					"label": "HTML",
-					"placeholder": "<h1>Ingresa la contraseña</h1>",
 					"save": "Guardar página",
 					"saving": "Guardando...",
 					"remove": "Usar página por defecto",
-					"notProtected": "Este link no tiene contraseña, así que nadie verá esta página."
+					"notProtected": "Este link no tiene contraseña, así que nadie verá esta página.",
+					"custom": "Página personalizada",
+					"default": "Página por defecto",
+					"edit": "Editar página",
+					"preview": {
+						"title": "Vista previa",
+						"reset": "Restablecer código",
+						"run": "Ejecutar",
+						"error": "Error",
+						"device": "Ancho de la vista previa",
+						"full": "Ancho completo",
+						"tablet": "Tableta",
+						"mobile": "Móvil"
+					}
 				},
 				"close": "Cerrar"
 			}

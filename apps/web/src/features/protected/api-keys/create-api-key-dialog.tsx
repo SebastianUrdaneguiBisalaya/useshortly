@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { getListApiKeysQueryKey, useCreateApiKey } from '~/api/endpoints/api-keys/api-keys';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { Form } from '~/components/ui/forms-inputs/form/form';
@@ -68,6 +69,7 @@ export function CreateApiKeyDialog({ orgID, open, onOpenChange }: { orgID: numbe
 										await queryClient.invalidateQueries({
 											queryKey: getListApiKeysQueryKey(orgID),
 										});
+										toast.success(t('protected.toast.apiKeyCreated'));
 										setSecret(response.data?.secret);
 										if (!response.data?.secret) onOpenChange(false);
 									},

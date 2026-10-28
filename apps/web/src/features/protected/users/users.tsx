@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { getListMembersQueryKey, useListMembers, useRemoveMember } from '~/api/endpoints/orgs/orgs';
 import type { Member } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -105,6 +106,7 @@ function UsersContent({ orgID }: { orgID: number }) {
 										orgID,
 										userID: member.user_id as number,
 									});
+									toast.success(t('protected.toast.memberRemoved'));
 									await queryClient.invalidateQueries({
 										queryKey: getListMembersQueryKey(orgID),
 									});

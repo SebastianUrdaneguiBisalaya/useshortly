@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { getListMyOrganizationsQueryKey, useDeleteOrganization } from '~/api/endpoints/orgs/orgs';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { ButtonGroup } from '~/components/ui/actions-controls/button-group/button-group';
@@ -80,6 +81,7 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 					await deleteOrganization.mutateAsync({
 						orgID: organization.id,
 					});
+					toast.success(t('protected.toast.organizationDeleted'));
 					await setOrganizationId(null);
 					await queryClient.invalidateQueries({
 						queryKey: getListMyOrganizationsQueryKey(),

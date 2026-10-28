@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo } from 'react';
+import { toast } from 'sonner';
 import { getListInvitationsQueryKey, useInviteMember } from '~/api/endpoints/orgs/orgs';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { Form } from '~/components/ui/forms-inputs/form/form';
@@ -39,6 +40,7 @@ export function InviteMemberDialog({ orgID, open, onOpenChange }: { orgID: numbe
 									await queryClient.invalidateQueries({
 										queryKey: getListInvitationsQueryKey(orgID),
 									});
+									toast.success(t('protected.toast.memberInvited'));
 									onOpenChange(false);
 								},
 							}

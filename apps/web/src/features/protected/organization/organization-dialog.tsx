@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo } from 'react';
+import { toast } from 'sonner';
 import { getListMyOrganizationsQueryKey, useCreateOrganization, useUpdateOrganization } from '~/api/endpoints/orgs/orgs';
 import type { Organization } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -60,6 +61,7 @@ export function OrganizationDialog({ open, onOpenChange, organization }: { open:
 										await queryClient.invalidateQueries({
 											queryKey: getListMyOrganizationsQueryKey(),
 										});
+										toast.success(t('protected.toast.organizationUpdated'));
 										onOpenChange(false);
 									},
 								}
@@ -76,6 +78,7 @@ export function OrganizationDialog({ open, onOpenChange, organization }: { open:
 										queryKey: getListMyOrganizationsQueryKey(),
 									});
 									if (response.data?.id !== undefined) await setOrganizationId(response.data.id);
+									toast.success(t('protected.toast.organizationCreated'));
 									onOpenChange(false);
 								},
 							}

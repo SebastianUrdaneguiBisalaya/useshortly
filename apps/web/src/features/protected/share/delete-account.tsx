@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { z } from 'zod';
 import { useDeleteAccount, useRequestAccountDeletion } from '~/api/endpoints/me/me';
 import { DeleteAccountBody } from '~/api/zod/index.zod';
@@ -90,6 +91,7 @@ function DeleteAccountCodeDialog({ open, onOpenChange }: { open: boolean; onOpen
 							},
 							{
 								onSuccess: () => {
+									toast.success(t('protected.toast.accountDeleted'));
 									clearSession();
 									queryClient.clear();
 									void navigate('/auth/sign-in', {

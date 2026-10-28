@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { getListApiKeysQueryKey, useDeleteApiKey, useListApiKeys } from '~/api/endpoints/api-keys/api-keys';
 import type { APIKey } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -92,6 +93,7 @@ function ApiKeysContent({ orgID }: { orgID: number }) {
 										keyID: apiKey.id as number,
 										orgID,
 									});
+									toast.success(t('protected.toast.apiKeyDeleted'));
 									await queryClient.invalidateQueries({
 										queryKey: getListApiKeysQueryKey(orgID),
 									});

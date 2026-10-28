@@ -88,9 +88,10 @@ func NewRouter(h Handlers) http.Handler {
 	either.Use(h.Auth.UserOrKey, h.Limits.PerPrincipal())
 	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
 	eitherOrg.Use(h.Tenant.Require)
-	// Creating and deleting need the write scope; listing only the read scope.
+	// Creating and deleting need the write scope; listing and reading one only the read scope.
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
 	// The page protected links show: the organization's for all of them, or one link's own.
 	eitherOrg.Handle("/unlock-page", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.Get))).Methods(http.MethodGet)

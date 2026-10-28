@@ -276,3 +276,27 @@ func TestCreateProtectedLink(t *testing.T) {
 	assert.Empty(t, visit.Header().Get("Location"), "a protected link does not redirect")
 	assert.Empty(t, clicks.got, "a refused visit is not a click")
 }
+
+func TestGetLink(t *testing.T) {
+	repo := &fakeLinkRepo{links: map[string]link.Link{}}
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}, fakeHasher{}, nil), &fakeClicks{}, "http://x", false)
+	created := createLink(t, h, `{"url":"https://example.com/g","alias":"get-link"}`)
+	require.Equal(t, http.StatusCreated, created.Code, created.Body.String())
+
+	get := func(tenantID int64, linkID string) *httptest.ResponseRecorder {
+		req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/", nil), map[string]string{"linkID": linkID})
+		req = req.WithContext(WithTenant(req.Context(), Tenant{ID: tenantID}))
+		rec := httptest.NewRecorder()
+		h.Get(rec, req)
+		return rec
+	}
+
+	found := get(1, "1")
+	require.Equal(t, http.StatusOK, found.Code, found.Body.String())
+	assert.Contains(t, found.Body.String(), `"code":"get-link"`)
+	assert.Contains(t, found.Body.String(), `"short_url":"http://x/get-link"`)
+
+	assert.Equal(t, http.StatusNotFound, get(2, "1").Code, "another organization's link is a 404")
+	assert.Equal(t, http.StatusNotFound, get(1, "99").Code)
+	assert.Equal(t, http.StatusNotFound, get(1, "abc").Code, "an id that is not a number matches no link")
+}

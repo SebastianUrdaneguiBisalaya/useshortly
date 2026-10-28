@@ -188,6 +188,40 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	writePage(w, out, p, total)
 }
 
+// Get answers one link of the organization; one of another organization is a 404.
+//
+//	@Summary		Get a link
+//	@Description	Needs a JWT or an API key with the read scope.
+//	@Tags			links
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int	true	"Organization id"
+//	@Param			linkID	path		int	true	"Link id"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	getLink
+//	@Router			/orgs/{orgID}/links/{linkID} [get]
+func (h *LinkHandler) Get(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	l, err := h.links.Get(r.Context(), tenant.ID, linkID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
+}
+
 // Delete removes a link of the organization; one of another organization is a 404.
 //
 //	@Summary		Delete a link

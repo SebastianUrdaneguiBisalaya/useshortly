@@ -15,4 +15,16 @@ export type GetLinkStatsParams = {
 	 * Last day, YYYY-MM-DD (UTC)
 	 */
 	to?: string;
+	/**
+	 * Only clicks from this country (ISO 3166-1 alpha-2), or unknown
+	 */
+	country?: string;
+	/**
+	 * Only clicks from this device (mobile, tablet, desktop, bot), or unknown
+	 */
+	device?: string;
+	/**
+	 * Only clicks with this referrer, or direct for none
+	 */
+	referrer?: string;
 };

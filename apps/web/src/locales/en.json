@@ -133,6 +133,100 @@
 			"mcp": "MCP",
 			"domains": "Domains"
 		},
+		"dashboard": {
+			"title": "Dashboard",
+			"description": "Click analytics of one link. Days and hours are in UTC.",
+			"link": {
+				"label": "Link",
+				"placeholder": "Select a link",
+				"search": "Search links…"
+			},
+			"empty": {
+				"title": "No links yet",
+				"description": "Create a link to see its metrics here."
+			},
+			"error": {
+				"title": "Could not load the metrics",
+				"description": "Try again in a moment."
+			},
+			"range": {
+				"label": "Period",
+				"placeholder": "Select a period"
+			},
+			"filters": {
+				"country": "Country",
+				"device": "Device",
+				"referrer": "Referrer",
+				"all": "All",
+				"clear": "Clear filters",
+				"active": "Filtered by"
+			},
+			"values": {
+				"direct": "Direct",
+				"unknown": "Unknown",
+				"mobile": "Mobile",
+				"tablet": "Tablet",
+				"desktop": "Desktop",
+				"bot": "Bot"
+			},
+			"stats": {
+				"total": {
+					"label": "Total clicks",
+					"description": "Clicks in the selected period that match the filters.",
+					"vsPrevious": "{{change}} vs the previous {{days}} days",
+					"noPrevious": "No clicks in the previous {{days}} days"
+				},
+				"average": {
+					"label": "Daily average",
+					"description": "Total clicks divided by the days in the period.",
+					"hint": "clicks per day"
+				},
+				"peak": {
+					"label": "Best day",
+					"description": "The day of the period with the most clicks.",
+					"none": "No clicks yet"
+				},
+				"topCountry": {
+					"label": "Top country",
+					"description": "The country that brought the most clicks.",
+					"none": "No country data"
+				}
+			},
+			"charts": {
+				"daily": {
+					"title": "Clicks over time",
+					"description": "Clicks per day (UTC).",
+					"series": "Clicks"
+				},
+				"devices": {
+					"title": "Devices",
+					"description": "Share of clicks by device.",
+					"center": "Clicks"
+				},
+				"map": {
+					"title": "Clicks by country",
+					"description": "Click a country to filter by it.",
+					"legend": "Clicks",
+					"noCountry": "{{count}} clicks without a known country."
+				},
+				"countries": {
+					"title": "Top countries",
+					"description": "Countries with the most clicks."
+				},
+				"referrers": {
+					"title": "Top referrers",
+					"description": "Where the clicks came from."
+				},
+				"hours": {
+					"title": "Clicks by hour",
+					"description": "Hour of the day (UTC)."
+				},
+				"weekdays": {
+					"title": "Clicks by weekday",
+					"description": "Day of the week (UTC)."
+				}
+			}
+		},
 		"command": {
 			"empty": "No results",
 			"general": "General",

@@ -41,7 +41,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
- * Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a link
  */
 export const getLinkStats = (orgID: number, linkID: number, params?: GetLinkStatsParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {

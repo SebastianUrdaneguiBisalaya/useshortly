@@ -133,6 +133,100 @@
 			"mcp": "MCP",
 			"domains": "Dominios"
 		},
+		"dashboard": {
+			"title": "Dashboard",
+			"description": "Analítica de clics de un enlace. Los días y horas están en UTC.",
+			"link": {
+				"label": "Enlace",
+				"placeholder": "Selecciona un enlace",
+				"search": "Buscar enlaces…"
+			},
+			"empty": {
+				"title": "Aún no hay enlaces",
+				"description": "Crea un enlace para ver sus métricas aquí."
+			},
+			"error": {
+				"title": "No se pudieron cargar las métricas",
+				"description": "Inténtalo de nuevo en un momento."
+			},
+			"range": {
+				"label": "Periodo",
+				"placeholder": "Selecciona un periodo"
+			},
+			"filters": {
+				"country": "País",
+				"device": "Dispositivo",
+				"referrer": "Origen",
+				"all": "Todos",
+				"clear": "Limpiar filtros",
+				"active": "Filtrado por"
+			},
+			"values": {
+				"direct": "Directo",
+				"unknown": "Desconocido",
+				"mobile": "Móvil",
+				"tablet": "Tableta",
+				"desktop": "Escritorio",
+				"bot": "Bot"
+			},
+			"stats": {
+				"total": {
+					"label": "Clics totales",
+					"description": "Clics del periodo seleccionado que cumplen los filtros.",
+					"vsPrevious": "{{change}} vs los {{days}} días anteriores",
+					"noPrevious": "Sin clics en los {{days}} días anteriores"
+				},
+				"average": {
+					"label": "Promedio diario",
+					"description": "Clics totales divididos entre los días del periodo.",
+					"hint": "clics por día"
+				},
+				"peak": {
+					"label": "Mejor día",
+					"description": "El día del periodo con más clics.",
+					"none": "Aún sin clics"
+				},
+				"topCountry": {
+					"label": "País principal",
+					"description": "El país que trajo más clics.",
+					"none": "Sin datos de país"
+				}
+			},
+			"charts": {
+				"daily": {
+					"title": "Clics en el tiempo",
+					"description": "Clics por día (UTC).",
+					"series": "Clics"
+				},
+				"devices": {
+					"title": "Dispositivos",
+					"description": "Proporción de clics por dispositivo.",
+					"center": "Clics"
+				},
+				"map": {
+					"title": "Clics por país",
+					"description": "Haz clic en un país para filtrar por él.",
+					"legend": "Clics",
+					"noCountry": "{{count}} clics sin país conocido."
+				},
+				"countries": {
+					"title": "Países principales",
+					"description": "Países con más clics."
+				},
+				"referrers": {
+					"title": "Orígenes principales",
+					"description": "De dónde vinieron los clics."
+				},
+				"hours": {
+					"title": "Clics por hora",
+					"description": "Hora del día (UTC)."
+				},
+				"weekdays": {
+					"title": "Clics por día de la semana",
+					"description": "Día de la semana (UTC)."
+				}
+			}
+		},
 		"command": {
 			"empty": "Sin resultados",
 			"general": "General",

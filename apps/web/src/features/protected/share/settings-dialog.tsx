@@ -76,7 +76,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 							</Layout.Section>
 						</Layout.Stack>
 					</SettingsDialogUi.Panel>
-					<SettingsDialogUi.Panel value='account'>
+					<SettingsDialogUi.Panel value='account' className='pr-0'>
 						<AccountSettings />
 					</SettingsDialogUi.Panel>
 				</SettingsDialogUi.Main>

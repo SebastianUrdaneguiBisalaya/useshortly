@@ -14,5 +14,7 @@ export interface User {
 	id?: number;
 	image_url?: string;
 	last_name?: string;
+	/** Providers is how the user can sign in: "DEFAULT" (email and password) and/or "GOOGLE". */
+	providers?: string[];
 	updated_at?: string;
 }

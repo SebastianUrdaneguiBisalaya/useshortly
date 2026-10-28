@@ -32,6 +32,7 @@ export const GetMeResponse = zod.object({
 			id: zod.int().optional(),
 			image_url: zod.string().optional(),
 			last_name: zod.string().optional(),
+			providers: zod.array(zod.string()).optional().describe('Providers is how the user can sign in: "DEFAULT" (email and password) and/or "GOOGLE".'),
 			updated_at: zod.string().optional(),
 		})
 		.optional(),

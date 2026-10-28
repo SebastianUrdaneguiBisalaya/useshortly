@@ -29,6 +29,17 @@ export const linkStats = z.object({
 	from: z.string(),
 	to: z.string(),
 	total: z.number(),
+	previous_total: z.number().default(0),
+	by_hour: z
+		.array(z.number())
+		.nullable()
+		.default([])
+		.transform(v => v ?? []),
+	by_weekday: z
+		.array(z.number())
+		.nullable()
+		.default([])
+		.transform(v => v ?? []),
 	daily: z
 		.array(z.object({ date: z.string(), clicks: z.number() }))
 		.nullable()

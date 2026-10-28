@@ -20,21 +20,25 @@ export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 		'get_link_stats',
 		{
 			title: 'Link click statistics',
-			description: 'Click statistics of one link: total clicks, clicks per day, and the top referrers, countries and devices. Without dates it covers the last 30 days.',
+			description:
+				'Click statistics of one link: total clicks (with the previous period of the same length to compare), clicks per day, per UTC hour and per weekday, and the top referrers, countries and devices. Can be narrowed to one country, device or referrer. Without dates it covers the last 30 days.',
 			inputSchema: z
 				.object({
 					organization_id: organizationId,
 					link_id: linkId,
 					from: day.optional().describe('First day to include, YYYY-MM-DD (UTC).'),
 					to: day.optional().describe('Last day to include, YYYY-MM-DD (UTC).'),
+					country: z.string().trim().min(1).max(7).optional().describe('Only clicks from this country: ISO 3166-1 alpha-2 code such as PE, or "unknown".'),
+					device: z.string().trim().min(1).max(16).optional().describe('Only clicks from this device: mobile, tablet, desktop, bot or "unknown".'),
+					referrer: z.string().trim().min(1).max(255).optional().describe('Only clicks with this referrer exactly as listed, or "direct" for none.'),
 				})
 				.refine(v => !v.from || !v.to || v.from <= v.to, { message: 'from must not be after to', path: ['from'] }),
 			annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
 		},
-		({ organization_id, link_id, from, to }) =>
+		({ organization_id, link_id, from, to, country, device, referrer }) =>
 			guard(async () => {
 				const { data } = await api.get(`/orgs/${segment(organization_id)}/links/${segment(link_id)}/stats`, linkStats, {
-					query: { from, to },
+					query: { from, to, country, device, referrer },
 				});
 				const top = (items: { name: string; clicks: number }[]) =>
 					[...items]
@@ -43,11 +47,13 @@ export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 						.map(i => `${oneLine(i.name, 80) || '(unknown)'} (${i.clicks})`)
 						.join(', ');
 
+				const filters = Object.entries({ country, device, referrer }).flatMap(([k, v]) => (v ? [`${k}=${oneLine(v, 80)}`] : []));
 				const period = `from ${data.from} to ${data.to}`;
 				const busiest = data.daily.reduce<{ date: string; clicks: number } | null>((best, d) => (d.clicks > (best?.clicks ?? 0) ? d : best), null);
 				const lines = data.total
 					? [
-							`Link ${data.link_id}: ${data.total} clicks ${period}.`,
+							`Link ${data.link_id}: ${data.total} clicks ${period}${data.previous_total ? ` (${data.previous_total} in the previous period)` : ''}.`,
+							filters.length ? `Filtered by ${filters.join(', ')}.` : null,
 							busiest ? `Busiest day: ${busiest.date} (${busiest.clicks}).` : null,
 							data.referrers.length ? `Top referrers: ${top(data.referrers)}.` : null,
 							data.countries.length ? `Top countries: ${top(data.countries)}.` : null,
@@ -59,6 +65,9 @@ export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 					from: data.from,
 					to: data.to,
 					total: data.total,
+					previous_total: data.previous_total,
+					by_hour: data.by_hour,
+					by_weekday: data.by_weekday,
 					daily: data.daily,
 					referrers: data.referrers,
 					countries: data.countries,

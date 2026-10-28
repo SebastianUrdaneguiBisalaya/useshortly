@@ -71,6 +71,15 @@ describe('get_link_stats', () => {
 		expect(out.content[0].text).toContain('from 2026-02-01 to 2026-02-07');
 	});
 
+	it('passes the filters and reports the previous period', async () => {
+		h.apiReplies['GET /orgs/3/links/10/stats?country=PE&device=mobile&referrer=direct'] = json(stats({ previous_total: 64, by_hour: [1, 2], by_weekday: [3] }));
+		const out = await h.callTool(token, 'get_link_stats', { organization_id: 3, link_id: 10, country: 'PE', device: 'mobile', referrer: 'direct' });
+		expect(out.isError).toBeFalsy();
+		expect(out.content[0].text).toContain('128 clicks from 2026-01-01 to 2026-01-30 (64 in the previous period).');
+		expect(out.content[0].text).toContain('Filtered by country=PE, device=mobile, referrer=direct.');
+		expect(out.structuredContent).toMatchObject({ previous_total: 64, by_hour: [1, 2], by_weekday: [3] });
+	});
+
 	it('says plainly when there were no clicks, and copes with empty lists from the API', async () => {
 		h.apiReplies['GET /orgs/3/links/10/stats'] = json(stats({ total: 0, daily: null, referrers: null, countries: null, devices: null }));
 		const out = await h.callTool(token, 'get_link_stats', { organization_id: 3, link_id: 10 });

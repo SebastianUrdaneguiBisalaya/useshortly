@@ -357,7 +357,7 @@ func TestClickRepositoryStats(t *testing.T) {
 	add(theirs.ID, at("1h"), "https://other.example", "FR", "desktop") // another tenant's link
 
 	from, to := at("0h"), at("72h") // [03-01, 03-04)
-	st, err := clicks.Stats(ctx, 1, mine.ID, from, to)
+	st, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{})
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 4, st.Total)
@@ -367,20 +367,37 @@ func TestClickRepositoryStats(t *testing.T) {
 	assert.Equal(t, []analytics.Count{{Name: "PE", Clicks: 2}, {Name: "", Clicks: 1}, {Name: "US", Clicks: 1}}, st.Countries)
 	assert.Equal(t, []analytics.Count{{Name: "mobile", Clicks: 2}, {Name: "", Clicks: 1}, {Name: "desktop", Clicks: 1}}, st.Devices)
 
-	empty, err := clicks.Stats(ctx, 1, mine.ID, at("500h"), at("600h"))
+	wantHours := make([]int64, 24)
+	wantHours[0], wantHours[1], wantHours[23] = 2, 1, 1 // 00:00 twice, 01:00, 23:59
+	assert.Equal(t, wantHours, st.ByHour)
+	assert.Equal(t, []int64{2, 1, 1, 0, 0, 0, 0}, st.ByWeekday, "03-01 is a Sunday")
+
+	pe := "PE"
+	onlyPE, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{Country: &pe})
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, onlyPE.Total)
+	direct, none := "", ""
+	noReferrer, err := clicks.Total(ctx, 1, mine.ID, from, to, analytics.Filter{Referrer: &direct, Device: &none})
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, noReferrer, "the direct click has a device")
+	directOnly, err := clicks.Total(ctx, 1, mine.ID, from, to, analytics.Filter{Referrer: &direct})
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, directOnly)
+
+	empty, err := clicks.Stats(ctx, 1, mine.ID, at("500h"), at("600h"), analytics.Filter{})
 	require.NoError(t, err)
 	assert.Zero(t, empty.Total)
 	assert.Empty(t, empty.Daily)
 
-	_, err = clicks.Stats(ctx, 2, mine.ID, from, to)
+	_, err = clicks.Stats(ctx, 2, mine.ID, from, to, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrNotFound, "another tenant cannot read my link's stats")
-	_, err = clicks.Stats(ctx, 1, 9999, from, to)
+	_, err = clicks.Stats(ctx, 1, 9999, from, to, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrNotFound)
 
 	for i := 0; i < analytics.TopN+5; i++ {
 		add(mine.ID, at("1h"), "https://many.example/"+string(rune('a'+i)), "", "")
 	}
-	capped, err := clicks.Stats(ctx, 1, mine.ID, from, to)
+	capped, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{})
 	require.NoError(t, err)
 	assert.Len(t, capped.Referrers, analytics.TopN)
 }

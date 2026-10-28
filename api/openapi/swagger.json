@@ -411,6 +411,21 @@
             },
             "LinkStats": {
                 "properties": {
+                    "by_hour": {
+                        "description": "ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "by_weekday": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
                     "countries": {
                         "items": {
                             "$ref": "#/components/schemas/ClickCount"
@@ -436,6 +451,10 @@
                         "type": "string"
                     },
                     "link_id": {
+                        "type": "integer"
+                    },
+                    "previous_total": {
+                        "description": "PreviousTotal is the clicks of the window right before this one, as long as it.",
                         "type": "integer"
                     },
                     "referrers": {
@@ -3351,7 +3370,7 @@
         },
         "/orgs/{orgID}/links/{linkID}/stats": {
             "get": {
-                "description": "Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "description": "Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
                 "operationId": "getLinkStats",
                 "parameters": [
                     {
@@ -3384,6 +3403,30 @@
                         "description": "Last day, YYYY-MM-DD (UTC)",
                         "in": "query",
                         "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this country (ISO 3166-1 alpha-2), or unknown",
+                        "in": "query",
+                        "name": "country",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this device (mobile, tablet, desktop, bot), or unknown",
+                        "in": "query",
+                        "name": "device",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks with this referrer, or direct for none",
+                        "in": "query",
+                        "name": "referrer",
                         "schema": {
                             "type": "string"
                         }

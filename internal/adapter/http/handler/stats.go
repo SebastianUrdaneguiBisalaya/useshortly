@@ -26,11 +26,16 @@ type dayBody struct {
 } // @name DailyClicks
 
 type statsBody struct {
-	LinkID    int64       `json:"link_id"`
-	From      string      `json:"from"`
-	To        string      `json:"to"`
-	Total     int64       `json:"total"`
-	Daily     []dayBody   `json:"daily"`
+	LinkID int64  `json:"link_id"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Total  int64  `json:"total"`
+	// PreviousTotal is the clicks of the window right before this one, as long as it.
+	PreviousTotal int64     `json:"previous_total"`
+	Daily         []dayBody `json:"daily"`
+	// ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).
+	ByHour    []int64     `json:"by_hour"`
+	ByWeekday []int64     `json:"by_weekday"`
 	Referrers []countBody `json:"referrers"`
 	Countries []countBody `json:"countries"`
 	Devices   []countBody `json:"devices"`
@@ -42,7 +47,7 @@ const dateLayout = "2006-01-02"
 // both included, UTC). Without them it covers the last 30 days.
 //
 //	@Summary		Click statistics of a link
-//	@Description	Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.
+//	@Description	Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
 //	@Tags			analytics
 //	@Produce		json
 //	@Security		BearerAuth
@@ -50,6 +55,9 @@ const dateLayout = "2006-01-02"
 //	@Param			linkID	path		int		true	"Link id"
 //	@Param			from	query		string	false	"First day, YYYY-MM-DD (UTC)"
 //	@Param			to		query		string	false	"Last day, YYYY-MM-DD (UTC)"
+//	@Param			country	query		string	false	"Only clicks from this country (ISO 3166-1 alpha-2), or unknown"
+//	@Param			device	query		string	false	"Only clicks from this device (mobile, tablet, desktop, bot), or unknown"
+//	@Param			referrer	query		string	false	"Only clicks with this referrer, or direct for none"
 //	@Success		200		{object}	LinkStatsResponse
 //	@Failure	400	{object}	ErrorResponse
 //	@Failure	401	{object}	ErrorResponse
@@ -75,13 +83,15 @@ func (h *StatsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	st, err := h.stats.Stats(r.Context(), analytics.StatsQuery{TenantID: tenant.ID, LinkID: linkID, From: from, To: to})
+	q := r.URL.Query()
+	st, err := h.stats.Stats(r.Context(), analytics.StatsQuery{TenantID: tenant.ID, LinkID: linkID, From: from, To: to,
+		Country: q.Get("country"), Device: q.Get("device"), Referrer: q.Get("referrer")})
 	if err != nil {
 		WriteError(w, r, err)
 		return
 	}
 	body := statsBody{
-		LinkID: st.LinkID, From: st.From, To: st.To, Total: st.Total,
+		LinkID: st.LinkID, From: st.From, To: st.To, Total: st.Total, PreviousTotal: st.PreviousTotal, ByHour: st.ByHour, ByWeekday: st.ByWeekday,
 		Daily:     make([]dayBody, 0, len(st.Daily)),
 		Referrers: counts(st.Referrers), Countries: counts(st.Countries), Devices: counts(st.Devices),
 	}

@@ -1,4 +1,30 @@
 {
+	"meta": {
+		"title": "useshortly — self-hosted link shortener",
+		"description": "Shorten links, track clicks and manage your organization's domains.",
+		"auth": {
+			"signIn": {
+				"title": "Sign in — useshortly",
+				"description": "Sign in to your useshortly account to manage and track your links."
+			},
+			"signUp": {
+				"title": "Create account — useshortly",
+				"description": "Create a free account to start shortening and tracking your links."
+			},
+			"verifyEmail": {
+				"title": "Verify your email — useshortly",
+				"description": "Enter the code we sent you to confirm your email address."
+			},
+			"forgotPassword": {
+				"title": "Forgot password — useshortly",
+				"description": "Request a code to reset your useshortly password."
+			},
+			"resetPassword": {
+				"title": "Reset password — useshortly",
+				"description": "Choose a new password for your useshortly account."
+			}
+		}
+	},
 	"auth": {
 		"common": {
 			"or": "Or",

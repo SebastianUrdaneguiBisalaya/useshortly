@@ -7,8 +7,11 @@ import { Layout } from '~/components/ui/layout/layout/layout';
 import { Link } from '~/components/ui/foundations/link/link';
 import { Typography } from '~/components/ui/foundations/typography/typography';
 import { useTranslate } from '~/hooks/use-translate';
+import { authMeta } from './meta';
 import { useSessionStore } from '~/stores/session-store';
 import { createVerifyEmailSchema, OTP_LENGTH } from './schemas';
+
+export const meta = authMeta('verifyEmail');
 
 export default function VerifyEmailPage() {
 	const t = useTranslate();

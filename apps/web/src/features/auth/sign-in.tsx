@@ -13,6 +13,9 @@ import { useSessionStore } from '~/stores/session-store';
 import { createSignInSchema } from './schemas';
 import { useGoogleSignIn } from './use-google-sign-in';
 import { useTranslate } from '~/hooks/use-translate';
+import { authMeta } from './meta';
+
+export const meta = authMeta('signIn');
 
 export default function SignInPage() {
 	const t = useTranslate();

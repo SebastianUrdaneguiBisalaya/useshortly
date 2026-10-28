@@ -52,9 +52,9 @@ export function InputOtp({ value: controlledValue, defaultValue = '', onChange, 
 	let charIndex = 0;
 
 	return (
-		<div className='flex flex-col gap-1.5'>
+		<div className='flex flex-col gap-1.5 self-center'>
 			{label && (
-				<label className='text-sm font-medium font-primary text-foreground' htmlFor={inputId}>
+				<label className='text-sm font-medium font-primary text-foreground text-center' htmlFor={inputId}>
 					{label}
 				</label>
 			)}
@@ -64,7 +64,7 @@ export function InputOtp({ value: controlledValue, defaultValue = '', onChange, 
 					aria-invalid={Boolean(errorMessage)}
 					aria-label={label ? undefined : fallbackLabel}
 					autoComplete='one-time-code'
-					className='absolute inset-0 h-full w-full cursor-text opacity-0 disabled:cursor-not-allowed'
+					className='absolute inset-0 z-20 h-full w-full cursor-text opacity-0 disabled:cursor-not-allowed'
 					disabled={disabled}
 					id={inputId}
 					inputMode='numeric'

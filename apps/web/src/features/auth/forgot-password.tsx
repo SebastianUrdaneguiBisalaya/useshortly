@@ -8,6 +8,9 @@ import { Link } from '~/components/ui/foundations/link/link';
 import { Typography } from '~/components/ui/foundations/typography/typography';
 import { createForgotPasswordSchema } from './schemas';
 import { useTranslate } from '~/hooks/use-translate';
+import { authMeta } from './meta';
+
+export const meta = authMeta('forgotPassword');
 
 export default function ForgotPasswordPage() {
 	const t = useTranslate();

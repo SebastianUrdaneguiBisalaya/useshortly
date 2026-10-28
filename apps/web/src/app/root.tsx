@@ -11,6 +11,12 @@ import { themeFromRequest } from '~/lib/theme';
 
 export const links: Route.LinksFunction = () => [];
 
+/** Default tab title and description, used by every route that does not export its own `meta` (see `features/auth/layout.tsx`). */
+export const meta: Route.MetaFunction = ({ loaderData }) => {
+	const t = getI18n(loaderData?.locale).t;
+	return [{ title: t('meta.title') }, { name: 'description', content: t('meta.description') }];
+};
+
 /** Decides language and theme on the server (stored cookies, else `Accept-Language` / system) so the first paint is already right. */
 export function loader({ request }: Route.LoaderArgs) {
 	return {

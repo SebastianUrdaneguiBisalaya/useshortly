@@ -1,4 +1,30 @@
 {
+	"meta": {
+		"title": "useshortly — acortador de enlaces autoalojado",
+		"description": "Acorta enlaces, analiza clics y gestiona los dominios de tu organización.",
+		"auth": {
+			"signIn": {
+				"title": "Iniciar sesión — useshortly",
+				"description": "Inicia sesión en tu cuenta de useshortly para gestionar y analizar tus enlaces."
+			},
+			"signUp": {
+				"title": "Crear cuenta — useshortly",
+				"description": "Crea una cuenta gratis para empezar a acortar y analizar tus enlaces."
+			},
+			"verifyEmail": {
+				"title": "Verifica tu correo — useshortly",
+				"description": "Ingresa el código que te enviamos para confirmar tu correo electrónico."
+			},
+			"forgotPassword": {
+				"title": "Olvidé mi contraseña — useshortly",
+				"description": "Solicita un código para restablecer tu contraseña de useshortly."
+			},
+			"resetPassword": {
+				"title": "Restablecer contraseña — useshortly",
+				"description": "Elige una nueva contraseña para tu cuenta de useshortly."
+			}
+		}
+	},
 	"auth": {
 		"common": {
 			"or": "O",

@@ -12,6 +12,9 @@ import { Typography } from '~/components/ui/foundations/typography/typography';
 import { createSignUpSchema } from './schemas';
 import { useGoogleSignIn } from './use-google-sign-in';
 import { useTranslate } from '~/hooks/use-translate';
+import { authMeta } from './meta';
+
+export const meta = authMeta('signUp');
 
 export default function SignUpPage() {
 	const t = useTranslate();

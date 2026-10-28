@@ -10,6 +10,9 @@ import { Link } from '~/components/ui/foundations/link/link';
 import { Typography } from '~/components/ui/foundations/typography/typography';
 import { createResetPasswordSchema, OTP_LENGTH } from './schemas';
 import { useTranslate } from '~/hooks/use-translate';
+import { authMeta } from './meta';
+
+export const meta = authMeta('resetPassword');
 
 export default function ResetPasswordPage() {
 	const t = useTranslate();

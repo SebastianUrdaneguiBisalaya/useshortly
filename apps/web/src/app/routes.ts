@@ -10,6 +10,7 @@ export default [
 		route('users', '../features/protected/users/users.tsx'),
 		route('api-keys', '../features/protected/api-keys/api-keys.tsx'),
 		route('docs', '../features/protected/docs/docs.tsx'),
+		route('mcp', '../features/protected/mcp/mcp.tsx'),
 	]),
 	layout('../features/auth/layout.tsx', [
 		route('auth/sign-in', '../features/auth/sign-in.tsx'),

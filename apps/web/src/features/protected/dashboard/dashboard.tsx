@@ -1,4 +1,4 @@
-import { Page } from '../../../components/ui/layout/page/page';
+import { Page } from '~/components/ui/layout/page/page';
 import { OrganizationGate } from '../share/organization-gate';
 
 export default function DashboardPage() {

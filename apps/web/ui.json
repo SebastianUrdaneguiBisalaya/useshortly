@@ -12,6 +12,7 @@
     "data-display/badge": "main",
     "data-display/card": "main",
     "data-display/charts": "main",
+    "data-display/choropleth-map": "choropleth-map@1.0.0",
     "data-display/data-table": "main",
     "data-display/pagination": "main",
     "data-display/pill": "main",

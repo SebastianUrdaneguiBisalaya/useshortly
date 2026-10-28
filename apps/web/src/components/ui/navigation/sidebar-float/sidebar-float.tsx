@@ -2,6 +2,7 @@
 
 import { type LucideIcon, PanelLeft, PanelRight, X } from 'lucide-react';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../foundations/icon/icon';
 import { useEscapeKey } from '../../overlays-feedback/modal/modal';
 import { cn } from '../../utils/tailwind/cn';
@@ -11,12 +12,12 @@ export type SidebarFloatSide = 'left' | 'right';
 
 /** Texts rendered by `SidebarFloat`'s controls. Pass `lang` to `SidebarFloat.Root` to override any of them. */
 export interface SidebarFloatLang {
-	/** Accessible name of the button that expands a collapsed sidebar. */
-	expandSidebar: string;
-	/** Accessible name of the button that collapses the sidebar. */
-	collapseSidebar: string;
 	/** Accessible name of the mobile close button. */
 	closeMenu: string;
+	/** Accessible name of the button that collapses the sidebar. */
+	collapseSidebar: string;
+	/** Accessible name of the button that expands a collapsed sidebar. */
+	expandSidebar: string;
 	/** Accessible name of the navigation landmark. */
 	primary: string;
 }
@@ -30,11 +31,11 @@ export const defaultSidebarFloatLang: SidebarFloatLang = {
 };
 
 interface SidebarFloatContextValue {
-	readonly lang: SidebarFloatLang;
-	readonly side: SidebarFloatSide;
 	readonly collapsed: boolean;
+	readonly lang: SidebarFloatLang;
 	readonly setCollapsed: (collapsed: boolean) => void;
 	readonly setMobileOpen: (open: boolean) => void;
+	readonly side: SidebarFloatSide;
 }
 
 const SidebarFloatContext = React.createContext<SidebarFloatContextValue | null>(null);
@@ -48,29 +49,29 @@ function useSidebarFloatContext() {
 }
 
 export interface SidebarFloatRootProps extends Omit<React.HTMLAttributes<HTMLElement>, 'children' | 'lang'> {
+	children?: React.ReactNode;
+	/** Desktop icon-rail collapse state, for controlled usage. */
+	collapsed?: boolean;
+	/** Initial collapsed state, for uncontrolled usage. @default true */
+	defaultCollapsed?: boolean;
+	/** Initial mobile-open state, for uncontrolled usage. @default false */
+	defaultMobileOpen?: boolean;
 	/**
 	 * Texts rendered by the controls. Merges over English defaults.
 	 * @default defaultSidebarFloatLang
 	 */
 	lang?: Partial<SidebarFloatLang>;
+	/** Mobile off-canvas open state, for controlled usage. */
+	mobileOpen?: boolean;
+	/** Called whenever the collapsed state changes, controlled or not. */
+	onCollapsedChange?: (collapsed: boolean) => void;
+	/** Called whenever the mobile-open state changes, controlled or not. */
+	onMobileOpenChange?: (open: boolean) => void;
 	/**
 	 * Which edge of the viewport the panel floats near.
 	 * @default "left"
 	 */
 	side?: SidebarFloatSide;
-	/** Desktop icon-rail collapse state, for controlled usage. */
-	collapsed?: boolean;
-	/** Initial collapsed state, for uncontrolled usage. @default true */
-	defaultCollapsed?: boolean;
-	/** Called whenever the collapsed state changes, controlled or not. */
-	onCollapsedChange?: (collapsed: boolean) => void;
-	/** Mobile off-canvas open state, for controlled usage. */
-	mobileOpen?: boolean;
-	/** Initial mobile-open state, for uncontrolled usage. @default false */
-	defaultMobileOpen?: boolean;
-	/** Called whenever the mobile-open state changes, controlled or not. */
-	onMobileOpenChange?: (open: boolean) => void;
-	children?: React.ReactNode;
 }
 
 /**
@@ -210,16 +211,16 @@ function SidebarFloatHeader({ className, children, ...props }: SidebarFloatHeade
 }
 
 interface SidebarFloatBrandOwnProps {
-	/** Wordmark shown beside the logo mark while expanded; hidden in the icon rail, where the mark (`children`) stands alone. */
-	readonly label?: string;
-	readonly className?: string;
-	readonly children?: React.ReactNode;
 	/**
 	 * Element/component to render instead of `<a>` (e.g. a router `Link`).
 	 * Must forward `className`, `ref` and remaining props to a single anchor.
 	 * @default "a"
 	 */
 	readonly as?: React.ElementType;
+	readonly children?: React.ReactNode;
+	readonly className?: string;
+	/** Wordmark shown beside the logo mark while expanded; hidden in the icon rail, where the mark (`children`) stands alone. */
+	readonly label?: string;
 }
 
 export type SidebarFloatBrandProps<C extends React.ElementType = 'a'> = Omit<SidebarFloatBrandOwnProps, 'as'> & {
@@ -323,22 +324,22 @@ function SidebarFloatItemBadge({ count }: { count?: number }) {
 }
 
 interface SidebarFloatItemOwnProps {
-	/** Icon shown before the label — the only visible content in the collapsed rail. */
-	readonly icon: LucideIcon;
-	/** Item text. Shown as the label while expanded, and kept as the accessible name and native tooltip once collapsed. */
-	readonly label: string;
 	/** Marks this as the current page — subtle fill, full-ink label, and a left accent bar. */
 	readonly active?: boolean;
-	/** Small counter shown over the icon (e.g. unread count); also appended to the accessible name. Values over 9 show as "9+". */
-	readonly badge?: number;
-	readonly className?: string;
-	readonly onClick?: React.MouseEventHandler<HTMLElement>;
 	/**
 	 * Element/component to render instead of `<a>` (e.g. a router `Link`).
 	 * Must forward `className`, `ref` and remaining props to a single anchor.
 	 * @default "a"
 	 */
 	readonly as?: React.ElementType;
+	/** Small counter shown over the icon (e.g. unread count); also appended to the accessible name. Values over 9 show as "9+". */
+	readonly badge?: number;
+	readonly className?: string;
+	/** Icon shown before the label — the only visible content in the collapsed rail. */
+	readonly icon: LucideIcon;
+	/** Item text. Shown as the label while expanded, and kept as the accessible name and shown in a hover label once collapsed. */
+	readonly label: string;
+	readonly onClick?: React.MouseEventHandler<HTMLElement>;
 }
 
 export type SidebarFloatItemProps<C extends React.ElementType = 'a'> = Omit<SidebarFloatItemOwnProps, 'as'> & {
@@ -353,32 +354,78 @@ function SidebarFloatItem<C extends React.ElementType = 'a'>({ as, icon, label, 
 
 	return (
 		<li className='relative'>
-			<Component
-				aria-current={active ? 'page' : undefined}
-				className={cn(
-					'group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 font-primary text-sm transition-colors duration-150 ease-in-out',
-					'focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!',
-					collapsed && 'md:justify-center md:px-0',
-					active ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-					className
-				)}
-				onClick={(event: React.MouseEvent<HTMLElement>) => {
-					onClick?.(event);
-					setMobileOpen(false);
-				}}
-				title={collapsed ? label : undefined}
-				{...props}
-			>
-				<span className='relative shrink-0'>
-					<Icon aria-hidden='true' icon={icon} size='md' />
-					<SidebarFloatItemBadge count={badge} />
-				</span>
-				<span className={cn('min-w-0 flex-1 truncate', collapsed && 'md:sr-only')}>
-					{label}
-					{unreadLabel && <span className='sr-only'>{unreadLabel}</span>}
-				</span>
-			</Component>
+			<SidebarFloatHint label={label}>
+				<Component
+					aria-current={active ? 'page' : undefined}
+					className={cn(
+						'group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 font-primary text-sm transition-colors duration-150 ease-in-out',
+						'focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!',
+						collapsed && 'md:justify-center md:px-0',
+						active ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+						className
+					)}
+					onClick={(event: React.MouseEvent<HTMLElement>) => {
+						onClick?.(event);
+						setMobileOpen(false);
+					}}
+					title={collapsed ? label : undefined}
+					{...props}
+				>
+					<span className='relative shrink-0'>
+						<Icon aria-hidden='true' icon={icon} size='md' />
+						<SidebarFloatItemBadge count={badge} />
+					</span>
+					<span className={cn('min-w-0 flex-1 truncate', collapsed && 'md:sr-only')}>
+						{label}
+						{unreadLabel && <span className='sr-only'>{unreadLabel}</span>}
+					</span>
+				</Component>
+			</SidebarFloatHint>
 		</li>
+	);
+}
+
+export interface SidebarFloatHintProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'> {
+	readonly children: React.ReactNode;
+	/** Text shown beside the wrapped element while the rail is collapsed and hovered or focused. */
+	readonly label: string;
+}
+
+/** Hover/focus label for an element that shows only an icon in the collapsed desktop rail. Does nothing while expanded or in the mobile drawer, where labels are already visible. */
+function SidebarFloatHint({ label, className, children, ...props }: SidebarFloatHintProps) {
+	const { collapsed, side } = useSidebarFloatContext();
+	const anchorRef = React.useRef<HTMLSpanElement>(null);
+	const [rect, setRect] = React.useState<DOMRect | null>(null);
+
+	const show = () => {
+		if (!collapsed || !anchorRef.current || !window.matchMedia('(min-width: 768px)').matches) return;
+		setRect(anchorRef.current.getBoundingClientRect());
+	};
+	const hide = () => setRect(null);
+
+	React.useEffect(() => {
+		if (!collapsed) setRect(null);
+	}, [collapsed]);
+
+	return (
+		<span className={cn('block', className)} onBlur={hide} onClick={hide} onFocus={show} onMouseEnter={show} onMouseLeave={hide} ref={anchorRef} {...props}>
+			{children}
+			{rect &&
+				collapsed &&
+				createPortal(
+					<div
+						className='pointer-events-none fixed z-50 max-w-60 -translate-y-1/2 truncate rounded-md border border-border bg-background px-2.5 py-1.5 font-primary text-sm text-foreground shadow-sm'
+						role='tooltip'
+						style={{
+							top: rect.top + rect.height / 2,
+							...(side === 'left' ? { left: rect.right + 12 } : { right: window.innerWidth - rect.left + 12 }),
+						}}
+					>
+						{label}
+					</div>,
+					document.body
+				)}
+		</span>
 	);
 }
 
@@ -406,6 +453,7 @@ export const SidebarFloat = Object.assign(SidebarFloatRoot, {
 	Divider: SidebarFloatDivider,
 	Footer: SidebarFloatFooter,
 	Header: SidebarFloatHeader,
+	Hint: SidebarFloatHint,
 	Item: SidebarFloatItem,
 	MobileCloseTrigger: SidebarFloatMobileCloseTrigger,
 	Nav: SidebarFloatNav,

@@ -353,7 +353,6 @@ function SidebarFloatItem<C extends React.ElementType = 'a'>({ as, icon, label, 
 
 	return (
 		<li className='relative'>
-			{active && <span aria-hidden='true' className='absolute top-1/2 left-0 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground' />}
 			<Component
 				aria-current={active ? 'page' : undefined}
 				className={cn(

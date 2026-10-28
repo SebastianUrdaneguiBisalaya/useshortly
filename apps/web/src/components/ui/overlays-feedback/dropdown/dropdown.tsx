@@ -85,6 +85,7 @@ function DropdownRoot({ children, open: controlledOpen, defaultOpen = false, onO
 export interface DropdownTriggerProps {
 	/** A single element (a `Button`, native `<button>`, etc.) that opens the menu. */
 	children: React.ReactElement;
+	className?: string;
 }
 
 /**
@@ -92,11 +93,11 @@ export interface DropdownTriggerProps {
  * click — the wrapper (not `children` itself) owns the ref, so any trigger
  * element works regardless of whether it forwards refs.
  */
-function Trigger({ children }: DropdownTriggerProps) {
+function Trigger({ children, className }: DropdownTriggerProps) {
 	const { open, setOpen, triggerRef } = useDropdownContext();
 
 	return (
-		<span className='inline-flex' onClick={() => setOpen(!open)} ref={triggerRef}>
+		<span className={cn('inline-flex', className)} onClick={() => setOpen(!open)} ref={triggerRef}>
 			{React.cloneElement(children, {
 				'aria-expanded': open,
 				'aria-haspopup': 'menu',

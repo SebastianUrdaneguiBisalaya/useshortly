@@ -4,7 +4,9 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
 import { useTranslate } from '~/hooks/use-translate';
+import { CommandMenu } from './command-menu';
 import { requireSession } from './require-session';
+import { UserMenu } from './user-menu';
 
 /** Runs before any `/`, `/links` or `/settings` page renders: unauthenticated visitors are redirected to sign-in. */
 export async function clientLoader() {
@@ -22,6 +24,7 @@ export default function ProtectedLayout() {
 	const t = useTranslate();
 	const { pathname } = useLocation();
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const [collapsed, setCollapsed] = useState(true);
 
 	return (
 		<div className='relative h-full w-full'>
@@ -32,7 +35,9 @@ export default function ProtectedLayout() {
 					expandSidebar: t('protected.sidebar.expand'),
 					primary: t('protected.sidebar.primary'),
 				}}
+				collapsed={collapsed}
 				mobileOpen={mobileOpen}
+				onCollapsedChange={setCollapsed}
 				onMobileOpenChange={setMobileOpen}
 			>
 				<SidebarFloat.Header>
@@ -45,9 +50,12 @@ export default function ProtectedLayout() {
 				<SidebarFloat.Nav>
 					<SidebarFloat.Item active={pathname === '/'} as={Link} icon={LayoutDashboard} label={t('protected.nav.dashboard')} to='/' />
 					<SidebarFloat.Item active={pathname.startsWith('/links')} as={Link} icon={Link2} label={t('protected.nav.links')} to='/links' />
+					<SidebarFloat.Item active={pathname.startsWith('/settings')} as={Link} icon={Settings} label={t('protected.nav.settings')} to='/settings' />
 				</SidebarFloat.Nav>
 				<SidebarFloat.Footer>
-					<SidebarFloat.Item active={pathname.startsWith('/settings')} as={Link} icon={Settings} label={t('protected.nav.settings')} to='/settings' />
+					<CommandMenu />
+					<SidebarFloat.Divider />
+					<UserMenu collapsed={collapsed} />
 				</SidebarFloat.Footer>
 			</SidebarFloat>
 			<main className='h-full overflow-y-auto p-4 md:pl-24'>

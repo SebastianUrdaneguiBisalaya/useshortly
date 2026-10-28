@@ -26,29 +26,52 @@ export interface UserProfileTriggerProps {
 	className?: string;
 }
 
+const rowClassName = (collapsed: boolean, className?: string) =>
+	cn(
+		'flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors duration-150 ease-in-out',
+		'hover:bg-muted',
+		'focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!',
+		collapsed && 'justify-center',
+		className
+	);
+
+function UserProfileRow({ avatar, name, email, collapsed }: Pick<UserProfileTriggerProps, 'avatar' | 'name' | 'email'> & { collapsed: boolean }) {
+	return (
+		<>
+			{avatar}
+			{!collapsed && (
+				<span className='flex min-w-0 flex-1 flex-col items-start'>
+					<span className='w-full truncate font-primary text-sm font-medium text-foreground'>{name}</span>
+					{email && <span className='w-full truncate font-primary text-xs text-muted-foreground'>{email}</span>}
+				</span>
+			)}
+		</>
+	);
+}
+
 /** Opens `UserProfile.Content` on click — a row showing the avatar plus name/email (or just the avatar while `collapsed`). */
 function UserProfileTrigger({ avatar, name, email, collapsed = false, className }: UserProfileTriggerProps) {
 	return (
-		<Dropdown.Trigger>
-			<button
-				className={cn(
-					'flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors duration-150 ease-in-out',
-					'hover:bg-muted',
-					'focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring!',
-					collapsed && 'justify-center',
-					className
-				)}
-				type='button'
-			>
-				{avatar}
-				{!collapsed && (
-					<span className='flex min-w-0 flex-1 flex-col items-start'>
-						<span className='w-full truncate font-primary text-sm font-medium text-foreground'>{name}</span>
-						{email && <span className='w-full truncate font-primary text-xs text-muted-foreground'>{email}</span>}
-					</span>
-				)}
+		<Dropdown.Trigger className='w-full'>
+			<button className={rowClassName(collapsed, className)} type='button'>
+				<UserProfileRow avatar={avatar} collapsed={collapsed} email={email} name={name} />
 			</button>
 		</Dropdown.Trigger>
+	);
+}
+
+export type UserProfileLinkProps<C extends React.ElementType = 'a'> = UserProfileTriggerProps & {
+	/** Element or router `Link` to render, like `SidebarFloat.Item`'s `as`. @default "a" */
+	as?: C;
+} & Omit<React.ComponentPropsWithoutRef<C>, keyof UserProfileTriggerProps | 'as'>;
+
+/** The same row as `UserProfile.Trigger`, but a plain link (e.g. to `/profile`) instead of opening a popover; use it without the `UserProfile` root. */
+function UserProfileLink<C extends React.ElementType = 'a'>({ as, avatar, name, email, collapsed = false, className, ...props }: UserProfileLinkProps<C>) {
+	const Component: React.ElementType = as ?? 'a';
+	return (
+		<Component className={rowClassName(collapsed, className)} {...props}>
+			<UserProfileRow avatar={avatar} collapsed={collapsed} email={email} name={name} />
+		</Component>
 	);
 }
 
@@ -124,6 +147,7 @@ export const UserProfile = Object.assign(UserProfileRoot, {
 	Content: UserProfileContent,
 	Header: UserProfileHeader,
 	Item: UserProfileItem,
+	Link: UserProfileLink,
 	Separator: Dropdown.Separator,
 	Trigger: UserProfileTrigger,
 });

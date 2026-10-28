@@ -42,24 +42,25 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 
 // linkSelect reads a link with the host of its domain, if it has one.
 const linkSelect = `SELECT l.id, l.code, l.origin_url, l.expires_at, l.max_clicks, l.click_count, l.password_hash,
-	l.tenant_id, l.domain_id, d.host, l.created_by, l.updated_by, l.created_at, l.updated_at
+	l.tenant_id, l.domain_id, d.host, l.qr_foreground, l.qr_background, l.qr_logo_url, l.created_by, l.updated_by, l.created_at, l.updated_at
 	FROM links l JOIN organizations o ON o.id = l.tenant_id AND o.deleted_at IS NULL
 	LEFT JOIN domains d ON d.id = l.domain_id `
 
 // scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
 func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 	var (
-		l                link.Link
-		expires, updated sql.NullString
-		passwordHash     sql.NullString
-		updatedBy        sql.NullInt64
-		createdBy        sql.NullInt64
-		maxClicks        sql.NullInt64
-		domainID         sql.NullInt64
-		domainHost       sql.NullString
-		createdAt        string
+		l                  link.Link
+		expires, updated   sql.NullString
+		passwordHash       sql.NullString
+		updatedBy          sql.NullInt64
+		createdBy          sql.NullInt64
+		maxClicks          sql.NullInt64
+		domainID           sql.NullInt64
+		domainHost         sql.NullString
+		qrFg, qrBg, qrLogo sql.NullString
+		createdAt          string
 	)
-	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &createdBy, &updatedBy, &createdAt, &updated)
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &qrFg, &qrBg, &qrLogo, &createdBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
 		return link.Link{}, err
 	}
@@ -70,6 +71,7 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		l.DomainID = &domainID.Int64
 	}
 	l.DomainHost = domainHost.String
+	l.QRStyle = link.QRStyle{Foreground: qrFg.String, Background: qrBg.String, LogoURL: qrLogo.String}
 	l.CreatedBy = createdBy.Int64 // 0 once the user who created it was deleted
 	l.PasswordHash = passwordHash.String
 	if updatedBy.Valid {
@@ -141,6 +143,24 @@ func (r *LinkRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	n, err := res.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("link repo: delete: %w", err)
+	}
+	if n == 0 {
+		return link.ErrNotFound
+	}
+	return nil
+}
+
+// SetQRStyle only matches the tenant's own links, like Delete.
+func (r *LinkRepository) SetQRStyle(ctx context.Context, tenantID, id int64, s link.QRStyle) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE links SET qr_foreground = ?, qr_background = ?, qr_logo_url = ? WHERE id = ? AND tenant_id = ?`,
+		nullString(s.Foreground), nullString(s.Background), nullString(s.LogoURL), id, tenantID)
+	if err != nil {
+		return fmt.Errorf("link repo: set qr style: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("link repo: set qr style: %w", err)
 	}
 	if n == 0 {
 		return link.ErrNotFound

@@ -8,7 +8,7 @@
 import * as zod from 'zod';
 
 /**
- * An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.
+ * An image of the short URL, not JSON, drawn with the link's QR colors (the logo is not drawn by the server). Needs a JWT or an API key with the read scope.
  * @summary QR code of a link
  */
 export const GetLinkQrParams = zod.object({

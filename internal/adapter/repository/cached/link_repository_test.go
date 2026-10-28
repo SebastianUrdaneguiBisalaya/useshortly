@@ -101,6 +101,8 @@ func sameDomain(a, b *int64) bool {
 	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
 
+func (r *countingRepo) SetQRStyle(context.Context, int64, int64, link.QRStyle) error { return nil }
+
 func (r *countingRepo) ConsumeClick(context.Context, int64) error {
 	r.consumes++
 	return nil

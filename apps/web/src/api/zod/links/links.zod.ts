@@ -32,6 +32,14 @@ export const ListLinksResponse = zod.object({
 				max_clicks: zod.int().optional(),
 				origin_url: zod.string().optional(),
 				protected: zod.boolean().optional(),
+				qr_style: zod
+					.object({
+						background: zod.string().optional(),
+						foreground: zod.string().optional(),
+						logo_url: zod.string().optional(),
+					})
+					.optional()
+					.describe("QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."),
 				short_url: zod.string().optional(),
 			})
 		)
@@ -75,6 +83,14 @@ export const CreateLinkResponse = zod.object({
 			max_clicks: zod.int().optional(),
 			origin_url: zod.string().optional(),
 			protected: zod.boolean().optional(),
+			qr_style: zod
+				.object({
+					background: zod.string().optional(),
+					foreground: zod.string().optional(),
+					logo_url: zod.string().optional(),
+				})
+				.optional()
+				.describe("QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."),
 			short_url: zod.string().optional(),
 		})
 		.optional(),
@@ -111,6 +127,55 @@ export const GetLinkResponse = zod.object({
 			max_clicks: zod.int().optional(),
 			origin_url: zod.string().optional(),
 			protected: zod.boolean().optional(),
+			qr_style: zod
+				.object({
+					background: zod.string().optional(),
+					foreground: zod.string().optional(),
+					logo_url: zod.string().optional(),
+				})
+				.optional()
+				.describe("QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."),
+			short_url: zod.string().optional(),
+		})
+		.optional(),
+});
+
+/**
+ * Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.
+ * @summary Style a link's QR code
+ */
+export const SetLinkQrStyleParams = zod.object({
+	orgID: zod.int().describe('Organization id'),
+	linkID: zod.int().describe('Link id'),
+});
+
+export const SetLinkQrStyleBody = zod
+	.object({
+		background: zod.string().optional(),
+		foreground: zod.string().optional(),
+		logo_url: zod.string().optional(),
+	})
+	.describe('QR style');
+
+export const SetLinkQrStyleResponse = zod.object({
+	data: zod
+		.object({
+			code: zod.string().optional(),
+			created_at: zod.string().optional(),
+			domain_id: zod.int().optional(),
+			expires_at: zod.string().optional(),
+			id: zod.int().optional(),
+			max_clicks: zod.int().optional(),
+			origin_url: zod.string().optional(),
+			protected: zod.boolean().optional(),
+			qr_style: zod
+				.object({
+					background: zod.string().optional(),
+					foreground: zod.string().optional(),
+					logo_url: zod.string().optional(),
+				})
+				.optional()
+				.describe("QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."),
 			short_url: zod.string().optional(),
 		})
 		.optional(),

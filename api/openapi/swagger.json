@@ -380,6 +380,10 @@
                     "protected": {
                         "type": "boolean"
                     },
+                    "qr_style": {
+                        "$ref": "#/components/schemas/QRStyle",
+                        "description": "QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."
+                    },
                     "short_url": {
                         "type": "string"
                     }
@@ -608,6 +612,20 @@
                 },
                 "type": "object"
             },
+            "QRStyle": {
+                "properties": {
+                    "background": {
+                        "type": "string"
+                    },
+                    "foreground": {
+                        "type": "string"
+                    },
+                    "logo_url": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "RegisterRequest": {
                 "properties": {
                     "email": {
@@ -657,6 +675,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/Session"
+                    }
+                },
+                "type": "object"
+            },
+            "SetQRStyleRequest": {
+                "properties": {
+                    "background": {
+                        "type": "string"
+                    },
+                    "foreground": {
+                        "type": "string"
+                    },
+                    "logo_url": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -3217,7 +3249,7 @@
         },
         "/orgs/{orgID}/links/{linkID}/qr": {
             "get": {
-                "description": "An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.",
+                "description": "An image of the short URL, not JSON, drawn with the link's QR colors (the logo is not drawn by the server). Needs a JWT or an API key with the read scope.",
                 "operationId": "getLinkQr",
                 "parameters": [
                     {
@@ -3365,6 +3397,116 @@
                 "summary": "QR code of a link",
                 "tags": [
                     "qr"
+                ]
+            }
+        },
+        "/orgs/{orgID}/links/{linkID}/qr-style": {
+            "put": {
+                "description": "Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.",
+                "operationId": "setLinkQrStyle",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Link id",
+                        "in": "path",
+                        "name": "linkID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetQRStyleRequest",
+                                "description": "QR style",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "QR style",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Style a link's QR code",
+                "tags": [
+                    "links"
                 ]
             }
         },

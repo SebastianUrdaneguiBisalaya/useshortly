@@ -79,6 +79,17 @@ func (r *fakeRepo) Delete(_ context.Context, tenantID, id int64) error {
 	return ErrNotFound
 }
 
+func (r *fakeRepo) SetQRStyle(_ context.Context, tenantID, id int64, style QRStyle) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			l.QRStyle = style
+			r.links[code] = l
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 func (r *fakeRepo) ConsumeClick(_ context.Context, id int64) error {
 	r.consumes++
 	for code, l := range r.links {
@@ -734,4 +745,52 @@ func TestTooManyAttemptsError(t *testing.T) {
 	assert.Equal(t, 90*time.Second, wait)
 	_, ok = RetryAfter(ErrWrongPassword)
 	assert.False(t, ok)
+}
+
+func TestSetQRStyle(t *testing.T) {
+	ctx := context.Background()
+	newLink := func(t *testing.T) (*Service, Link) {
+		s := NewService(newFakeRepo(), &fakeGen{codes: []string{"abc1234"}}, &fakeHasher{}, &fakeLimiter{})
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 1, URL: "https://example.com"})
+		require.NoError(t, err)
+		return s, l
+	}
+
+	t.Run("stores a valid style and a zero style clears it", func(t *testing.T) {
+		s, l := newLink(t)
+		want := QRStyle{Foreground: "#102a43", Background: "#f0f4f8", LogoURL: "https://example.com/logo.png"}
+		got, err := s.SetQRStyle(ctx, 1, l.ID, want)
+		require.NoError(t, err)
+		assert.Equal(t, want, got.QRStyle)
+
+		got, err = s.SetQRStyle(ctx, 1, l.ID, QRStyle{})
+		require.NoError(t, err)
+		assert.True(t, got.QRStyle.IsZero())
+	})
+
+	t.Run("rejects bad styles", func(t *testing.T) {
+		s, l := newLink(t)
+		for name, tt := range map[string]struct {
+			style QRStyle
+			want  error
+		}{
+			"not hex":                {QRStyle{Foreground: "red"}, ErrInvalidQRColor},
+			"short hex":              {QRStyle{Foreground: "#fff"}, ErrInvalidQRColor},
+			"bad digits":             {QRStyle{Background: "#gggggg"}, ErrInvalidQRColor},
+			"inverted":               {QRStyle{Foreground: "#ffffff", Background: "#000000"}, ErrLowQRContrast},
+			"too little contrast":    {QRStyle{Foreground: "#cccccc"}, ErrLowQRContrast},
+			"light on the default":   {QRStyle{Foreground: "#ffff00"}, ErrLowQRContrast},
+			"http logo":              {QRStyle{LogoURL: "http://example.com/a.png"}, ErrInvalidLogoURL},
+			"logo that is not a URL": {QRStyle{LogoURL: "logo"}, ErrInvalidLogoURL},
+		} {
+			_, err := s.SetQRStyle(ctx, 1, l.ID, tt.style)
+			assert.ErrorIs(t, err, tt.want, name)
+		}
+	})
+
+	t.Run("another tenant's link is not found", func(t *testing.T) {
+		s, l := newLink(t)
+		_, err := s.SetQRStyle(ctx, 2, l.ID, QRStyle{})
+		assert.ErrorIs(t, err, ErrNotFound)
+	})
 }

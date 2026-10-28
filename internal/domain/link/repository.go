@@ -18,6 +18,9 @@ type Repository interface {
 	ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]Link, int, error)
 	// Delete removes the tenant's link. Returns ErrNotFound if it does not exist or belongs to another tenant.
 	Delete(ctx context.Context, tenantID, id int64) error
+	// SetQRStyle stores the style of the tenant's link; a zero style clears it. Returns ErrNotFound if
+	// the link does not exist or is another tenant's.
+	SetQRStyle(ctx context.Context, tenantID, id int64, style QRStyle) error
 	// ConsumeClick counts one click atomically, so concurrent clicks never exceed max_clicks.
 	// Returns ErrExpired if the link already used all its clicks.
 	ConsumeClick(ctx context.Context, id int64) error

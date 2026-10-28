@@ -24,7 +24,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { BodyType, ErrorType } from '../../axios-instance';
 
 import { customInstance } from '../../axios-instance';
-import type { CreateLinkRequest, ErrorResponse, LinkListResponse, LinkResponse, ListLinksParams } from '../../model';
+import type { CreateLinkRequest, ErrorResponse, LinkListResponse, LinkResponse, ListLinksParams, SetQRStyleRequest } from '../../model';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -280,3 +280,48 @@ export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError =
 
 	return withQueryKey(query, queryOptions.queryKey);
 }
+
+/**
+ * Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.
+ * @summary Style a link's QR code
+ */
+export const setLinkQrStyle = (orgID: number, linkID: number, setQRStyleRequest: BodyType<SetQRStyleRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<LinkResponse>({ url: `/orgs/${orgID}/links/${linkID}/qr-style`, method: 'PUT', headers: { 'Content-Type': 'application/json' }, data: setQRStyleRequest, signal }, options);
+};
+
+export const getSetLinkQrStyleMutationKey = () => ['setLinkQrStyle'] as const;
+
+export const getSetLinkQrStyleMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof setLinkQrStyle>>, TError, SetLinkQrStyleMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof setLinkQrStyle>>, TError, SetLinkQrStyleMutationVariables, TContext> => {
+	const mutationKey = getSetLinkQrStyleMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
+
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof setLinkQrStyle>>, SetLinkQrStyleMutationVariables> = props => {
+		const { orgID, linkID, data } = props ?? {};
+
+		return setLinkQrStyle(orgID, linkID, data, requestOptions);
+	};
+
+	return { mutationFn, ...mutationOptions };
+};
+
+export type SetLinkQrStyleMutationResult = NonNullable<Awaited<ReturnType<typeof setLinkQrStyle>>>;
+export type SetLinkQrStyleMutationBody = BodyType<SetQRStyleRequest>;
+export type SetLinkQrStyleMutationError = ErrorType<ErrorResponse>;
+export type SetLinkQrStyleMutationVariables = { orgID: number; linkID: number; data: BodyType<SetQRStyleRequest> };
+
+/**
+ * @summary Style a link's QR code
+ */
+export const useSetLinkQrStyle = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof setLinkQrStyle>>, TError, SetLinkQrStyleMutationVariables, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof setLinkQrStyle>>, TError, SetLinkQrStyleMutationVariables, TContext> => {
+	return useMutation(getSetLinkQrStyleMutationOptions(options), queryClient);
+};

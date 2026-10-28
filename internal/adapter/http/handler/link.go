@@ -90,8 +90,16 @@ type linkBody struct {
 	ExpiresAt *string `json:"expires_at"`
 	MaxClicks *int64  `json:"max_clicks"`
 	Protected bool    `json:"protected"`
-	CreatedAt string  `json:"created_at"`
+	// QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo).
+	QRStyle   qrStyleBody `json:"qr_style"`
+	CreatedAt string      `json:"created_at"`
 } // @name Link
+
+type qrStyleBody struct {
+	Foreground *string `json:"foreground"`
+	Background *string `json:"background"`
+	LogoURL    *string `json:"logo_url"`
+} // @name QRStyle
 
 type CreateLinkRequest struct {
 	URL       string     `json:"url"`
@@ -142,11 +150,68 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusCreated, h.body(l))
 }
 
+func qrStyleOf(s link.QRStyle) qrStyleBody {
+	opt := func(v string) *string {
+		if v == "" {
+			return nil
+		}
+		return &v
+	}
+	return qrStyleBody{Foreground: opt(s.Foreground), Background: opt(s.Background), LogoURL: opt(s.LogoURL)}
+}
+
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
 		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, OriginURL: l.OriginURL,
-		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), CreatedAt: formatTime(l.CreatedAt),
+		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), QRStyle: qrStyleOf(l.QRStyle), CreatedAt: formatTime(l.CreatedAt),
 	}
+}
+
+// SetQRStyleRequest is the new style of a link's QR code; an empty or missing field is the default.
+type SetQRStyleRequest struct {
+	Foreground string `json:"foreground"`
+	Background string `json:"background"`
+	LogoURL    string `json:"logo_url"`
+} // @name SetQRStyleRequest
+
+// SetQRStyle replaces the QR style of a link of the organization.
+//
+//	@Summary		Style a link's QR code
+//	@Description	Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.
+//	@Tags			links
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			linkID	path		int					true	"Link id"
+//	@Param			body	body		SetQRStyleRequest	true	"QR style"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	setLinkQrStyle
+//	@Router			/orgs/{orgID}/links/{linkID}/qr-style [put]
+func (h *LinkHandler) SetQRStyle(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	var in SetQRStyleRequest
+	if !decode(w, r, &in) {
+		return
+	}
+	l, err := h.links.SetQRStyle(r.Context(), tenant.ID, linkID, link.QRStyle{Foreground: in.Foreground, Background: in.Background, LogoURL: in.LogoURL})
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
 }
 
 // List answers one page of the organization's links, newest first.

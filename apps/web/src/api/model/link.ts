@@ -5,6 +5,7 @@
  * Self-hosted URL shortener. JSON keys are snake_case; every success is {"data": ...} and every failure {"error": {...}}.
  * OpenAPI spec version: 1.0
  */
+import type { QRStyle } from './qRStyle';
 
 export interface Link {
 	code?: string;
@@ -15,5 +16,7 @@ export interface Link {
 	max_clicks?: number;
 	origin_url?: string;
 	protected?: boolean;
+	/** QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo). */
+	qr_style?: QRStyle;
 	short_url?: string;
 }

@@ -41,7 +41,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
- * An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.
+ * An image of the short URL, not JSON, drawn with the link's QR colors (the logo is not drawn by the server). Needs a JWT or an API key with the read scope.
  * @summary QR code of a link
  */
 export const getLinkQr = (orgID: number, linkID: number, params?: GetLinkQrParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {

@@ -15,7 +15,7 @@ type fakeGen struct {
 	err     error
 }
 
-func (f *fakeGen) Generate(content string, format Format, size int) ([]byte, error) {
+func (f *fakeGen) Generate(content string, format Format, size int, _ Style) ([]byte, error) {
 	f.content, f.format, f.size = content, format, size
 	return []byte("img"), f.err
 }
@@ -23,7 +23,7 @@ func (f *fakeGen) Generate(content string, format Format, size int) ([]byte, err
 func TestRender(t *testing.T) {
 	t.Run("defaults to a 256 px PNG", func(t *testing.T) {
 		g := &fakeGen{}
-		img, format, err := NewService(g).Render("http://x/abc", "", 0)
+		img, format, err := NewService(g).Render("http://x/abc", "", 0, Style{})
 		require.NoError(t, err)
 		assert.Equal(t, []byte("img"), img)
 		assert.Equal(t, PNG, format)
@@ -33,7 +33,7 @@ func TestRender(t *testing.T) {
 
 	t.Run("passes format and size through", func(t *testing.T) {
 		g := &fakeGen{}
-		_, format, err := NewService(g).Render("c", SVG, MaxSize)
+		_, format, err := NewService(g).Render("c", SVG, MaxSize, Style{})
 		require.NoError(t, err)
 		assert.Equal(t, SVG, format)
 		assert.Equal(t, MaxSize, g.size)
@@ -51,7 +51,7 @@ func TestRender(t *testing.T) {
 			"negative":       {PNG, -5, ErrInvalidSize},
 		} {
 			g := &fakeGen{}
-			_, _, err := NewService(g).Render("c", tt.format, tt.size)
+			_, _, err := NewService(g).Render("c", tt.format, tt.size, Style{})
 			assert.ErrorIs(t, err, tt.want, name)
 			assert.Empty(t, g.content, name)
 		}
@@ -59,7 +59,7 @@ func TestRender(t *testing.T) {
 
 	t.Run("propagates the generator error", func(t *testing.T) {
 		boom := errors.New("boom")
-		_, _, err := NewService(&fakeGen{err: boom}).Render("c", PNG, 0)
+		_, _, err := NewService(&fakeGen{err: boom}).Render("c", PNG, 0, Style{})
 		assert.ErrorIs(t, err, boom)
 	})
 }

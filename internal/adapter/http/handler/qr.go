@@ -23,7 +23,7 @@ func NewQRHandler(links *link.Service, qr *qr.Service, baseURL string) *QRHandle
 // is png (default) or svg and ?size= the pixels on a side (64 to 1024, default 256).
 //
 //	@Summary		QR code of a link
-//	@Description	An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.
+//	@Description	An image of the short URL, not JSON, drawn with the link's QR colors (the logo is not drawn by the server). Needs a JWT or an API key with the read scope.
 //	@Tags			qr
 //	@Produce		image/png,image/svg+xml
 //	@Security		BearerAuth
@@ -62,7 +62,7 @@ func (h *QRHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	img, format, err := h.qr.Render(shortURL(h.baseURL, l), qr.Format(r.URL.Query().Get("format")), size)
+	img, format, err := h.qr.Render(shortURL(h.baseURL, l), qr.Format(r.URL.Query().Get("format")), size, qr.Style{Foreground: l.QRStyle.Foreground, Background: l.QRStyle.Background})
 	if err != nil {
 		WriteError(w, r, err)
 		return

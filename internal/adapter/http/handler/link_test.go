@@ -64,6 +64,8 @@ func (r *fakeLinkRepo) Delete(_ context.Context, tenantID, id int64) error {
 	return link.ErrNotFound
 }
 
+func (r *fakeLinkRepo) SetQRStyle(context.Context, int64, int64, link.QRStyle) error { return nil }
+
 func (r *fakeLinkRepo) ConsumeClick(_ context.Context, id int64) error {
 	for code, l := range r.links {
 		if l.ID != id {

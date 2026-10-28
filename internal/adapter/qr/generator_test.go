@@ -16,7 +16,7 @@ import (
 const content = "https://short.test/abc1234"
 
 func TestPNG(t *testing.T) {
-	data, err := NewGenerator().Generate(content, domain.PNG, 256)
+	data, err := NewGenerator().Generate(content, domain.PNG, 256, domain.Style{})
 	require.NoError(t, err)
 	img, err := png.Decode(bytes.NewReader(data))
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestPNG(t *testing.T) {
 
 func TestPNGNeverExceedsTheSize(t *testing.T) {
 	for _, size := range []int{domain.MinSize, 100, 256, domain.MaxSize} {
-		data, err := NewGenerator().Generate(content, domain.PNG, size)
+		data, err := NewGenerator().Generate(content, domain.PNG, size, domain.Style{})
 		require.NoError(t, err)
 		cfg, err := png.DecodeConfig(bytes.NewReader(data))
 		require.NoError(t, err)
@@ -56,25 +56,49 @@ func TestPNGNeverExceedsTheSize(t *testing.T) {
 }
 
 func TestSVG(t *testing.T) {
-	data, err := NewGenerator().Generate(content, domain.SVG, 300)
+	data, err := NewGenerator().Generate(content, domain.SVG, 300, domain.Style{})
 	require.NoError(t, err)
 	svg := string(data)
 	assert.Contains(t, svg, `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"`)
-	assert.Contains(t, svg, `fill="#000"`)
+	assert.Contains(t, svg, `fill="#000000"`)
+	assert.Contains(t, svg, `fill="#ffffff"`)
 	assert.Contains(t, svg, "M")
 	assert.True(t, len(svg) > 200)
 	assert.Contains(t, svg, "</svg>")
 }
 
 func TestSameContentSameImage(t *testing.T) {
-	a, err := NewGenerator().Generate(content, domain.PNG, 256)
+	a, err := NewGenerator().Generate(content, domain.PNG, 256, domain.Style{})
 	require.NoError(t, err)
-	b, err := NewGenerator().Generate(content, domain.PNG, 256)
+	b, err := NewGenerator().Generate(content, domain.PNG, 256, domain.Style{})
 	require.NoError(t, err)
 	assert.Equal(t, a, b)
 }
 
 func TestUnknownFormat(t *testing.T) {
-	_, err := NewGenerator().Generate(content, "gif", 256)
+	_, err := NewGenerator().Generate(content, "gif", 256, domain.Style{})
 	assert.ErrorIs(t, err, domain.ErrInvalidFormat)
+}
+
+func TestStyle(t *testing.T) {
+	style := domain.Style{Foreground: "#112233", Background: "#FFEEDD"}
+
+	data, err := NewGenerator().Generate(content, domain.PNG, 256, style)
+	require.NoError(t, err)
+	img, err := png.Decode(bytes.NewReader(data))
+	require.NoError(t, err)
+	r, g, b, _ := img.At(0, 0).RGBA()
+	assert.Equal(t, [3]uint32{0xff, 0xee, 0xdd}, [3]uint32{r >> 8, g >> 8, b >> 8}, "the quiet zone takes the background")
+
+	data, err = NewGenerator().Generate(content, domain.SVG, 256, style)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `fill="#112233"`)
+	assert.Contains(t, string(data), `fill="#ffeedd"`)
+}
+
+func TestMalformedColorFallsBackToDefault(t *testing.T) {
+	data, err := NewGenerator().Generate(content, domain.SVG, 256, domain.Style{Foreground: `"/><script>`, Background: "red"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "script")
+	assert.Contains(t, string(data), `fill="#000000"`)
 }

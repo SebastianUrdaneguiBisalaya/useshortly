@@ -139,6 +139,11 @@ func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p pag
 	return r.next.ListByTenant(ctx, tenantID, p)
 }
 
+// SetQRStyle is not cached: redirects never read the style.
+func (r *LinkRepository) SetQRStyle(ctx context.Context, tenantID, id int64, s link.QRStyle) error {
+	return r.next.SetQRStyle(ctx, tenantID, id, s)
+}
+
 func (r *LinkRepository) ConsumeClick(ctx context.Context, id int64) error {
 	return r.next.ConsumeClick(ctx, id)
 }

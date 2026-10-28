@@ -107,6 +107,7 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/domains/{domainID}/verify", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Verify))).Methods(http.MethodPost)
 	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Delete))).Methods(http.MethodDelete)
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}/qr-style", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.SetQRStyle))).Methods(http.MethodPut)
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 
 	// Public redirect. Registered last so it never shadows /health or /api.

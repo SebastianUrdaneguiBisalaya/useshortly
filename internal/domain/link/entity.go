@@ -17,10 +17,12 @@ type Link struct {
 	ClickCount int64
 	// PasswordHash is set for a password-protected link; it never leaves the server.
 	PasswordHash string
-	CreatedBy    int64
-	UpdatedBy    *int64
-	CreatedAt    time.Time
-	UpdatedAt    *time.Time
+	// QRStyle is how the link's QR code is drawn; the zero value is the default.
+	QRStyle   QRStyle
+	CreatedBy int64
+	UpdatedBy *int64
+	CreatedAt time.Time
+	UpdatedAt *time.Time
 }
 
 // Protected reports whether visitors must unlock the link with a password.

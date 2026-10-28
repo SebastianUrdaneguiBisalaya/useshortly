@@ -79,6 +79,9 @@ var httpErrors = []struct {
 	{unlockpage.ErrNotFound, apiError{http.StatusNotFound, "not_found", "unlock page not found"}},
 	{unlockpage.ErrInvalidHTML, apiError{http.StatusBadRequest, "invalid_html", "the page is empty or larger than 64 KB"}},
 
+	{link.ErrInvalidQRColor, apiError{http.StatusBadRequest, "invalid_qr_color", "colors must be #rrggbb"}},
+	{link.ErrLowQRContrast, apiError{http.StatusBadRequest, "low_qr_contrast", "the foreground must be darker than the background, with enough contrast to scan"}},
+	{link.ErrInvalidLogoURL, apiError{http.StatusBadRequest, "invalid_logo_url", "the logo must be an https URL of at most 255 characters"}},
 	{link.ErrInvalidPassword, apiError{http.StatusBadRequest, "invalid_password", "the password must be 4 to 64 characters"}},
 	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
 	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},

@@ -8,6 +8,7 @@ import { Kbd } from '~/components/ui/foundations/kbd/kbd';
 import { Command } from '~/components/ui/navigation/command/command';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
 import { useTranslate } from '~/hooks/use-translate';
+import { useOrganizationTo } from './organization/use-current-organization';
 
 /** One `Kbd` per key, in the user's platform: `⌘ + K` on a Mac, `Ctrl + K` on Windows and Linux. A sequence (`g i`) keeps its steps apart. */
 function HotkeyKeys({ combo }: { combo: string }) {
@@ -45,6 +46,7 @@ interface Destination {
 export function CommandMenu() {
 	const t = useTranslate();
 	const navigate = useNavigate();
+	const toOrganization = useOrganizationTo();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const bindings = useBindings({
@@ -84,7 +86,7 @@ export function CommandMenu() {
 						<Command.List>
 							{destinations.length > 0 && <Command.Group>{t('protected.command.navigation')}</Command.Group>}
 							{destinations.map(destination => (
-								<Command.Item icon={<Icon icon={destination.icon} size='sm' />} key={destination.to} onSelect={() => void navigate(destination.to)}>
+								<Command.Item icon={<Icon icon={destination.icon} size='sm' />} key={destination.to} onSelect={() => void navigate(toOrganization(destination.to))}>
 									{destination.label}
 								</Command.Item>
 							))}

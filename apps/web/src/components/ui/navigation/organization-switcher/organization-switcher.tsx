@@ -117,17 +117,19 @@ export interface OrganizationSwitcherTriggerProps extends Omit<React.ComponentPr
 	 * receive the selected `value`. The up/down chevron is appended automatically.
 	 */
 	children?: React.ReactNode | ((value: string | undefined) => React.ReactNode);
+	/** Classes for the element wrapping the button, which positions the menu; add `w-full` there too to stretch across a sidebar. */
+	wrapperClassName?: string;
 }
 
 /**
  * The button that shows the active organization and opens the menu. It hugs its content; give it
  * `className="w-full"` to stretch it across a sidebar.
  */
-function OrganizationSwitcherTrigger({ children, className, type = 'button', ...props }: OrganizationSwitcherTriggerProps) {
+function OrganizationSwitcherTrigger({ children, className, type = 'button', wrapperClassName, ...props }: OrganizationSwitcherTriggerProps) {
 	const { value } = useOrganizationSwitcher();
 
 	return (
-		<Dropdown.Trigger>
+		<Dropdown.Trigger className={wrapperClassName}>
 			<button
 				type={type}
 				{...props}

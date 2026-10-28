@@ -134,6 +134,31 @@
 			"placeholder": "Buscar páginas y atajos...",
 			"shortcuts": "Atajos de teclado"
 		},
+		"organization": {
+			"create": {
+				"cancel": "Cancelar",
+				"description": "Las organizaciones agrupan tus enlaces, dominios y claves de API.",
+				"descriptionField": {
+					"label": "Descripción (opcional)",
+					"placeholder": "¿Para qué es?"
+				},
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Acme S.A."
+				},
+				"submit": "Crear organización",
+				"submitting": "Creando...",
+				"title": "Nueva organización"
+			},
+			"new": "Nueva organización",
+			"none": "Sin organización",
+			"selected": "Seleccionada",
+			"switch": "Cambiar de organización",
+			"validation": {
+				"nameRequired": "Ingresa un nombre",
+				"tooLong": "Usa como máximo {{max}} caracteres"
+			}
+		},
 		"settings": {
 			"logout": "Cerrar sesión",
 			"loggingOut": "Cerrando sesión..."

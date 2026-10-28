@@ -134,6 +134,31 @@
 			"placeholder": "Search pages and shortcuts...",
 			"shortcuts": "Keyboard shortcuts"
 		},
+		"organization": {
+			"create": {
+				"cancel": "Cancel",
+				"description": "Organizations hold your links, domains and API keys.",
+				"descriptionField": {
+					"label": "Description (optional)",
+					"placeholder": "What is it for?"
+				},
+				"name": {
+					"label": "Name",
+					"placeholder": "Acme Inc."
+				},
+				"submit": "Create organization",
+				"submitting": "Creating...",
+				"title": "New organization"
+			},
+			"new": "New organization",
+			"none": "No organization",
+			"selected": "Selected",
+			"switch": "Switch organization",
+			"validation": {
+				"nameRequired": "Enter a name",
+				"tooLong": "Use at most {{max}} characters"
+			}
+		},
 		"settings": {
 			"logout": "Log out",
 			"loggingOut": "Logging out..."

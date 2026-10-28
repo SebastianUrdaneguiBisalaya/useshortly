@@ -1,4 +1,4 @@
-import { LayoutDashboard, Link2, Menu } from 'lucide-react';
+import { LayoutDashboard, Link2, Menu, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
@@ -6,7 +6,7 @@ import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-f
 import { useTranslate } from '~/hooks/use-translate';
 import { requireSession } from './require-session';
 
-/** Runs before any `/` or `/links` page renders: unauthenticated visitors are redirected to sign-in. */
+/** Runs before any `/`, `/links` or `/settings` page renders: unauthenticated visitors are redirected to sign-in. */
 export async function clientLoader() {
 	await requireSession();
 	return null;
@@ -46,6 +46,9 @@ export default function ProtectedLayout() {
 					<SidebarFloat.Item active={pathname === '/'} as={Link} icon={LayoutDashboard} label={t('protected.nav.dashboard')} to='/' />
 					<SidebarFloat.Item active={pathname.startsWith('/links')} as={Link} icon={Link2} label={t('protected.nav.links')} to='/links' />
 				</SidebarFloat.Nav>
+				<SidebarFloat.Footer>
+					<SidebarFloat.Item active={pathname.startsWith('/settings')} as={Link} icon={Settings} label={t('protected.nav.settings')} to='/settings' />
+				</SidebarFloat.Footer>
 			</SidebarFloat>
 			<main className='h-full overflow-y-auto p-4 md:pl-24'>
 				<button

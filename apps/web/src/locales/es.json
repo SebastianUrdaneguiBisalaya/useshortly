@@ -122,7 +122,12 @@
 	"protected": {
 		"nav": {
 			"dashboard": "Panel",
-			"links": "Enlaces"
+			"links": "Enlaces",
+			"settings": "Configuración"
+		},
+		"settings": {
+			"logout": "Cerrar sesión",
+			"loggingOut": "Cerrando sesión..."
 		},
 		"sidebar": {
 			"closeMenu": "Cerrar menú",

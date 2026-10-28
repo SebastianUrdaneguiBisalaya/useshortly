@@ -124,6 +124,18 @@ This creates `useshortly.db` in the repository root (`DATABASE_PATH`) and applie
 Each migration runs once and is recorded in the `schema_migrations` table, so the command is safe to repeat; run
 it again after pulling new migrations.
 
+No container is needed for this step: `make migrate-up` runs on your machine with the `sqlite3` CLI and writes the
+file directly. Where the file lives depends on how you run the API:
+
+| How you run it | Database file | Migrations |
+|----------------|---------------|------------|
+| `make run` (no Docker) | `./useshortly.db` (`DATABASE_PATH` in `.env`) | You run `make migrate-up` |
+| `./scripts/deploy.dev.sh` | `./data/useshortly.db`, mounted in the container | The script runs `make migrate-up DATABASE_PATH=data/useshortly.db` |
+| `./scripts/deploy.prod.sh` | `data` Docker volume, `/data/useshortly.db` | The script applies them from a throwaway container |
+
+The `.env` `DATABASE_PATH` only affects `make` and `make run` on the host; inside Docker, `docker-compose*.yml`
+sets its own path. To migrate the Docker dev database by hand: `make migrate-up DATABASE_PATH=data/useshortly.db`.
+
 #### 4. Run the API
 
 ```sh
@@ -168,6 +180,14 @@ pnpm dev
 Open `http://localhost:5173`. The backend has no CORS: in development Vite forwards `/api` to
 `VITE_API_PROXY_TARGET` (default `http://localhost:8080`), so leave `VITE_API_URL` empty.
 
+With `VITE_API_URL` empty, `/api/v1` is a **relative** path, so the browser calls it on **its own origin**
+(`localhost:5173` in development, the web host in production), never on the backend's origin directly. In
+development Vite is the one listening on that origin, and it is also the proxy: it catches `/api` and forwards
+it to `VITE_API_PROXY_TARGET`. In production nginx plays the same role (see
+[Reverse proxy (nginx)](#4-reverse-proxy-nginx) for the web host). This is required because the backend has no
+CORS (it would reject a request whose origin differs from its own) and because session cookies are scoped to a
+domain: the web app and the API must look, to the browser, like the **same site**.
+
 | Variable | Purpose |
 | --- | --- |
 | `VITE_API_URL` | Base URL of the backend. Empty = same origin (development proxy, or a reverse proxy in production). |
@@ -175,6 +195,23 @@ Open `http://localhost:5173`. The backend has no CORS: in development Vite forwa
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth client id for "Continue with Google". Same value as the backend `GOOGLE_CLIENT_ID`. Empty hides the button. |
 
 To sign up, use the form: the confirmation code is printed in the **API's terminal log** (see step 2).
+
+#### Google sign-in: Google Cloud Console setup
+
+The web app uses Google Identity Services' **popup** flow (`GOOGLE_REDIRECT_URI=postmessage`): the button runs
+entirely in the browser and never redirects to a callback URL, so there is no "redirect URI" to register.
+What Google checks instead is the page's **origin** (scheme + host + port). In the
+[Google Cloud Console](https://console.cloud.google.com/apis/credentials), on your OAuth 2.0 **Web application**
+client, add every origin the button will run from under **Authorized JavaScript origins**:
+
+| Environment | Origin to add |
+| --- | --- |
+| Development | `http://localhost:5173` (web dev server; `http://localhost:4173` too if you test `pnpm preview`) |
+| Production | `https://app.example.com` (your real web host, **no port**: 443 is implicit with `https://`) |
+
+Use the same client id for `VITE_GOOGLE_CLIENT_ID` (web) and `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (backend,
+[Environment variables](#environment-variables)) in each environment. Leave `GOOGLE_REDIRECT_URI` at its default
+(`postmessage`) in both.
 
 Other scripts: `pnpm typecheck`, `pnpm lint`, `pnpm format`, and `pnpm api:generate` (regenerates the API client
 from `api/openapi/swagger.json` after running `make openapi`).

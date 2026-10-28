@@ -35,6 +35,8 @@
 		"@tiptap/react": "3.31.3",
 		"@tiptap/starter-kit": "3.31.3",
 		"@tiptap/suggestion": "3.31.3",
+		"@usehotkeys/core": "0.1.0",
+		"@usehotkeys/react": "0.1.0",
 		"axios": "1.20.0",
 		"class-variance-authority": "0.7.1",
 		"clsx": "2.1.1",

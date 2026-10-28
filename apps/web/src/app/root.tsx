@@ -4,6 +4,7 @@ import { Layout as L } from '~/components/ui/layout/layout/layout';
 
 import type { Route } from './+types/root';
 import '~/app/app.css';
+import { HotkeysClientProvider } from '~/providers/hotkeys-client';
 import { ToasterProvider } from '~/providers/toast-client';
 import { QueryProvider } from '~/providers/query-client';
 import { defaultLocale, getI18n, localeFromRequest, readLanguagePreference } from '~/i18n';
@@ -41,7 +42,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			<body>
 				<L.Container className='flex h-screen w-full flex-col overflow-hidden p-0 sm:p-0 lg:p-0' size='full'>
 					<I18nextProvider i18n={i18n}>
-						<QueryProvider>{children}</QueryProvider>
+						<QueryProvider>
+							<HotkeysClientProvider>{children}</HotkeysClientProvider>
+						</QueryProvider>
 					</I18nextProvider>
 					<ToasterProvider />
 				</L.Container>

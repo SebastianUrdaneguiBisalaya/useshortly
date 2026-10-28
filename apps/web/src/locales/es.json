@@ -123,7 +123,16 @@
 		"nav": {
 			"dashboard": "Panel",
 			"links": "Enlaces",
+			"search": "Buscar",
 			"settings": "Configuración"
+		},
+		"command": {
+			"empty": "Sin resultados",
+			"general": "General",
+			"navigation": "Ir a",
+			"open": "Abrir el menú de comandos",
+			"placeholder": "Buscar páginas y atajos...",
+			"shortcuts": "Atajos de teclado"
 		},
 		"settings": {
 			"logout": "Cerrar sesión",

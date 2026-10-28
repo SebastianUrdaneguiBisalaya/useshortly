@@ -246,10 +246,12 @@ export interface CommandSearchProps {
 	autoFocus?: boolean;
 	/** Shows a spinner in place of the clear button, e.g. while results are being fetched. */
 	loading?: boolean;
+	/** Shown at the far right of the field, e.g. a `Kbd` telling how to close the palette. */
+	hint?: ReactNode;
 }
 
 /** Search field driving the palette: also owns arrow-key/Enter navigation over `Command.Item`s. */
-function Search({ value, onValueChange, placeholder = 'Search...', className, autoFocus = true, loading = false }: CommandSearchProps) {
+function Search({ value, onValueChange, placeholder = 'Search...', className, autoFocus = true, loading = false, hint }: CommandSearchProps) {
 	const { moveActive, selectActive } = useCommandContext();
 	const inputRef = useRef<HTMLInputElement>(null);
 
@@ -295,6 +297,7 @@ function Search({ value, onValueChange, placeholder = 'Search...', className, au
 					<Icon icon={XIcon} size='sm' />
 				</button>
 			)}
+			{hint && <span className='flex shrink-0 items-center'>{hint}</span>}
 		</div>
 	);
 }

@@ -123,7 +123,16 @@
 		"nav": {
 			"dashboard": "Dashboard",
 			"links": "Links",
+			"search": "Search",
 			"settings": "Settings"
+		},
+		"command": {
+			"empty": "No results",
+			"general": "General",
+			"navigation": "Go to",
+			"open": "Open the command menu",
+			"placeholder": "Search pages and shortcuts...",
+			"shortcuts": "Keyboard shortcuts"
 		},
 		"settings": {
 			"logout": "Log out",

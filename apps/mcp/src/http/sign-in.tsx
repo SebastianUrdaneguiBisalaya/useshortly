@@ -1,7 +1,7 @@
+import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono';
 import { rateLimiter } from 'hono-rate-limiter';
-import type { Context, MiddlewareHandler } from 'hono';
-import { IdentityUnavailableError, InvalidCredentialsError, RateLimitedError, type Identity, type IdentityProvider } from '../api/identity.js';
+import { type Identity, type IdentityProvider, IdentityUnavailableError, InvalidCredentialsError, RateLimitedError } from '../api/identity.js';
 import type { Auth } from '../auth/auth.js';
 import { basePath } from '../auth/options.js';
 import type { Config } from '../config.js';

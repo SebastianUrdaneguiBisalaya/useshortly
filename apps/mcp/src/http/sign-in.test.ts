@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Identity } from '../api/identity.js';
-import { createApp } from '../app.js';
 import { InvalidCredentialsError } from '../api/identity.js';
+import { createApp } from '../app.js';
 import { ana, createHarness, type Harness } from '../test/oauth-harness.js';
 
 let h: Harness;

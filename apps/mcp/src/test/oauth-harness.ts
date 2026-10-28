@@ -1,12 +1,12 @@
-import { createHash, createPublicKey, generateKeyPairSync, randomBytes, verify, type JsonWebKeyInput } from 'node:crypto';
-import { serve } from '@hono/node-server';
+import { createHash, createPublicKey, generateKeyPairSync, type JsonWebKeyInput, randomBytes, verify } from 'node:crypto';
 import { createServer } from 'node:net';
+import { serve } from '@hono/node-server';
 import { expect } from 'vitest';
-import { IdentityUnavailableError, InvalidCredentialsError, type Identity, type IdentityProvider } from '../api/identity.js';
 import { ApiClient } from '../api/client.js';
-import { createApp } from '../app.js';
+import { type Identity, type IdentityProvider, IdentityUnavailableError, InvalidCredentialsError } from '../api/identity.js';
 import { createTokenSigner } from '../api/token.js';
-import { createAuth, type Auth } from '../auth/auth.js';
+import { createApp } from '../app.js';
+import { type Auth, createAuth } from '../auth/auth.js';
 import { migrate } from '../auth/migrate.js';
 import { authOptions, type Network } from '../auth/options.js';
 import { loadConfig } from '../config.js';

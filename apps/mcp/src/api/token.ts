@@ -1,4 +1,4 @@
-import { randomUUID, sign, type KeyObject } from 'node:crypto';
+import { type KeyObject, randomUUID, sign } from 'node:crypto';
 
 /** The scope an API token carries: what the user granted to the MCP client. */
 export type ApiScope = 'read' | 'write';

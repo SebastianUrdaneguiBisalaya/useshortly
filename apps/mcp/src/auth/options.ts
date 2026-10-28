@@ -1,8 +1,8 @@
-import type { BetterAuthOptions } from 'better-auth';
-import { jwt } from 'better-auth/plugins';
 import { cimd } from '@better-auth/cimd';
 import { fetchClientMetadataResource as fetchOverTheNetwork } from '@better-auth/cimd/node';
 import { mcp } from '@better-auth/mcp';
+import type { BetterAuthOptions } from 'better-auth';
+import { jwt } from 'better-auth/plugins';
 import type { Config } from '../config.js';
 import type { AuthDatabase } from '../db/index.js';
 import { delegatedSession } from './delegated-session.js';

@@ -1,5 +1,5 @@
-import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { Hono } from 'hono';
 import type { Auth } from '../auth/auth.js';
 import { basePath } from '../auth/options.js';
 import { isChoosable, scopeDescriptions, scopes } from '../auth/scopes.js';

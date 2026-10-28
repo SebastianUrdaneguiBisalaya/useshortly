@@ -27,8 +27,8 @@ export class IdentityUnavailableError extends Error {
 
 /** How the sign-in page proves who the user is. The API is the only source of identity. */
 export interface IdentityProvider {
-	password(email: string, password: string, clientIp?: string): Promise<Identity>;
 	google(code: string, clientIp?: string): Promise<Identity>;
+	password(email: string, password: string, clientIp?: string): Promise<Identity>;
 }
 
 const session = z.object({

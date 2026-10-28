@@ -1,5 +1,5 @@
-import { ApiAuthError, ApiError, ApiForbiddenError, ApiNotFoundError, ApiRateLimitedError, ApiRequestError, ApiUnavailableError } from '../../api/errors.js';
 import type { UserApi } from '../../api/client.js';
+import { ApiAuthError, ApiError, ApiForbiddenError, ApiNotFoundError, ApiRateLimitedError, ApiRequestError, ApiUnavailableError } from '../../api/errors.js';
 
 /** What every tool gets: the API as the signed-in user, already limited to the granted scope. */
 export type ToolContext = { api: UserApi };

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { consentClient, createHarness, redirectUri, type Harness } from '../test/oauth-harness.js';
+import { consentClient, createHarness, type Harness, redirectUri } from '../test/oauth-harness.js';
 
 let h: Harness;
 beforeAll(async () => {

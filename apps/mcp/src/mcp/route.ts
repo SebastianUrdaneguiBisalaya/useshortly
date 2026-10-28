@@ -1,5 +1,5 @@
 import { requireMcpAuth } from '@better-auth/mcp';
-import { createMcpHandler, type AuthInfo } from '@modelcontextprotocol/server';
+import { type AuthInfo, createMcpHandler } from '@modelcontextprotocol/server';
 import { createInsufficientScopeError } from 'better-auth/oauth2';
 import type { ApiClient } from '../api/client.js';
 import { principalFromClaims } from '../api/principal.js';

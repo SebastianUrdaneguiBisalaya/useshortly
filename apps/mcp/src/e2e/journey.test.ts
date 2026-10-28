@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { cimdClient, createHarness, redirectUri, trustedClient, type Harness } from '../test/oauth-harness.js';
+import { cimdClient, createHarness, type Harness, redirectUri, trustedClient } from '../test/oauth-harness.js';
 
 /**
  * The whole thing, the way a real MCP client lives it, against the real server (Better Auth, Hono,

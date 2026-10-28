@@ -17,6 +17,7 @@ import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useDownloadQr } from '../share/download-qr';
 import { OrganizationGate } from '../share/organization-gate';
+import { QrImage, resolveQrStyle } from '../share/qr-image';
 import { CreateLinkDialog } from './create-link-dialog';
 import { LinkActions } from './link-actions';
 import { LinkDrawer } from './link-drawer';
@@ -57,20 +58,29 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const columns = useMemo<ColumnDef<DataTableFeatures, Link>[]>(
 		() => [
 			{
-				cell: ({ row }) => <span className='font-medium'>{row.original.short_url?.replace(/^https?:\/\//, '')}</span>,
-				header: t('protected.links.columns.shortUrl'),
-				id: 'shortUrl',
-				size: 240,
+				cell: ({ row }) =>
+					row.original.short_url ? (
+						<div className='w-fit overflow-hidden rounded-md ring-1 ring-border' style={{ backgroundColor: resolveQrStyle(row.original.qr_style).background }}>
+							<QrImage size={40} style={row.original.qr_style} value={row.original.short_url} />
+						</div>
+					) : null,
+				header: '',
+				id: 'qr',
+				size: 72,
 			},
 			{
+				// The destination sits under the short link it belongs to, so one cell answers "which link, and where does it go".
 				cell: ({ row }) => (
-					<span className='block max-w-md truncate text-muted-foreground' title={row.original.origin_url}>
-						{row.original.origin_url}
-					</span>
+					<div className='flex min-w-0 flex-col'>
+						<span className='truncate font-medium text-foreground'>{row.original.short_url?.replace(/^https?:\/\//, '')}</span>
+						<span className='truncate text-muted-foreground text-xs' title={row.original.origin_url}>
+							{row.original.origin_url}
+						</span>
+					</div>
 				),
-				header: t('protected.links.columns.destination'),
-				id: 'destination',
-				size: 320,
+				header: t('protected.links.columns.shortUrl'),
+				id: 'shortUrl',
+				size: 380,
 			},
 			{
 				cell: ({ row }) => {

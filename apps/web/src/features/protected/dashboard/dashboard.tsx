@@ -14,6 +14,7 @@ import { Select } from '~/components/ui/forms-inputs/select/select';
 import { Icon } from '~/components/ui/foundations/icon/icon';
 import { Page } from '~/components/ui/layout/page/page';
 import { ApplicationState } from '~/components/ui/overlays-feedback/application-state/application-state';
+import { cn } from '~/components/ui/utils/tailwind/cn';
 import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import type { Locale } from '~/i18n';
@@ -179,7 +180,7 @@ function DashboardContent({ orgID }: { orgID: number }) {
 				) : (
 					<div className={`grid grid-cols-12 gap-4 transition-opacity ${stats.isPlaceholderData ? 'opacity-60' : ''}`}>
 						<Metrics days={days} isLoading={stats.isPending} stats={data} />
-						<Panel className='col-span-12 lg:col-span-8' description={t('protected.dashboard.charts.daily.description')} title={t('protected.dashboard.charts.daily.title')}>
+						<Panel className='col-span-12 lg:col-span-8' title={t('protected.dashboard.charts.daily.title')}>
 							<Chart.Area
 								areas={[{ dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series') }]}
 								data={(data?.daily ?? []).map(day => ({ clicks: day.clicks, label: formatShortDay(day.date ?? '', locale) }))}
@@ -188,7 +189,7 @@ function DashboardContent({ orgID }: { orgID: number }) {
 								xAxisKey='label'
 							/>
 						</Panel>
-						<Panel className='col-span-12 lg:col-span-4' description={t('protected.dashboard.charts.devices.description')} title={t('protected.dashboard.charts.devices.title')}>
+						<Panel className='col-span-12 lg:col-span-4' title={t('protected.dashboard.charts.devices.title')}>
 							<Chart.Donut
 								centerLabel={t('protected.dashboard.charts.devices.center')}
 								centerValue={(data?.total ?? 0).toLocaleString(intlLocale(locale))}
@@ -196,7 +197,7 @@ function DashboardContent({ orgID }: { orgID: number }) {
 							/>
 						</Panel>
 						<WorldMap className='col-span-12 lg:col-span-8' countries={data?.countries ?? []} locale={locale} onSelect={country => void setQuery({ country })} selected={query.country} />
-						<Panel className='col-span-12 lg:col-span-4' description={t('protected.dashboard.charts.countries.description')} title={t('protected.dashboard.charts.countries.title')}>
+						<Panel className='col-span-12 lg:col-span-4' title={t('protected.dashboard.charts.countries.title')}>
 							<Ranking
 								color={CHART_COLORS.blue}
 								items={(data?.countries ?? []).slice(0, RANKING_SIZE).map(country => ({ clicks: country.clicks ?? 0, name: valueLabel('country', country.name ?? '', locale, t) }))}
@@ -204,24 +205,24 @@ function DashboardContent({ orgID }: { orgID: number }) {
 								seriesName={t('protected.dashboard.charts.daily.series')}
 							/>
 						</Panel>
-						<Panel className='col-span-12 lg:col-span-6' description={t('protected.dashboard.charts.referrers.description')} title={t('protected.dashboard.charts.referrers.title')}>
+						<Panel className='col-span-12 lg:col-span-6' title={t('protected.dashboard.charts.referrers.title')}>
 							<Ranking
-								color={CHART_COLORS.amber}
+								color={CHART_COLORS.blue}
 								items={(data?.referrers ?? []).slice(0, RANKING_SIZE).map(referrer => ({ clicks: referrer.clicks ?? 0, name: valueLabel('referrer', referrer.name ?? '', locale, t) }))}
 								locale={locale}
 								seriesName={t('protected.dashboard.charts.daily.series')}
 							/>
 						</Panel>
-						<Panel className='col-span-12 lg:col-span-6' description={t('protected.dashboard.charts.hours.description')} title={t('protected.dashboard.charts.hours.title')}>
+						<Panel className='col-span-12 lg:col-span-6' title={t('protected.dashboard.charts.hours.title')}>
 							<Chart.Bar
-								bars={[{ color: CHART_COLORS.green, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
+								bars={[{ color: CHART_COLORS.blue, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
 								data={(data?.by_hour ?? []).map((clicks, hour) => ({ clicks, label: String(hour).padStart(2, '0') }))}
 								xAxisKey='label'
 							/>
 						</Panel>
-						<Panel className='col-span-12' description={t('protected.dashboard.charts.weekdays.description')} title={t('protected.dashboard.charts.weekdays.title')}>
+						<Panel className='col-span-12' title={t('protected.dashboard.charts.weekdays.title')}>
 							<Chart.Bar
-								bars={[{ color: CHART_COLORS.violet, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
+								bars={[{ color: CHART_COLORS.blue, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
 								data={(data?.by_weekday ?? []).map((clicks, index) => ({ clicks, label: weekdayName(index, locale) }))}
 								size='sm'
 								xAxisKey='label'
@@ -298,12 +299,12 @@ function FilterSelect({ label, value, onChange, children }: { label: string; val
 	);
 }
 
-function Panel({ title, description, className, children }: { title: string; description: string; className?: string; children: ReactNode }) {
+/** A chart under its title. The title says what is plotted; a second line repeating it on every panel was noise, so there is none. */
+function Panel({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
 	return (
-		<Card className={className} as='section'>
+		<Card as='section' className={className}>
 			<Card.Header>
 				<Card.Title>{title}</Card.Title>
-				<Card.Description>{description}</Card.Description>
 			</Card.Header>
 			<Card.Content>{children}</Card.Content>
 		</Card>
@@ -416,7 +417,7 @@ function WorldMap({
 	const format = (value: number) => value.toLocaleString(intlLocale(locale));
 
 	return (
-		<Panel className={className} description={t('protected.dashboard.charts.map.description')} title={t('protected.dashboard.charts.map.title')}>
+		<Panel className={className} title={t('protected.dashboard.charts.map.title')}>
 			{world.data ? (
 				<ChoroplethMap
 					color={CHART_COLORS.blue}

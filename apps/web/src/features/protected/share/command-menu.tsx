@@ -1,6 +1,6 @@
 import { formatHotkey } from '@usehotkeys/core';
 import { useBindings, useHotkeys } from '@usehotkeys/react';
-import { KeyRound, LayoutDashboard, Link2, type LucideIcon, Search, Users } from 'lucide-react';
+import { Code, KeyRound, LayoutDashboard, Link2, type LucideIcon, Megaphone, QrCode, Search, Users } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
@@ -63,8 +63,11 @@ export function CommandMenu() {
 	const destinations: Destination[] = [
 		{ icon: LayoutDashboard, label: t('protected.nav.dashboard'), to: '/' },
 		{ icon: Link2, label: t('protected.nav.links'), to: '/links' },
+		{ icon: QrCode, label: t('protected.nav.qrCode'), to: '/qr-code' },
+		{ icon: Megaphone, label: t('protected.nav.campaigns'), to: '/campaigns' },
 		{ icon: Users, label: t('protected.nav.users'), to: '/users' },
 		{ icon: KeyRound, label: t('protected.nav.apiKeys'), to: '/api-keys' },
+		{ icon: Code, label: t('protected.nav.docs'), to: '/docs' },
 	].filter(destination => matches(destination.label));
 	const shortcuts = bindings.filter(binding => matches(binding.label ?? ''));
 

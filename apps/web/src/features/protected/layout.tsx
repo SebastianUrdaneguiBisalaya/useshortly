@@ -1,4 +1,4 @@
-import { KeyRound, LayoutDashboard, Link2, Menu, Users } from 'lucide-react';
+import { Code, KeyRound, LayoutDashboard, Link2, Megaphone, Menu, QrCode, Users } from 'lucide-react';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v8';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -10,6 +10,8 @@ import { useOrganizationTo } from './organization/use-current-organization';
 import { CommandMenu } from './share/command-menu';
 import { requireSession } from './share/require-session';
 import { UserMenu } from './share/user-menu';
+import { Button } from '../../components/ui/actions-controls/button/button';
+import { Layout } from '../../components/ui/layout/layout/layout';
 
 /** Runs before any `/`, `/links`, ... page renders: unauthenticated visitors are redirected to sign-in. */
 export async function clientLoader() {
@@ -63,8 +65,11 @@ function ProtectedShell() {
 				<SidebarFloat.Nav>
 					<SidebarFloat.Item active={pathname === '/'} as={Link} icon={LayoutDashboard} label={t('protected.nav.dashboard')} to={toOrganization('/')} />
 					<SidebarFloat.Item active={pathname.startsWith('/links')} as={Link} icon={Link2} label={t('protected.nav.links')} to={toOrganization('/links')} />
+					<SidebarFloat.Item active={pathname.startsWith('/qr-code')} as={Link} icon={QrCode} label={t('protected.nav.qrCode')} to={toOrganization('/qr-code')} />
+					<SidebarFloat.Item active={pathname.startsWith('/campaigns')} as={Link} icon={Megaphone} label={t('protected.nav.campaigns')} to={toOrganization('/campaigns')} />
 					<SidebarFloat.Item active={pathname.startsWith('/users')} as={Link} icon={Users} label={t('protected.nav.users')} to={toOrganization('/users')} />
 					<SidebarFloat.Item active={pathname.startsWith('/api-keys')} as={Link} icon={KeyRound} label={t('protected.nav.apiKeys')} to={toOrganization('/api-keys')} />
+					<SidebarFloat.Item active={pathname.startsWith('/docs')} as={Link} icon={Code} label={t('protected.nav.docs')} to={toOrganization('/docs')} />
 				</SidebarFloat.Nav>
 				<SidebarFloat.Footer>
 					<CommandMenu />
@@ -73,14 +78,19 @@ function ProtectedShell() {
 				</SidebarFloat.Footer>
 			</SidebarFloat>
 			<div className='flex h-full flex-col overflow-y-auto md:pl-24'>
-				<button
-					aria-label={t('protected.sidebar.openMenu')}
-					className='mb-4 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden'
-					onClick={() => setMobileOpen(true)}
-					type='button'
-				>
-					<Icon icon={Menu} size='md' />
-				</button>
+				<Layout.HStack className='w-full p-2'>
+					<Button
+						className='rounded-md p-2 md:hidden'
+						variant="secondary"
+						onClick={() => setMobileOpen(true)}
+						type='button'
+						aria-label={t('protected.sidebar.openMenu')}
+					>
+						<Button.Icon
+							icon={<Icon icon={Menu} size='md' />}
+						/>
+					</Button>
+				</Layout.HStack>
 				<main className='min-h-0 flex-1'>
 					<Outlet />
 				</main>

@@ -126,7 +126,10 @@
 			"search": "Abrir búsqueda",
 			"settings": "Configuración",
 			"users": "Usuarios",
-			"apiKeys": "Claves de API"
+			"apiKeys": "Claves de API",
+			"campaigns": "Campañas",
+			"qrCode": "Códigos QR",
+			"docs": "Documentación"
 		},
 		"command": {
 			"empty": "Sin resultados",

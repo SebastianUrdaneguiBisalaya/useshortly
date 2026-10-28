@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
+import { cn } from '~/components/ui/utils/tailwind/cn';
 import { useTranslate } from '~/hooks/use-translate';
+import { Button } from '../../components/ui/actions-controls/button/button';
+import { Layout } from '../../components/ui/layout/layout/layout';
 import { OrganizationMenu } from './organization/organization-menu';
 import { useOrganizationTo } from './organization/use-current-organization';
 import { CommandMenu } from './share/command-menu';
 import { requireSession } from './share/require-session';
 import { UserMenu } from './share/user-menu';
-import { Button } from '../../components/ui/actions-controls/button/button';
-import { Layout } from '../../components/ui/layout/layout/layout';
 
 /** Runs before any `/`, `/links`, ... page renders: unauthenticated visitors are redirected to sign-in. */
 export async function clientLoader() {
@@ -77,18 +78,11 @@ function ProtectedShell() {
 					<UserMenu collapsed={collapsed} />
 				</SidebarFloat.Footer>
 			</SidebarFloat>
-			<div className='flex h-full flex-col overflow-y-auto md:pl-24'>
+			{/* The sidebar floats (fixed), so on desktop the content reserves its width: the rail while collapsed, the full panel once expanded. Same duration and easing as the sidebar. */}
+			<div className={cn('flex h-full flex-col overflow-y-auto transition-[padding] duration-300 ease-in-out motion-reduce:transition-none', collapsed ? 'md:pl-24' : 'md:pl-72')}>
 				<Layout.HStack className='w-full p-2'>
-					<Button
-						className='rounded-md p-2 md:hidden'
-						variant="secondary"
-						onClick={() => setMobileOpen(true)}
-						type='button'
-						aria-label={t('protected.sidebar.openMenu')}
-					>
-						<Button.Icon
-							icon={<Icon icon={Menu} size='md' />}
-						/>
+					<Button className='rounded-md p-2 md:hidden' variant='secondary' onClick={() => setMobileOpen(true)} type='button' aria-label={t('protected.sidebar.openMenu')}>
+						<Button.Icon icon={<Icon icon={Menu} size='md' />} />
 					</Button>
 				</Layout.HStack>
 				<main className='min-h-0 flex-1'>

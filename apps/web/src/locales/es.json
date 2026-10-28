@@ -579,8 +579,8 @@
 			"description": "El código QR de cada enlace. Descárgalo o personalízalo con tus colores y logo.",
 			"create": "Crear código QR",
 			"loading": "Cargando códigos QR",
-			"empty": "Aún no hay códigos QR. Crea un enlace y su código QR aparecerá aquí.",
-			"download": "Descargar",
+			"empty": "Cada enlace trae su código QR. Crea tu primer enlace y aparecerá aquí.",
+			"download": "Descargar PNG",
 			"customize": "Personalizar código QR",
 			"style": {
 				"title": "Personalizar código QR",

@@ -12,7 +12,9 @@ import { OrganizationGate } from '../share/organization-gate';
 import { QrCard } from './qr-card';
 import { QrStyleDialog } from './qr-style-dialog';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 15;
+// Two columns on a phone, up to six on a wide screen: the codes are the content, so they stay small enough to scan a page at once.
+const GRID = 'grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
 
 export default function QrCodePage() {
 	return <OrganizationGate>{organization => <QrCodeContent orgID={organization.id} />}</OrganizationGate>;
@@ -45,16 +47,25 @@ function QrCodeContent({ orgID }: { orgID: number }) {
 			</Page.Header>
 			<Page.Body className='flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto'>
 				{links.isLoading ? (
-					<Skeleton className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' label={t('protected.qr.loading')}>
-						{Array.from({ length: 8 }, (_, index) => (
+					<Skeleton className={GRID} label={t('protected.qr.loading')}>
+						{Array.from({ length: 10 }, (_, index) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
-							<Skeleton.Item className='aspect-[3/4] w-full rounded-xl' key={index} />
+							<div className='flex flex-col gap-3' key={index}>
+								<Skeleton.Item className='aspect-square w-full rounded-2xl' />
+								<Skeleton.Item className='h-4 w-2/3' />
+							</div>
 						))}
 					</Skeleton>
 				) : rows.length === 0 ? (
-					<p className='py-16 text-center font-primary text-sm text-muted-foreground'>{t('protected.qr.empty')}</p>
+					<div className='flex flex-col items-center gap-4 py-20 text-center'>
+						<p className='max-w-sm font-primary text-sm text-muted-foreground'>{t('protected.qr.empty')}</p>
+						<Button onClick={() => setCreating(true)} variant='secondary'>
+							<Button.Icon icon={Plus} />
+							<Button.Text>{t('protected.qr.create')}</Button.Text>
+						</Button>
+					</div>
 				) : (
-					<ul className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+					<ul className={GRID}>
 						{rows.map(link => (
 							<li className='min-w-0' key={link.id}>
 								<QrCard link={link} onCustomize={setStyling} />

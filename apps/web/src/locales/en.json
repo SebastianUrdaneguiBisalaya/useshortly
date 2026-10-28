@@ -579,8 +579,8 @@
 			"description": "The QR code of every link. Download it or style it with your colors and logo.",
 			"create": "Create QR code",
 			"loading": "Loading QR codes",
-			"empty": "No QR codes yet. Create a link and its QR code appears here.",
-			"download": "Download",
+			"empty": "Every link comes with a QR code. Create your first link and it shows up here.",
+			"download": "Download PNG",
 			"customize": "Customize QR code",
 			"style": {
 				"title": "Customize QR code",

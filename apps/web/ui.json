@@ -6,6 +6,8 @@
     "actions-controls/button-group": "main",
     "actions-controls/switch": "main",
     "actions-controls/switch-theme": "main",
+    "code-content/code-preview": "code-preview@1.0.0",
+    "code-content/monaco-editor": "monaco-editor@1.0.0",
     "data-display/avatar": "main",
     "data-display/badge": "main",
     "data-display/card": "main",

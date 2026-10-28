@@ -617,3 +617,17 @@ func TestDomainRepositoryAndLinksPerDomain(t *testing.T) {
 	_, err = links.FindByCode(ctx, nil, "promo00")
 	assert.NoError(t, err)
 }
+
+func TestUserRepositoryListProviders(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository(newDB(t))
+	u := newUser(t, repo, "prov@example.com")
+	got, err := repo.ListProviders(ctx, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []user.Provider{user.ProviderDefault}, got)
+
+	got, err = repo.ListProviders(ctx, 999)
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
+}

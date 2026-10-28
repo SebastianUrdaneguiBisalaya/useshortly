@@ -47,11 +47,18 @@ type userBody struct {
 	ImageURL      string  `json:"image_url,omitempty"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     *string `json:"updated_at,omitempty"`
+	// Providers is how the user can sign in: "DEFAULT" (email and password) and/or "GOOGLE".
+	Providers []string `json:"providers"`
 } // @name User
 
-func newUserBody(u user.User) userBody {
+func newUserBody(u user.User, providers []user.Provider) userBody {
+	ps := make([]string, 0, len(providers))
+	for _, p := range providers {
+		ps = append(ps, string(p))
+	}
 	return userBody{
-		ID: u.ID, Email: u.Email, EmailVerified: u.EmailVerified, FirstName: u.FirstName, LastName: u.LastName,
+		Providers: ps,
+		ID:        u.ID, Email: u.Email, EmailVerified: u.EmailVerified, FirstName: u.FirstName, LastName: u.LastName,
 		ImageURL: u.ImageURL, CreatedAt: formatTime(u.CreatedAt), UpdatedAt: formatTimePtr(u.UpdatedAt),
 	}
 }
@@ -65,13 +72,18 @@ type sessionBody struct {
 } // @name Session
 
 // writeSession sets the session cookies and answers with the user and the expiry times.
-func (h *AuthHandler) writeSession(w http.ResponseWriter, status int, s user.Session) {
+func (h *AuthHandler) writeSession(w http.ResponseWriter, r *http.Request, status int, s user.Session) {
+	providers, err := h.users.Providers(r.Context(), s.User.ID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
 	// A session carries secrets: never let a proxy or the browser cache it.
 	w.Header().Set("Cache-Control", "no-store")
 	http.SetCookie(w, sessionCookie(AccessCookie, s.Token.Value, accessCookiePath, http.SameSiteLaxMode, s.Token.ExpiresAt, h.secure))
 	http.SetCookie(w, sessionCookie(RefreshCookie, s.Refresh.Token, refreshCookiePath, http.SameSiteStrictMode, s.Refresh.ExpiresAt, h.secure))
 	writeData(w, status, sessionBody{
-		User: newUserBody(s.User), ExpiresAt: formatTime(s.Token.ExpiresAt),
+		User: newUserBody(s.User, providers), ExpiresAt: formatTime(s.Token.ExpiresAt),
 		RefreshExpiresAt: formatTime(s.Refresh.ExpiresAt),
 	})
 }
@@ -176,7 +188,7 @@ func (h *AuthHandler) VerifyRegistration(w http.ResponseWriter, r *http.Request)
 		WriteError(w, r, err)
 		return
 	}
-	h.writeSession(w, http.StatusCreated, s)
+	h.writeSession(w, r, http.StatusCreated, s)
 }
 
 // Login signs in with email and password.
@@ -202,7 +214,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	h.writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
 // Google signs in with the authorization code Google gave the client, creating the account
@@ -230,7 +242,7 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	h.writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
 // Refresh trades the refresh token cookie for new session cookies. The refresh token is rotated:
@@ -254,7 +266,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	h.writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
 // Logout revokes the refresh token of the cookie and clears both cookies. It answers 204 even
@@ -384,5 +396,11 @@ func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 //	@ID	getMe
 //	@Router		/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	writeData(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))
+	u := PrincipalFrom(r).User
+	providers, err := h.users.Providers(r.Context(), u.ID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, newUserBody(u, providers))
 }

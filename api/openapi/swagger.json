@@ -741,6 +741,14 @@
                     "last_name": {
                         "type": "string"
                     },
+                    "providers": {
+                        "description": "Providers is how the user can sign in: \"DEFAULT\" (email and password) and/or \"GOOGLE\".",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
                     "updated_at": {
                         "type": "string"
                     }

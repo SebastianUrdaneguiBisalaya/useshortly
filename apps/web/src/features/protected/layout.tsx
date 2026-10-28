@@ -1,4 +1,4 @@
-import { Code, KeyRound, LayoutDashboard, Link2, Megaphone, Menu, QrCode, Users } from 'lucide-react';
+import { Code, KeyRound, LayoutDashboard, Link2, Megaphone, Menu, Plug, QrCode, Users } from 'lucide-react';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v8';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -71,10 +71,11 @@ function ProtectedShell() {
 					<SidebarFloat.Item active={pathname.startsWith('/users')} as={Link} icon={Users} label={t('protected.nav.users')} to={toOrganization('/users')} />
 					<SidebarFloat.Item active={pathname.startsWith('/api-keys')} as={Link} icon={KeyRound} label={t('protected.nav.apiKeys')} to={toOrganization('/api-keys')} />
 					<SidebarFloat.Item active={pathname.startsWith('/docs')} as={Link} icon={Code} label={t('protected.nav.docs')} to={toOrganization('/docs')} />
+					<SidebarFloat.Item active={pathname.startsWith('/mcp')} as={Link} icon={Plug} label={t('protected.nav.mcp')} to={toOrganization('/mcp')} />
 				</SidebarFloat.Nav>
 				<SidebarFloat.Footer>
 					<CommandMenu />
-					<SidebarFloat.Divider />
+					<SidebarFloat.Divider className='w-full mx-0' />
 					<UserMenu collapsed={collapsed} />
 				</SidebarFloat.Footer>
 			</SidebarFloat>

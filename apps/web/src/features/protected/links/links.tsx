@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { parseAsInteger, useQueryState } from 'nuqs';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getListLinksQueryKey, useDeleteLink, useListLinks } from '~/api/endpoints/links/links';
 import type { Link } from '~/api/model';
@@ -33,7 +34,8 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [creating, setCreating] = useState(false);
-	const [selectedID, setSelectedID] = useState<number>();
+	// The open link lives in the URL (`?link=12`) so the drawer can be shared and the back button closes it.
+	const [selectedID, setSelectedID] = useQueryState('link', parseAsInteger.withOptions({ history: 'push' }));
 	const [deleting, setDeleting] = useState<Link>();
 	const links = useListLinks(orgID, {
 		limit: PAGE_SIZE,
@@ -43,6 +45,11 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const total = links.data?.meta?.total ?? 0;
 	const rows = links.data?.data ?? [];
 	const selected = rows.find(link => link.id === selectedID);
+
+	// A `?link=` that is not on the loaded page (deleted, another organization, another page) would leave the URL pointing at nothing.
+	useEffect(() => {
+		if (selectedID !== null && !links.isFetching && !selected) void setSelectedID(null, { history: 'replace' });
+	}, [selectedID, selected, links.isFetching, setSelectedID]);
 
 	const columns = useMemo<ColumnDef<DataTableFeatures, Link>[]>(
 		() => [
@@ -134,7 +141,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 					data={rows}
 					emptyMessage={t('protected.links.empty')}
 					isLoading={links.isLoading}
-					onRowClick={link => setSelectedID(link.id)}
+					onRowClick={link => void setSelectedID(link.id ?? null)}
 					pagination={{
 						onPageChange: setPage,
 						page,
@@ -151,14 +158,14 @@ function LinksContent({ orgID }: { orgID: number }) {
 				/>
 			</Page.Body>
 			<CreateLinkDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
-			<LinkDrawer link={selected} onClose={() => setSelectedID(undefined)} onDelete={setDeleting} orgID={orgID} />
+			<LinkDrawer link={selected} onClose={() => void setSelectedID(null)} onDelete={setDeleting} orgID={orgID} />
 			<ConfirmDialog.Root
 				lang={{ cancel: t('protected.confirm.cancel'), confirm: t('protected.confirm.delete') }}
 				onConfirm={async () => {
 					if (deleting?.id === undefined) return;
 					await deleteLink.mutateAsync({ linkID: deleting.id, orgID });
 					toast.success(t('protected.toast.linkDeleted'));
-					setSelectedID(undefined);
+					void setSelectedID(null, { history: 'replace' });
 					await queryClient.invalidateQueries({ queryKey: getListLinksQueryKey(orgID) });
 				}}
 				onOpenChange={open => !open && setDeleting(undefined)}

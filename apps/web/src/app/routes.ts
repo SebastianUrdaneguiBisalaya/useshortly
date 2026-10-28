@@ -4,8 +4,11 @@ export default [
 	layout('../features/protected/layout.tsx', [
 		index('../features/protected/dashboard/dashboard.tsx'),
 		route('links', '../features/protected/links/links.tsx'),
+		route('qr-code', '../features/protected/qr-code/qr-code.tsx'),
+		route('campaigns', '../features/protected/campaigns/campaigns.tsx'),
 		route('users', '../features/protected/users/users.tsx'),
 		route('api-keys', '../features/protected/api-keys/api-keys.tsx'),
+		route('docs', '../features/protected/docs/docs.tsx'),
 	]),
 	layout('../features/auth/layout.tsx', [
 		route('auth/sign-in', '../features/auth/sign-in.tsx'),

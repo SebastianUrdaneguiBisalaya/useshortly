@@ -30,8 +30,19 @@ type memberBody struct {
 	ID        int64  `json:"id"`
 	UserID    int64  `json:"user_id"`
 	Role      string `json:"role"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	ImageURL  string `json:"image_url,omitempty"`
 	CreatedAt string `json:"created_at"`
 } // @name Member
+
+func newMemberBody(m org.Member) memberBody {
+	return memberBody{
+		ID: m.ID, UserID: m.UserID, Role: string(m.Role), FirstName: m.FirstName, LastName: m.LastName,
+		Email: m.Email, ImageURL: m.ImageURL, CreatedAt: formatTime(m.CreatedAt),
+	}
+}
 
 type invitationBody struct {
 	ID        int64   `json:"id"`
@@ -54,6 +65,11 @@ type CreateOrganizationRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 } // @name CreateOrganizationRequest
+
+type UpdateOrganizationRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+} // @name UpdateOrganizationRequest
 
 type InviteRequest struct {
 	Email string   `json:"email"`
@@ -139,6 +155,41 @@ func (h *OrgHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, newOrgBody(o))
 }
 
+// Update renames an organization and changes its description. Only its OWNER can.
+//
+//	@Summary	Update an organization
+//	@Tags		orgs
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		orgID	path		int							true	"Organization id"
+//	@Param		body	body		UpdateOrganizationRequest	true	"Organization data"
+//	@Success	200		{object}	OrganizationResponse
+//	@Failure	400		{object}	ErrorResponse
+//	@Failure	401		{object}	ErrorResponse
+//	@Failure	403		{object}	ErrorResponse
+//	@Failure	404		{object}	ErrorResponse
+//	@Failure	409		{object}	ErrorResponse
+//	@Failure	429		{object}	ErrorResponse
+//	@ID	updateOrganization
+//	@Router		/orgs/{orgID} [patch]
+func (h *OrgHandler) Update(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	var in UpdateOrganizationRequest
+	if !decode(w, r, &in) {
+		return
+	}
+	o, err := h.orgs.Update(r.Context(), PrincipalFrom(r).UserID, tenant.ID, in.Name, in.Description)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, newOrgBody(o))
+}
+
 // Delete removes the organization with everything in it. Only its OWNER can. The organization is
 // gone for every caller when this answers; its links and clicks are deleted in the background.
 //
@@ -192,7 +243,7 @@ func (h *OrgHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]memberBody, 0, len(list))
 	for _, m := range list {
-		out = append(out, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
+		out = append(out, newMemberBody(m))
 	}
 	writeData(w, http.StatusOK, out)
 }
@@ -320,7 +371,8 @@ func (h *OrgHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeData(w, http.StatusOK, memberBody{ID: m.ID, UserID: m.UserID, Role: string(m.Role), CreatedAt: formatTime(m.CreatedAt)})
+	m.FirstName, m.LastName, m.Email, m.ImageURL = p.User.FirstName, p.User.LastName, p.User.Email, p.User.ImageURL
+	writeData(w, http.StatusOK, newMemberBody(m))
 }
 
 // RejectInvitation declines an invitation addressed to the caller's email.

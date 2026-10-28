@@ -103,6 +103,17 @@ func TestOrgRepositoryInvitationFlow(t *testing.T) {
 	members, err := repo.ListMembers(testCtx, o.ID)
 	require.NoError(t, err)
 	assert.Len(t, members, 2)
+	for _, m := range members {
+		assert.NotEmpty(t, m.Email)
+		assert.NotEmpty(t, m.FirstName)
+		assert.NotEmpty(t, m.LastName)
+	}
+
+	renamed, err := repo.Update(testCtx, o.ID, "Renamed", "desc", now)
+	require.NoError(t, err)
+	assert.Equal(t, "Renamed", renamed.Name)
+	assert.Equal(t, "desc", renamed.Description)
+	assert.ErrorIs(t, func() error { _, e := repo.Update(testCtx, 9999, "X", "", now); return e }(), org.ErrNotFound)
 
 	require.NoError(t, repo.DeleteMember(testCtx, o.ID, bob.ID))
 	assert.ErrorIs(t, repo.DeleteMember(testCtx, o.ID, bob.ID), org.ErrNotMember)

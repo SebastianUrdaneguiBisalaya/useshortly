@@ -53,6 +53,22 @@ func (s *Service) CreateOrganization(ctx context.Context, ownerID int64, name, d
 	return s.repo.CreateWithOwner(ctx, Organization{Name: name, Description: description, CreatedAt: s.now()}, ownerID)
 }
 
+// Update changes the name and description of the organization. Only the OWNER can, like Delete.
+func (s *Service) Update(ctx context.Context, actorID, tenantID int64, name, description string) (Organization, error) {
+	name, description = strings.TrimSpace(name), strings.TrimSpace(description)
+	if name == "" || utf8.RuneCountInString(name) > maxFieldLen || utf8.RuneCountInString(description) > maxFieldLen {
+		return Organization{}, ErrInvalidName
+	}
+	m, err := s.repo.FindMember(ctx, tenantID, actorID)
+	if err != nil {
+		return Organization{}, err
+	}
+	if m.Role != RoleOwner {
+		return Organization{}, ErrNotOwner
+	}
+	return s.repo.Update(ctx, tenantID, name, description, s.now())
+}
+
 // Delete removes the organization with its members, invitations, API keys, domains, links and
 // clicks. Only the OWNER can. It answers once the organization is hidden; the heavy rows are
 // deleted afterwards by the Purger, which keeps retrying until they are gone.

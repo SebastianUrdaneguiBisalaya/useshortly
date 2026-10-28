@@ -73,6 +73,7 @@ func NewRouter(h Handlers) http.Handler {
 	userOrg := user.PathPrefix("/orgs/{orgID}").Subrouter()
 	userOrg.Use(h.Tenant.Require)
 	userOrg.HandleFunc("", h.Orgs.Get).Methods(http.MethodGet)
+	userOrg.HandleFunc("", h.Orgs.Update).Methods(http.MethodPatch)
 	userOrg.HandleFunc("", h.Orgs.Delete).Methods(http.MethodDelete)
 	userOrg.HandleFunc("/members", h.Orgs.ListMembers).Methods(http.MethodGet)
 	userOrg.HandleFunc("/members/{userID}", h.Orgs.RemoveMember).Methods(http.MethodDelete)

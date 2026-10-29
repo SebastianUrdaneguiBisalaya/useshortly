@@ -1,7 +1,8 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { signInWithGoogle } from './google-sign-in.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,7 +54,7 @@ function createWindow() {
 			allowRunningInsecureContent: false,
 			contextIsolation: true,
 			nodeIntegration: false,
-			preload: path.join(__dirname, 'preload.js'),
+			preload: path.join(__dirname, 'preload.cjs'),
 			sandbox: true,
 			spellcheck: false,
 			webSecurity: true,
@@ -94,6 +95,25 @@ function createWindow() {
 	});
 }
 
+// A Google OAuth client id; it goes into the Google URL opened in the system browser.
+const GOOGLE_CLIENT_ID = /^[\w.-]+\.apps\.googleusercontent\.com$/;
+
+function registerIpc() {
+	ipcMain.handle('google-sign-in', async (event, clientId: unknown) => {
+		// Only our own app may start a sign-in, never a page it navigated to.
+		if (!isTrustedUrl(event.senderFrame?.url ?? '')) throw new Error('Untrusted sender');
+		if (typeof clientId !== 'string' || !GOOGLE_CLIENT_ID.test(clientId)) throw new Error('Invalid Google client id');
+		const grant = await signInWithGoogle(clientId);
+		// The user finished in the browser; bring them back to the app.
+		if (grant && mainWindow) {
+			if (mainWindow.isMinimized()) mainWindow.restore();
+			mainWindow.show();
+			mainWindow.focus();
+		}
+		return grant;
+	});
+}
+
 const gotLock = app.requestSingleInstanceLock();
 
 if (!gotLock) {
@@ -107,6 +127,7 @@ if (!gotLock) {
 	});
 
 	app.whenReady().then(() => {
+		registerIpc();
 		startWebServer();
 		createWindow();
 	});

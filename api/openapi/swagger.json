@@ -488,6 +488,13 @@
                 "properties": {
                     "code": {
                         "type": "string"
+                    },
+                    "code_verifier": {
+                        "type": "string"
+                    },
+                    "redirect_uri": {
+                        "description": "RedirectURI and CodeVerifier are only sent by the desktop app, which signs in through the\nsystem browser: the loopback redirect URI it used (http://127.0.0.1:<port>/...) and its PKCE\ncode verifier. The web app's popup flow sends just the code.",
+                        "type": "string"
                     }
                 },
                 "type": "object"

@@ -8,4 +8,11 @@
 
 export interface GoogleLoginRequest {
 	code?: string;
+	code_verifier?: string;
+	/**
+	 * RedirectURI and CodeVerifier are only sent by the desktop app, which signs in through the
+	 * system browser: the loopback redirect URI it used (http://127.0.0.1:<port>/...) and its PKCE
+	 * code verifier. The web app's popup flow sends just the code.
+	 */
+	redirect_uri?: string;
 }

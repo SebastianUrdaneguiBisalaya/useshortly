@@ -193,6 +193,7 @@ domain: the web app and the API must look, to the browser, like the **same site*
 | `VITE_API_URL` | Base URL of the backend. Empty = same origin (development proxy, or a reverse proxy in production). |
 | `VITE_API_PROXY_TARGET` | Where Vite forwards `/api` in development. |
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth client id for "Continue with Google". Same value as the backend `GOOGLE_CLIENT_ID`. Empty hides the button. |
+| `VITE_GOOGLE_DESKTOP_CLIENT_ID` | "Desktop app" Google OAuth client id, used instead inside the desktop app. Same value as the backend `GOOGLE_DESKTOP_CLIENT_ID`. Empty hides the button there. |
 
 To sign up, use the form: the confirmation code is printed in the **API's terminal log** (see step 2).
 
@@ -212,6 +213,14 @@ client, add every origin the button will run from under **Authorized JavaScript 
 Use the same client id for `VITE_GOOGLE_CLIENT_ID` (web) and `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (backend,
 [Environment variables](#environment-variables)) in each environment. Leave `GOOGLE_REDIRECT_URI` at its default
 (`postmessage`) in both.
+
+The **desktop app** cannot use that popup: Google refuses sign-in inside embedded browsers like Electron's. It opens
+Google in the system browser instead and receives the code on a temporary loopback redirect
+(`http://127.0.0.1:<random port>`, with PKCE), as [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252) describes. That
+needs a second OAuth client of type **Desktop app** (it accepts any loopback port, so there is nothing to register):
+set its id and secret as `GOOGLE_DESKTOP_CLIENT_ID`/`GOOGLE_DESKTOP_CLIENT_SECRET` on the backend, and the same id as
+`VITE_GOOGLE_DESKTOP_CLIENT_ID` on the web app. The backend only
+accepts loopback redirect URIs for it and checks the id token against the client that issued the code.
 
 Other scripts: `pnpm typecheck`, `pnpm lint`, `pnpm format`, and `pnpm api:generate` (regenerates the API client
 from `api/openapi/swagger.json` after running `make openapi`).
@@ -271,6 +280,8 @@ Configuration is read from the environment (a `.env` file is loaded only for loc
 | `GOOGLE_CLIENT_ID` | empty | no | Enables Google sign-in. Must be set together with `GOOGLE_CLIENT_SECRET`. |
 | `GOOGLE_CLIENT_SECRET` | empty | with the ID | Google OAuth client secret. |
 | `GOOGLE_REDIRECT_URI` | `postmessage` | no | Keep `postmessage` for the web app's popup flow. |
+| `GOOGLE_DESKTOP_CLIENT_ID` | empty | no | "Desktop app" OAuth client id for the desktop app's Google sign-in. Empty disables Google there. Needs `GOOGLE_CLIENT_ID`. |
+| `GOOGLE_DESKTOP_CLIENT_SECRET` | empty | with the ID | Secret of that "Desktop app" client. |
 | `GEOIP_DB_PATH` | empty | no | Path to a MaxMind `.mmdb` file. Empty = the country of clicks is not recorded. See [GeoIP](#geoip). |
 | `TRUST_PROXY` | `false` | no | Read the visitor's IP from `X-Forwarded-For`. Only `true` behind a reverse proxy. See [Reverse proxy](#reverse-proxy-and-trust_proxy). |
 | `RATE_LIMIT` | `true` | no | Turns the request limits on. Disable only if something in front already limits. |

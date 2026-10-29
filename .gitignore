@@ -46,3 +46,6 @@ build/
 # MCP server
 apps/mcp/dist/
 apps/mcp/data/
+# Desktop app build output
+apps/desktop/dist/
+apps/desktop/release/

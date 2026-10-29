@@ -83,7 +83,7 @@ func run() error {
 
 	var googleAuth user.GoogleAuth
 	if cfg.GoogleClientID != "" {
-		if googleAuth, err = google.New(ctx, cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect); err != nil {
+		if googleAuth, err = google.New(ctx, google.Client{ID: cfg.GoogleClientID, Secret: cfg.GoogleSecret}, cfg.GoogleRedirect, google.Client{ID: cfg.GoogleDesktopClientID, Secret: cfg.GoogleDesktopSecret}); err != nil {
 			return err
 		}
 	} else {

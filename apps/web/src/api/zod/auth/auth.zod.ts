@@ -31,6 +31,13 @@ export const ForgotPasswordResponse = zod.object({
 export const LoginWithGoogleBody = zod
 	.object({
 		code: zod.string().optional(),
+		code_verifier: zod.string().optional(),
+		redirect_uri: zod
+			.string()
+			.optional()
+			.describe(
+				"RedirectURI and CodeVerifier are only sent by the desktop app, which signs in through the\nsystem browser: the loopback redirect URI it used (http://127.0.0.1:<port>/...) and its PKCE\ncode verifier. The web app's popup flow sends just the code."
+			),
 	})
 	.describe('Google authorization code');
 

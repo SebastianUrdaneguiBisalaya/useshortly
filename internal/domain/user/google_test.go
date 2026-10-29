@@ -12,13 +12,13 @@ import (
 )
 
 type fakeGoogleAuth struct {
-	id   GoogleIdentity
-	err  error
-	code string
+	id    GoogleIdentity
+	err   error
+	grant GoogleGrant
 }
 
-func (f *fakeGoogleAuth) Exchange(_ context.Context, code string) (GoogleIdentity, error) {
-	f.code = code
+func (f *fakeGoogleAuth) Exchange(_ context.Context, grant GoogleGrant) (GoogleIdentity, error) {
+	f.grant = grant
 	return f.id, f.err
 }
 
@@ -36,9 +36,9 @@ func newGoogle(id GoogleIdentity, gerr error) (*GoogleService, *fakeRepo, *fakeM
 
 func TestGoogleLoginCreatesUserOnFirstUse(t *testing.T) {
 	svc, repo, mailer, g := newGoogle(ana, nil)
-	s, err := svc.Login(context.Background(), "the-code")
+	s, err := svc.Login(context.Background(), GoogleGrant{Code: "the-code"})
 	require.NoError(t, err)
-	assert.Equal(t, "the-code", g.code)
+	assert.Equal(t, GoogleGrant{Code: "the-code"}, g.grant)
 	assert.Equal(t, "ana@example.com", s.User.Email)
 	assert.True(t, s.User.EmailVerified)
 	assert.Equal(t, "https://img/a.png", s.User.ImageURL)
@@ -58,9 +58,9 @@ func TestGoogleLoginCreatesUserOnFirstUse(t *testing.T) {
 
 func TestGoogleLoginSecondTimeSignsInTheSameUser(t *testing.T) {
 	svc, repo, mailer, _ := newGoogle(ana, nil)
-	first, err := svc.Login(context.Background(), "c1")
+	first, err := svc.Login(context.Background(), GoogleGrant{Code: "c1"})
 	require.NoError(t, err)
-	second, err := svc.Login(context.Background(), "c2")
+	second, err := svc.Login(context.Background(), GoogleGrant{Code: "c2"})
 	require.NoError(t, err)
 	assert.Equal(t, first.User.ID, second.User.ID)
 	assert.Len(t, repo.users, 1)
@@ -73,11 +73,11 @@ func TestGoogleLoginRefreshesTheScopeWhenItChanges(t *testing.T) {
 	svc, repo, _, g := newGoogle(ana, nil)
 	fixed := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
 	svc.now = func() time.Time { return fixed }
-	first, err := svc.Login(context.Background(), "c1")
+	first, err := svc.Login(context.Background(), GoogleGrant{Code: "c1"})
 	require.NoError(t, err)
 
 	g.id.Scope = "openid email profile https://www.googleapis.com/auth/calendar.readonly"
-	_, err = svc.Login(context.Background(), "c2")
+	_, err = svc.Login(context.Background(), GoogleGrant{Code: "c2"})
 	require.NoError(t, err)
 
 	acc := repo.accounts[first.User.ID]
@@ -90,7 +90,7 @@ func TestGoogleLoginRefusesEmailRegisteredWithPassword(t *testing.T) {
 	svc, repo, mailer, _ := newGoogle(ana, nil)
 	newEnvWithRepo(repo).signUp(t, valid) // ana@example.com with a password
 
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	assert.ErrorIs(t, err, ErrProviderMismatch)
 	assert.Len(t, repo.users, 1, "no second user, no merged account")
 	assert.Equal(t, ProviderDefault, repo.accounts[1].Provider)
@@ -99,7 +99,7 @@ func TestGoogleLoginRefusesEmailRegisteredWithPassword(t *testing.T) {
 
 func TestPasswordSignupRefusesEmailRegisteredWithGoogle(t *testing.T) {
 	svc, repo, _, _ := newGoogle(ana, nil)
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	require.NoError(t, err)
 
 	err = newEnvWithRepo(repo).svc.Register(context.Background(), valid)
@@ -108,7 +108,7 @@ func TestPasswordSignupRefusesEmailRegisteredWithGoogle(t *testing.T) {
 
 func TestGooglePasswordLoginIsNotPossible(t *testing.T) {
 	svc, repo, _, _ := newGoogle(ana, nil)
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	require.NoError(t, err)
 
 	_, err = newEnvWithRepo(repo).svc.Login(context.Background(), "ana@example.com", "anything-at-all")
@@ -123,7 +123,7 @@ func (racyRepo) Create(context.Context, User, Account) (User, error) { return Us
 
 func TestGoogleLoginLosingTheCreationRaceIsAMismatch(t *testing.T) {
 	svc := NewGoogleService(racyRepo{newFakeRepo()}, &fakeGoogleAuth{id: ana}, fakeTokens{}, newFakeRefresh(), &fakeMailer{})
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	assert.ErrorIs(t, err, ErrProviderMismatch)
 }
 
@@ -131,7 +131,7 @@ func TestGoogleLoginRefusesUnverifiedEmail(t *testing.T) {
 	unverified := ana
 	unverified.EmailVerified = false
 	svc, repo, mailer, _ := newGoogle(unverified, nil)
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	assert.ErrorIs(t, err, ErrGoogleEmailNotVerified)
 	assert.Empty(t, repo.users)
 	assert.Empty(t, mailer.sent)
@@ -139,19 +139,19 @@ func TestGoogleLoginRefusesUnverifiedEmail(t *testing.T) {
 
 func TestGoogleLoginRejectsInvalidCodeAndIdentity(t *testing.T) {
 	svc, repo, _, _ := newGoogle(GoogleIdentity{}, auth.ErrInvalidCredentials)
-	_, err := svc.Login(context.Background(), "bad")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "bad"})
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 
 	noSub := ana
 	noSub.Subject = ""
 	svc, repo, _, _ = newGoogle(noSub, nil)
-	_, err = svc.Login(context.Background(), "code")
+	_, err = svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 
 	badEmail := ana
 	badEmail.Email = "nope"
 	svc, repo, _, _ = newGoogle(badEmail, nil)
-	_, err = svc.Login(context.Background(), "code")
+	_, err = svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
 	assert.Empty(t, repo.users)
 }
@@ -160,7 +160,7 @@ func TestGoogleLoginFallsBackToEmailForMissingName(t *testing.T) {
 	noName := ana
 	noName.FirstName, noName.LastName = " ", ""
 	svc, _, _, _ := newGoogle(noName, nil)
-	s, err := svc.Login(context.Background(), "code")
+	s, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	require.NoError(t, err)
 	assert.Equal(t, "ana", s.User.FirstName)
 }
@@ -168,7 +168,7 @@ func TestGoogleLoginFallsBackToEmailForMissingName(t *testing.T) {
 func TestGoogleLoginSurvivesMailFailure(t *testing.T) {
 	svc, repo, mailer, _ := newGoogle(ana, nil)
 	mailer.err = errors.New("provider down")
-	_, err := svc.Login(context.Background(), "code")
+	_, err := svc.Login(context.Background(), GoogleGrant{Code: "code"})
 	require.NoError(t, err)
 	assert.Len(t, repo.users, 1)
 }

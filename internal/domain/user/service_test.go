@@ -377,7 +377,7 @@ func TestNobodyCanSquatAnAddressTheyDoNotOwn(t *testing.T) {
 
 	// The real owner can still use it, with Google as well.
 	g := NewGoogleService(e.repo, &fakeGoogleAuth{id: ana}, fakeTokens{}, newFakeRefresh(), e.mailer)
-	s, err := g.Login(ctx, "code")
+	s, err := g.Login(ctx, GoogleGrant{Code: "code"})
 	require.NoError(t, err)
 	assert.Equal(t, "ana@example.com", s.User.Email)
 

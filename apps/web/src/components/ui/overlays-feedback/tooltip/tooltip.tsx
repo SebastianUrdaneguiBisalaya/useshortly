@@ -84,7 +84,7 @@ export function IconTooltip({ description, icon = HelpCircle, iconClassName, 'ar
 					iconClassName
 				)}
 				onBlur={() => setIsOpen(false)}
-				onClick={() => setIsOpen(value => !value)}
+				onClick={() => setIsOpen(true)}
 				onFocus={() => setIsOpen(true)}
 				onMouseEnter={() => setIsOpen(true)}
 				onMouseLeave={() => setIsOpen(false)}
@@ -97,7 +97,7 @@ export function IconTooltip({ description, icon = HelpCircle, iconClassName, 'ar
 			{isOpen &&
 				createPortal(
 					<div
-						className='z-50 max-w-xs animate-fade-scale-in rounded-lg border border-border bg-background px-3 py-2 font-primary text-xs leading-relaxed text-foreground shadow-lg'
+						className='z-[1000] max-w-xs animate-fade-scale-in rounded-lg border border-border bg-background px-3 py-2 font-primary text-xs leading-relaxed text-foreground shadow-lg'
 						id={tooltipId}
 						ref={tooltipRef}
 						role='tooltip'

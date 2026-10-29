@@ -667,6 +667,15 @@
 						"createdAt": "Created"
 					},
 					"viewAll": "View in links"
+				},
+				"stats": {
+					"title": "Statistics",
+					"description": "Clicks on every link in this campaign. Compare how each channel performs.",
+					"channels": {
+						"title": "Clicks by channel",
+						"empty": "This campaign has no channels yet.",
+						"more": "And {{count}} more channels with fewer clicks."
+					}
 				}
 			},
 			"channelForm": {

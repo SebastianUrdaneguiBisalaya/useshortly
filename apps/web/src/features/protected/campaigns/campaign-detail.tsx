@@ -15,6 +15,7 @@ import { OrganizationGate } from '../share/organization-gate';
 import { CampaignChannels } from './campaign-channels';
 import { CampaignDialog } from './campaign-dialog';
 import { CampaignLinks } from './campaign-links';
+import { CampaignStats } from './campaign-stats';
 
 /** Channels are capped at 100 per campaign, so one request lists them all. */
 const ALL_CHANNELS = { limit: 100 };
@@ -104,6 +105,7 @@ function CampaignDetailContent({ orgID }: { orgID: number }) {
 				</Page.Actions>
 			</Page.Header>
 			<Page.Body className='min-h-0 flex-1 gap-8'>
+				<CampaignStats campaignID={campaignID} orgID={orgID} />
 				<CampaignChannels campaignID={campaignID} channels={channels.data?.data ?? []} isLoading={channels.isLoading} orgID={orgID} />
 				<CampaignLinks campaignID={campaignID} channels={channels.data?.data ?? []} orgID={orgID} />
 			</Page.Body>

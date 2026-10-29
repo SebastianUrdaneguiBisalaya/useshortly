@@ -555,6 +555,17 @@
 				"description": "Los links que usan este dominio dejarán de funcionar. No se puede deshacer."
 			}
 		},
+		"campaigns": {
+			"title": "Campañas",
+			"description": "Agrupa links por iniciativa y compara el rendimiento de cada canal.",
+			"empty": "Aún no hay campañas.",
+			"columns": {
+				"name": "Campaña",
+				"channels": "Canales",
+				"links": "Links",
+				"createdAt": "Creada"
+			}
+		},
 		"toast": {
 			"organizationCreated": "Organización creada",
 			"organizationUpdated": "Organización actualizada",

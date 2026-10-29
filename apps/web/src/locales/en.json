@@ -555,6 +555,17 @@
 				"description": "Links using this domain will stop working. It can't be undone."
 			}
 		},
+		"campaigns": {
+			"title": "Campaigns",
+			"description": "Group links by initiative and compare how each channel performs.",
+			"empty": "No campaigns yet.",
+			"columns": {
+				"name": "Campaign",
+				"channels": "Channels",
+				"links": "Links",
+				"createdAt": "Created"
+			}
+		},
 		"toast": {
 			"organizationCreated": "Organization created",
 			"organizationUpdated": "Organization updated",

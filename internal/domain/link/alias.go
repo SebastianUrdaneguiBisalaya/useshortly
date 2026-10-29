@@ -8,12 +8,22 @@ const (
 	generatedCodeLen = 7  // generated codes have this length, so aliases never use it to avoid collisions
 )
 
-// reservedAliases are the paths served at the root, next to GET /{code}.
+// reservedAliases are the paths served at the root, next to GET /{code}: the API and, when the web app shares the
+// host, its pages (keep them in sync with apps/web/src/app/routes.ts and the proxy in apps/web/vite.config.ts).
 var reservedAliases = map[string]struct{}{
-	"api":    {},
-	"v1":     {},
-	"health": {},
-	"admin":  {},
+	"api":       {},
+	"v1":        {},
+	"health":    {},
+	"admin":     {},
+	"auth":      {},
+	"links":     {},
+	"qr-code":   {},
+	"campaigns": {},
+	"domains":   {},
+	"users":     {},
+	"api-keys":  {},
+	"docs":      {},
+	"mcp":       {},
 }
 
 func validateAlias(alias string) error {

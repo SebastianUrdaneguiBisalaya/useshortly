@@ -321,6 +321,8 @@ func TestValidateAlias(t *testing.T) {
 		{"space", "my link", ErrInvalidAlias},
 		{"non ascii", "añade", ErrInvalidAlias},
 		{"reserved", "admin", ErrInvalidAlias},
+		{"reserved page", "campaigns", ErrInvalidAlias},
+		{"reserved page with hyphen", "api-keys", ErrInvalidAlias},
 		{"reserved uppercase", "API", ErrInvalidAlias},
 	}
 	for _, tt := range tests {

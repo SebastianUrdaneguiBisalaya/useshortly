@@ -200,20 +200,35 @@ Because the API holds only the public key, even a stolen API `.env` cannot be us
 
 Read-only connections get the first group; connections where the user granted write access also get the second.
 
-| Tool                 | What it does                                                                |
-| -------------------- | --------------------------------------------------------------------------- |
-| `whoami`             | The account the connection acts for and whether it is read-only.            |
-| `list_organizations` | Organizations of the user, with their ids (call this first).                |
-| `list_links`         | Links of an organization, paged.                                            |
-| `get_link_stats`     | Clicks per day/hour/weekday, top referrers, countries, devices; filterable. |
-| `get_link_qr`        | The QR code of a link as a PNG image.                                       |
-| `list_domains`       | Custom domains and, for unverified ones, the DNS record to create.          |
-| `create_link`        | Shorten a URL (alias, expiration, click limit, password, custom domain).    |
-| `delete_link`        | Delete a link (marked destructive, so clients ask first).                   |
-| `add_domain`         | Register a custom domain and get its DNS TXT record.                        |
-| `verify_domain`      | Check the DNS record and verify the domain.                                 |
+| Tool                      | What it does                                                                |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `whoami`                  | The account the connection acts for and whether it is read-only.            |
+| `list_organizations`      | Organizations of the user, with their ids (call this first).                |
+| `list_links`              | Links of an organization, paged; filterable by campaign or channel.         |
+| `get_link`                | One link, with its campaign and channel.                                    |
+| `get_link_stats`          | Clicks per day/hour/weekday, top referrers, countries, devices; filterable. |
+| `get_link_qr`             | The QR code of a link as a PNG image.                                       |
+| `list_campaigns`          | Campaigns of an organization, with how many channels and links each has.    |
+| `get_campaign`            | One campaign.                                                               |
+| `list_campaign_channels`  | The channels of a campaign (Instagram, email…).                             |
+| `get_campaign_stats`      | Clicks of a whole campaign and of each channel; filterable.                 |
+| `list_domains`            | Custom domains and, for unverified ones, the DNS record to create.          |
+| `create_link`             | Shorten a URL (alias, expiration, click limit, password, domain, channel).  |
+| `delete_link`             | Delete a link (marked destructive, so clients ask first).                   |
+| `create_campaign`         | Create a campaign.                                                          |
+| `update_campaign`         | Change a campaign's name or description.                                    |
+| `delete_campaign`         | Delete a campaign and its channels; its links stay (marked destructive).    |
+| `add_campaign_channel`    | Add a channel to a campaign.                                                |
+| `delete_campaign_channel` | Delete a channel; its links stay (marked destructive).                      |
+| `set_link_channel`        | Put a link in a channel, move it, or take it out of its campaign.           |
+| `add_domain`              | Register a custom domain and get its DNS TXT record.                        |
+| `verify_domain`           | Check the DNS record and verify the domain.                                 |
 
-Prompts: `link_performance_report` (everyone) and `shorten_url` (write connections).
+A link put in a campaign channel gets `utm_source` (the channel), `utm_medium=useshortly` and `utm_campaign` (the
+campaign) added to its destination, which with them must fit in 255 characters. Moving it rewrites those parameters;
+taking it out of its campaign removes them. Deleting a campaign or a channel never deletes its links.
+
+Prompts: `link_performance_report` and `campaign_performance_report` (everyone) and `shorten_url` (write connections).
 
 Not exposed on purpose: creating or deleting organizations or accounts, members and invitations, API keys,
 unlock pages and deleting domains.

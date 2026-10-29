@@ -48,7 +48,8 @@ function McpContent() {
 					<Prose>
 						<Typography.P>
 							The Model Context Protocol (MCP) lets an assistant such as Claude Code, Claude or Cursor call tools on a server. useshortly’s MCP server gives them the tools to list your
-							organizations and links, create and delete links, read click statistics, fetch QR codes and manage custom domains, in plain conversation.
+							organizations and links, create and delete links, group links into campaigns and compare their channels, read click statistics, fetch QR codes and manage custom domains, in
+							plain conversation.
 						</Typography.P>
 						<Typography.P>
 							You sign in once in your browser, the way you sign in to any app that asks for access. There is no API key to paste: the assistant only gets what you allow on the consent
@@ -226,7 +227,19 @@ function McpContent() {
 // list_domains → verify_domain
 
 "Delete the link summer1"
-// delete_link (your assistant asks first)`}
+// delete_link (your assistant asks first)
+
+"Create a campaign called Black Friday with the channels Instagram and Email"
+// list_organizations → create_campaign → add_campaign_channel (twice)
+
+"Shorten https://example.com/sale for the Instagram channel of Black Friday"
+// list_campaigns → list_campaign_channels → create_link (with channel_id)
+
+"Move summer1 to the Email channel of Black Friday"
+// list_campaigns → list_campaign_channels → set_link_channel
+
+"Which Black Friday channel brought the most clicks this month?"
+// list_campaigns → get_campaign_stats`}
 						language='typescript'
 					>
 						<BlockCode.Header>

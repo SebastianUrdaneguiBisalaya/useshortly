@@ -14,6 +14,7 @@ type fakeStatsRepo struct {
 		tenant, link int64
 		from, to     time.Time
 		filter       Filter
+		loc          *time.Location
 	}
 	calls        int
 	result       Stats
@@ -23,9 +24,9 @@ type fakeStatsRepo struct {
 	err          error
 }
 
-func (f *fakeStatsRepo) Stats(_ context.Context, tenantID, linkID int64, from, to time.Time, flt Filter) (Stats, error) {
+func (f *fakeStatsRepo) Stats(_ context.Context, tenantID, linkID int64, from, to time.Time, loc *time.Location, flt Filter) (Stats, error) {
 	f.calls++
-	f.got.tenant, f.got.link, f.got.from, f.got.to, f.got.filter = tenantID, linkID, from, to, flt
+	f.got.tenant, f.got.link, f.got.from, f.got.to, f.got.loc, f.got.filter = tenantID, linkID, from, to, loc, flt
 	return f.result, f.err
 }
 
@@ -179,5 +180,78 @@ func TestStatsTurnsLabelsBackIntoStoredValues(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, repo.got.filter)
 		})
+	}
+}
+
+func mustLocation(t *testing.T, name string) *time.Location {
+	t.Helper()
+	loc, err := time.LoadLocation(name)
+	require.NoError(t, err)
+	return loc
+}
+
+func TestStatsCountsDaysInTheRequestedTimeZone(t *testing.T) {
+	lima := mustLocation(t, "America/Lima")
+	repo := &fakeStatsRepo{}
+	// 02:00 UTC on the 10th is still the evening of the 9th in Lima.
+	s := newStatsService(repo)
+	s.now = func() time.Time { return time.Date(2026, 3, 10, 2, 0, 0, 0, time.UTC) }
+
+	st, err := s.Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: date("2026-03-08"), Location: lima})
+	require.NoError(t, err)
+
+	assert.Equal(t, "2026-03-08", st.From)
+	assert.Equal(t, "2026-03-09", st.To, "today is the date it is in the zone, not in UTC")
+	assert.Equal(t, DayCount{"2026-03-09", 0}, st.Daily[len(st.Daily)-1])
+	assert.Equal(t, time.Date(2026, 3, 8, 5, 0, 0, 0, time.UTC), repo.got.from.UTC(), "a Lima day starts at 05:00 UTC")
+	assert.Equal(t, time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC), repo.got.to.UTC())
+	assert.Same(t, lima, repo.got.loc, "the repository buckets in the same zone")
+}
+
+func TestStatsDefaultsToUTCWithoutALocation(t *testing.T) {
+	repo := &fakeStatsRepo{}
+	_, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: date("2026-03-01"), To: date("2026-03-02")})
+	require.NoError(t, err)
+	assert.Equal(t, time.UTC, repo.got.loc)
+}
+
+func TestStatsWindowAcrossADaylightSavingChange(t *testing.T) {
+	ny := mustLocation(t, "America/New_York")
+	repo := &fakeStatsRepo{}
+
+	// Clocks go forward on 8 March 2026, so that local day has 23 hours.
+	st, err := newStatsService(repo).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: date("2026-03-07"), To: date("2026-03-09"), Location: ny})
+	require.NoError(t, err)
+
+	assert.Equal(t, []DayCount{{"2026-03-07", 0}, {"2026-03-08", 0}, {"2026-03-09", 0}}, st.Daily, "every local day is listed once")
+	assert.Equal(t, time.Date(2026, 3, 7, 5, 0, 0, 0, time.UTC), repo.got.from.UTC(), "EST, UTC-5")
+	assert.Equal(t, time.Date(2026, 3, 10, 4, 0, 0, 0, time.UTC), repo.got.to.UTC(), "EDT, UTC-4")
+	assert.Equal(t, time.Date(2026, 3, 4, 5, 0, 0, 0, time.UTC), repo.previousFrom.UTC(), "the previous window is three whole local days back")
+	assert.Equal(t, time.Date(2026, 3, 7, 5, 0, 0, 0, time.UTC), repo.previousTo.UTC())
+}
+
+func TestStatsRangeLimitIsCountedInDaysInAZone(t *testing.T) {
+	ny := mustLocation(t, "America/New_York")
+	s := newStatsService(&fakeStatsRepo{})
+
+	_, err := s.Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: date("2025-03-01"), To: date("2026-03-01"), Location: ny})
+	require.NoError(t, err, "366 days is the longest window, even when a daylight saving change falls inside it")
+
+	_, err = s.Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1, From: date("2025-02-28"), To: date("2026-03-01"), Location: ny})
+	assert.ErrorIs(t, err, ErrInvalidRange)
+}
+
+func TestLoadLocation(t *testing.T) {
+	loc, err := LoadLocation("")
+	require.NoError(t, err)
+	assert.Equal(t, time.UTC, loc)
+
+	loc, err = LoadLocation("America/Lima")
+	require.NoError(t, err)
+	assert.Equal(t, "America/Lima", loc.String())
+
+	for _, name := range []string{"Mars/Olympus", "Local", "../etc/passwd", "lima"} {
+		_, err = LoadLocation(name)
+		assert.ErrorIs(t, err, ErrInvalidTimeZone, name)
 	}
 }

@@ -32,8 +32,8 @@ func (r *ClickRepository) Create(ctx context.Context, c analytics.Click) (analyt
 	return c, nil
 }
 
-// Stats implements analytics.StatsRepository.
-func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, f analytics.Filter) (analytics.Stats, error) {
+// Stats implements analytics.StatsRepository. Days, hours and weekdays are still counted in UTC here; loc is honored in the next change.
+func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, _ *time.Location, f analytics.Filter) (analytics.Stats, error) {
 	if err := r.checkLink(ctx, tenantID, linkID); err != nil {
 		return analytics.Stats{}, err
 	}
@@ -71,7 +71,7 @@ func (r *ClickRepository) aggregate(ctx context.Context, window string, args []a
 }
 
 // CampaignStats implements analytics.CampaignStatsRepository.
-func (r *ClickRepository) CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f analytics.Filter) (analytics.Stats, []analytics.ChannelCount, error) {
+func (r *ClickRepository) CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, _ *time.Location, f analytics.Filter) (analytics.Stats, []analytics.ChannelCount, error) {
 	if err := r.checkCampaign(ctx, tenantID, campaignID); err != nil {
 		return analytics.Stats{}, nil, err
 	}

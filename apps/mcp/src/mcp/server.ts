@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import type { UserApi } from '../api/client.js';
+import { registerCampaignReportPrompt } from './prompts/campaign-report.js';
 import { registerPerformanceReportPrompt } from './prompts/performance-report.js';
 import { registerShortenUrlPrompt } from './prompts/shorten-url.js';
 import { registerLinkQr, registerLinkStats } from './tools/analytics.js';
@@ -32,6 +33,7 @@ export function createMcpServer(api: UserApi): McpServer {
 	registerCampaignStats(server, context);
 	registerListDomains(server, context);
 	registerPerformanceReportPrompt(server);
+	registerCampaignReportPrompt(server);
 
 	// Tools that change things exist only for connections the user granted write access: a
 	// read-only connection does not even see them, and the API would refuse them anyway.

@@ -14,9 +14,11 @@ export interface McpTool {
 const ORG: DocRow = { description: 'Organization id, from list_organizations.', name: 'organization_id', required: true, type: 'number' };
 const LINK: DocRow = { description: 'Link id, from list_links.', name: 'link_id', required: true, type: 'number' };
 const CAMPAIGN: DocRow = { description: 'Campaign id, from list_campaigns.', name: 'campaign_id', required: true, type: 'number' };
+const TZ_DESCRIPTION = 'IANA time zone the days, hours and weekdays are counted in, such as America/Lima. UTC when omitted.';
 const PERIOD: DocRow[] = [
-	{ description: 'First day to include, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
-	{ description: 'Last day to include, YYYY-MM-DD (UTC). The period is at most 366 days; the default is the last 30.', name: 'to', type: 'string' },
+	{ description: 'First day to include, YYYY-MM-DD, a day of tz (UTC when tz is omitted).', name: 'from', type: 'string' },
+	{ description: 'Last day to include, YYYY-MM-DD, a day of tz. The period is at most 366 days; the default is the last 30.', name: 'to', type: 'string' },
+	{ description: TZ_DESCRIPTION, name: 'tz', type: 'string' },
 	{ description: 'ISO 3166-1 alpha-2 code such as PE, or "unknown".', name: 'country', type: 'string' },
 	{ description: 'mobile, tablet, desktop, bot or "unknown".', name: 'device', type: 'string' },
 	{ description: 'A referrer exactly as listed, or "direct" for none.', name: 'referrer', type: 'string' },
@@ -58,8 +60,9 @@ export const MCP_TOOLS: McpTool[] = [
 		input: [
 			ORG,
 			LINK,
-			{ description: 'First day to include, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
-			{ description: 'Last day to include, YYYY-MM-DD (UTC). The period is at most 366 days; the default is the last 30.', name: 'to', type: 'string' },
+			{ description: 'First day to include, YYYY-MM-DD, a day of tz (UTC when tz is omitted).', name: 'from', type: 'string' },
+			{ description: 'Last day to include, YYYY-MM-DD, a day of tz. The period is at most 366 days; the default is the last 30.', name: 'to', type: 'string' },
+			{ description: TZ_DESCRIPTION, name: 'tz', type: 'string' },
 			{ description: 'ISO 3166-1 alpha-2 code such as PE, or "unknown".', name: 'country', type: 'string' },
 			{ description: 'mobile, tablet, desktop, bot or "unknown".', name: 'device', type: 'string' },
 			{ description: 'A referrer exactly as listed, or "direct" for none.', name: 'referrer', type: 'string' },
@@ -219,6 +222,7 @@ export const MCP_PROMPTS: { name: string; write?: boolean; description: string; 
 		description: 'A report on how the links of an organization performed: clicks, trend, best day, top countries, devices and referrers.',
 		input: [
 			{ description: 'Organization name or id. Asked when you have several and name none.', name: 'organization', type: 'string' },
+			{ description: 'IANA time zone the days are counted in, such as America/Lima. UTC when omitted.', name: 'time_zone', type: 'string' },
 			{ description: 'Days to cover, 1 to 90. Default 30.', name: 'days', type: 'string' },
 		],
 		name: 'link_performance_report',
@@ -229,6 +233,7 @@ export const MCP_PROMPTS: { name: string; write?: boolean; description: string; 
 		input: [
 			{ description: 'Organization name or id. Asked when you have several and name none.', name: 'organization', type: 'string' },
 			{ description: 'Campaign name or id. Asked when you have several and name none.', name: 'campaign', type: 'string' },
+			{ description: 'IANA time zone the days are counted in, such as America/Lima. UTC when omitted.', name: 'time_zone', type: 'string' },
 			{ description: 'Days to cover, 1 to 90. Default 30.', name: 'days', type: 'string' },
 		],
 		name: 'campaign_performance_report',

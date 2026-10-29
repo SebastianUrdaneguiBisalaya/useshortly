@@ -162,6 +162,14 @@ describe('get_campaign_stats', () => {
 		expect(out.structuredContent.channels).toHaveLength(3);
 	});
 
+	it('passes the time zone on and names it', async () => {
+		h.apiReplies['GET /orgs/3/campaigns/7/stats?tz=America%2FLima'] = () => Response.json({ data: stats() });
+		const out = await h.callTool(token, 'get_campaign_stats', { organization_id: 3, campaign_id: 7, tz: 'America/Lima' });
+		expect(out.isError).toBeFalsy();
+		expect(out.content[0].text).toContain('from 2026-06-01 to 2026-06-30 (America/Lima)');
+		expect(await refused('get_campaign_stats', { organization_id: 3, campaign_id: 7, tz: 'Mars/Olympus' })).toBe(true);
+	});
+
 	it('passes the filters on and says they are applied', async () => {
 		h.apiReplies['GET /orgs/3/campaigns/7/stats?country=PE&device=mobile'] = () => Response.json({ data: stats() });
 		const out = await h.callTool(token, 'get_campaign_stats', { organization_id: 3, campaign_id: 7, country: 'PE', device: 'mobile' });

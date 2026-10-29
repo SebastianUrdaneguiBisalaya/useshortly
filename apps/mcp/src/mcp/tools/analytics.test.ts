@@ -71,6 +71,13 @@ describe('get_link_stats', () => {
 		expect(out.content[0].text).toContain('from 2026-02-01 to 2026-02-07');
 	});
 
+	it('passes the time zone and names it in the summary', async () => {
+		h.apiReplies['GET /orgs/3/links/10/stats?tz=America%2FLima'] = json(stats());
+		const out = await h.callTool(token, 'get_link_stats', { organization_id: 3, link_id: 10, tz: 'America/Lima' });
+		expect(out.isError).toBeFalsy();
+		expect(out.content[0].text).toContain('128 clicks from 2026-01-01 to 2026-01-30 (America/Lima).');
+	});
+
 	it('passes the filters and reports the previous period', async () => {
 		h.apiReplies['GET /orgs/3/links/10/stats?country=PE&device=mobile&referrer=direct'] = json(stats({ previous_total: 64, by_hour: [1, 2], by_weekday: [3] }));
 		const out = await h.callTool(token, 'get_link_stats', { organization_id: 3, link_id: 10, country: 'PE', device: 'mobile', referrer: 'direct' });
@@ -102,6 +109,8 @@ describe('get_link_stats', () => {
 		['a date in another format', { to: '01/02/2026' }],
 		['a date-time', { from: '2026-02-01T00:00:00Z' }],
 		['a range that ends before it starts', { from: '2026-03-01', to: '2026-02-01' }],
+		['an unknown time zone', { tz: 'Mars/Olympus' }],
+		['the server time zone', { tz: 'Local' }],
 		['a bad link id', { link_id: 0 }],
 		['a bad organization', { organization_id: '3' }],
 	])('rejects %s without calling the API', async (_name, extra) => {

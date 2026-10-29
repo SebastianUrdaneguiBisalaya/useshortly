@@ -206,7 +206,7 @@ Read-only connections get the first group; connections where the user granted wr
 | `list_organizations`      | Organizations of the user, with their ids (call this first).                |
 | `list_links`              | Links of an organization, paged; filterable by campaign or channel.         |
 | `get_link`                | One link, with its campaign and channel.                                    |
-| `get_link_stats`          | Clicks per day/hour/weekday, top referrers, countries, devices; filterable. |
+| `get_link_stats`          | Clicks per day/hour/weekday in a time zone (`tz`), top referrers, countries, devices; filterable. |
 | `get_link_qr`             | The QR code of a link as a PNG image.                                       |
 | `list_campaigns`          | Campaigns of an organization, with how many channels and links each has.    |
 | `get_campaign`            | One campaign.                                                               |

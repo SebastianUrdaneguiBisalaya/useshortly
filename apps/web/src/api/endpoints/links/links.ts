@@ -24,7 +24,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { BodyType, ErrorType } from '../../axios-instance';
 
 import { customInstance } from '../../axios-instance';
-import type { CreateLinkRequest, ErrorResponse, LinkListResponse, LinkResponse, ListLinksParams, SetQRStyleRequest } from '../../model';
+import type { CreateLinkRequest, ErrorResponse, LinkListResponse, LinkResponse, ListLinksParams, SetChannelRequest, SetQRStyleRequest } from '../../model';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -44,7 +44,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
- * Needs a JWT or an API key with the read scope.
+ * Needs a JWT or an API key with the read scope. campaign_id and channel_id keep only the links of that campaign or channel.
  * @summary List links
  */
 export const listLinks = (orgID: number, params?: ListLinksParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
@@ -118,7 +118,7 @@ export function useListLinks<TData = Awaited<ReturnType<typeof listLinks>>, TErr
 }
 
 /**
- * Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
+ * Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password, domain_id and channel_id are optional. With a channel_id the destination gets utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign), replacing those parameters if it already had them.
  * @summary Create a short link
  */
 export const createLink = (orgID: number, createLinkRequest: BodyType<CreateLinkRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
@@ -281,6 +281,50 @@ export function useGetLink<TData = Awaited<ReturnType<typeof getLink>>, TError =
 	return withQueryKey(query, queryOptions.queryKey);
 }
 
+/**
+ * Rewrites the destination with the utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign) of the channel, replacing those parameters if the link already had them. A missing or null channel_id takes the link out of its campaign and removes those three parameters from the destination. Needs a JWT or an API key with the write scope.
+ * @summary Put a link in a campaign channel
+ */
+export const setLinkChannel = (orgID: number, linkID: number, setChannelRequest: BodyType<SetChannelRequest>, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<LinkResponse>({ url: `/orgs/${orgID}/links/${linkID}/channel`, method: 'PUT', headers: { 'Content-Type': 'application/json' }, data: setChannelRequest, signal }, options);
+};
+
+export const getSetLinkChannelMutationKey = () => ['setLinkChannel'] as const;
+
+export const getSetLinkChannelMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+	mutation?: UseMutationOptions<Awaited<ReturnType<typeof setLinkChannel>>, TError, SetLinkChannelMutationVariables, TContext>;
+	request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<Awaited<ReturnType<typeof setLinkChannel>>, TError, SetLinkChannelMutationVariables, TContext> => {
+	const mutationKey = getSetLinkChannelMutationKey();
+	const { mutation: mutationOptions, request: requestOptions } = options
+		? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+			? options
+			: { ...options, mutation: { ...options.mutation, mutationKey } }
+		: { mutation: { mutationKey }, request: undefined };
+
+	const mutationFn: MutationFunction<Awaited<ReturnType<typeof setLinkChannel>>, SetLinkChannelMutationVariables> = props => {
+		const { orgID, linkID, data } = props ?? {};
+
+		return setLinkChannel(orgID, linkID, data, requestOptions);
+	};
+
+	return { mutationFn, ...mutationOptions };
+};
+
+export type SetLinkChannelMutationResult = NonNullable<Awaited<ReturnType<typeof setLinkChannel>>>;
+export type SetLinkChannelMutationBody = BodyType<SetChannelRequest>;
+export type SetLinkChannelMutationError = ErrorType<ErrorResponse>;
+export type SetLinkChannelMutationVariables = { orgID: number; linkID: number; data: BodyType<SetChannelRequest> };
+
+/**
+ * @summary Put a link in a campaign channel
+ */
+export const useSetLinkChannel = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+	options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof setLinkChannel>>, TError, SetLinkChannelMutationVariables, TContext>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseMutationResult<Awaited<ReturnType<typeof setLinkChannel>>, TError, SetLinkChannelMutationVariables, TContext> => {
+	return useMutation(getSetLinkChannelMutationOptions(options), queryClient);
+};
 /**
  * Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.
  * @summary Style a link's QR code

@@ -15,4 +15,12 @@ export type ListLinksParams = {
 	 * Items to skip
 	 */
 	offset?: number;
+	/**
+	 * Only links in a channel of this campaign
+	 */
+	campaign_id?: number;
+	/**
+	 * Only links in this channel
+	 */
+	channel_id?: number;
 };

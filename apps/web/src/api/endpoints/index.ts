@@ -1,6 +1,7 @@
 export * from './analytics/analytics';
 export * from './api-keys/api-keys';
 export * from './auth/auth';
+export * from './campaigns/campaigns';
 export * from './domains/domains';
 export * from './invitations/invitations';
 export * from './links/links';

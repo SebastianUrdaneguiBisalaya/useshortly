@@ -25,6 +25,10 @@ export default defineConfig({
 					getLinkQr: {
 						requestOptions: { responseType: 'blob' },
 					},
+					// The campaign export is a CSV file; it is saved through an object URL for the same reason.
+					exportCampaign: {
+						requestOptions: { responseType: 'blob' },
+					},
 				},
 			},
 		},

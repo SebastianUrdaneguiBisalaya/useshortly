@@ -1,6 +1,7 @@
 export * from './analytics/analytics.zod';
 export * from './api-keys/api-keys.zod';
 export * from './auth/auth.zod';
+export * from './campaigns/campaigns.zod';
 export * from './domains/domains.zod';
 export * from './invitations/invitations.zod';
 export * from './links/links.zod';

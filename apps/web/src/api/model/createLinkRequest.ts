@@ -8,6 +8,8 @@
 
 export interface CreateLinkRequest {
 	alias?: string;
+	/** ChannelID shares the link in a campaign channel: the destination gets its utm_source, utm_medium and utm_campaign. */
+	channel_id?: number;
 	domain_id?: number;
 	expires_at?: string;
 	max_clicks?: number;

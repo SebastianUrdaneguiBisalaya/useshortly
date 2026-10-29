@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ErrorType } from '../../axios-instance';
 
 import { customInstance } from '../../axios-instance';
-import type { ErrorResponse, GetLinkStatsParams, LinkStatsResponse } from '../../model';
+import type { CampaignStatsResponse, ErrorResponse, GetCampaignStatsParams, GetLinkStatsParams, LinkStatsResponse } from '../../model';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -39,6 +39,87 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 	}
 	return result;
 };
+
+/**
+ * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * @summary Click statistics of a campaign
+ */
+export const getCampaignStats = (orgID: number, campaignID: number, params?: GetCampaignStatsParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
+	return customInstance<CampaignStatsResponse>({ url: `/orgs/${orgID}/campaigns/${campaignID}/stats`, method: 'GET', params, signal }, options);
+};
+
+export const getGetCampaignStatsQueryKey = (orgID: number, campaignID: number, params?: GetCampaignStatsParams) => {
+	return [`/orgs/${orgID}/campaigns/${campaignID}/stats`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCampaignStatsQueryOptions = <TData = Awaited<ReturnType<typeof getCampaignStats>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	campaignID: number,
+	params?: GetCampaignStatsParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, TData>>; request?: SecondParameter<typeof customInstance> }
+) => {
+	const { query: queryOptions, request: requestOptions } = options ?? {};
+
+	const queryKey = queryOptions?.queryKey ?? getGetCampaignStatsQueryKey(orgID, campaignID, params);
+
+	const queryFn: QueryFunction<Awaited<ReturnType<typeof getCampaignStats>>> = ({ signal }) => getCampaignStats(orgID, campaignID, params, requestOptions, signal);
+
+	return { queryKey, queryFn, enabled: orgID !== null && orgID !== undefined && campaignID !== null && campaignID !== undefined, ...queryOptions } as UseQueryOptions<
+		Awaited<ReturnType<typeof getCampaignStats>>,
+		TError,
+		TData
+	> & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetCampaignStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getCampaignStats>>>;
+export type GetCampaignStatsQueryError = ErrorType<ErrorResponse>;
+
+export function useGetCampaignStats<TData = Awaited<ReturnType<typeof getCampaignStats>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	campaignID: number,
+	params: undefined | GetCampaignStatsParams,
+	options: {
+		query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, TData>> &
+			Pick<DefinedInitialDataOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, Awaited<ReturnType<typeof getCampaignStats>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetCampaignStats<TData = Awaited<ReturnType<typeof getCampaignStats>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	campaignID: number,
+	params?: GetCampaignStatsParams,
+	options?: {
+		query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, TData>> &
+			Pick<UndefinedInitialDataOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, Awaited<ReturnType<typeof getCampaignStats>>>, 'initialData'>;
+		request?: SecondParameter<typeof customInstance>;
+	},
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetCampaignStats<TData = Awaited<ReturnType<typeof getCampaignStats>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	campaignID: number,
+	params?: GetCampaignStatsParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Click statistics of a campaign
+ */
+
+export function useGetCampaignStats<TData = Awaited<ReturnType<typeof getCampaignStats>>, TError = ErrorType<ErrorResponse>>(
+	orgID: number,
+	campaignID: number,
+	params?: GetCampaignStatsParams,
+	options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignStats>>, TError, TData>>; request?: SecondParameter<typeof customInstance> },
+	queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+	const queryOptions = getGetCampaignStatsQueryOptions(orgID, campaignID, params, options);
+
+	const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+	return withQueryKey(query, queryOptions.queryKey);
+}
 
 /**
  * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.

@@ -21,6 +21,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/campaign"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
@@ -108,10 +109,11 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	orgs := org.NewService(orgRepo, mail).WithPurger(purger)
 	keys := apikey.NewService(keyRepo)
 	domains := domain.NewService(sqlite.NewDomainRepository(db), a.dns, cfg.JWTSecret, appHost(cfg.AppURL))
-	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains)
+	campaigns := campaign.NewService(sqlite.NewCampaignRepository(db))
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains).WithChannels(campaigns)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
-	stats := analytics.NewService(clickRepo)
+	stats := analytics.NewService(clickRepo).WithCampaigns(clickRepo)
 	pages := unlockpage.NewService(sqlite.NewUnlockPageRepository(db))
 
 	return &app{
@@ -119,17 +121,18 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 		clicks: clicks,
 		purger: purger,
 		handler: router.NewRouter(router.Handlers{
-			Auth:     newAuthMiddleware(users, keys, a.mcp),
-			Tenant:   middlewares.NewTenant(orgs),
-			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion),
-			Orgs:     handler.NewOrgHandler(orgs),
-			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
-			Stats:    handler.NewStatsHandler(stats),
-			Pages:    handler.NewUnlockPageHandler(pages),
-			Domains:  handler.NewDomainHandler(domains),
-			Limits:   a.limits,
-			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
+			Auth:      newAuthMiddleware(users, keys, a.mcp),
+			Tenant:    middlewares.NewTenant(orgs),
+			Accounts:  handler.NewAuthHandler(users, google, reset).WithDeletion(deletion).WithSecureCookies(strings.HasPrefix(cfg.AppURL, "https://")),
+			Orgs:      handler.NewOrgHandler(orgs),
+			APIKeys:   handler.NewAPIKeyHandler(keys),
+			Links:     handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
+			Stats:     handler.NewStatsHandler(stats),
+			Pages:     handler.NewUnlockPageHandler(pages),
+			Domains:   handler.NewDomainHandler(domains),
+			Campaigns: handler.NewCampaignHandler(campaigns, cfg.AppURL),
+			Limits:    a.limits,
+			QR:        handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}
 }

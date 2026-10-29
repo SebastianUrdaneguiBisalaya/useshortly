@@ -1,0 +1,610 @@
+{
+	"meta": {
+		"title": "useshortly — self-hosted link shortener",
+		"description": "Shorten links, track clicks and manage your organization's domains.",
+		"auth": {
+			"signIn": {
+				"title": "Sign in — useshortly",
+				"description": "Sign in to your useshortly account to manage and track your links."
+			},
+			"signUp": {
+				"title": "Create account — useshortly",
+				"description": "Create a free account to start shortening and tracking your links."
+			},
+			"verifyEmail": {
+				"title": "Verify your email — useshortly",
+				"description": "Enter the code we sent you to confirm your email address."
+			},
+			"forgotPassword": {
+				"title": "Forgot password — useshortly",
+				"description": "Request a code to reset your useshortly password."
+			},
+			"resetPassword": {
+				"title": "Reset password — useshortly",
+				"description": "Choose a new password for your useshortly account."
+			}
+		}
+	},
+	"auth": {
+		"common": {
+			"or": "Or",
+			"email": {
+				"label": "Email",
+				"placeholder": "hello@gmail.com"
+			},
+			"password": {
+				"label": "Password",
+				"placeholder": "yourpassword",
+				"show": "Show password",
+				"hide": "Hide password"
+			},
+			"google": "Continue with Google",
+			"backToSignIn": "Back to sign in"
+		},
+		"validation": {
+			"emailInvalid": "Enter a valid email address",
+			"passwordRequired": "Enter your password",
+			"passwordMin": "Password must be at least {{min}} characters",
+			"passwordMax": "Password must be at most {{max}} characters",
+			"passwordsMismatch": "Passwords do not match",
+			"codeInvalid": "Enter the {{length}}-digit code",
+			"firstNameRequired": "Enter your first name",
+			"lastNameRequired": "Enter your last name"
+		},
+		"signIn": {
+			"title": "Sign in",
+			"submit": "Sign in",
+			"submitting": "Signing in",
+			"google": "Sign in with Google",
+			"forgotPassword": "Forgot your password?",
+			"noAccount": "Don't have an account yet?",
+			"signUpLink": "Create account"
+		},
+		"signUp": {
+			"title": "Create account",
+			"submit": "Create account",
+			"submitting": "Creating account",
+			"google": "Sign up with Google",
+			"firstName": {
+				"label": "First name",
+				"placeholder": "John"
+			},
+			"lastName": {
+				"label": "Last name",
+				"placeholder": "Doe"
+			},
+			"haveAccount": "Already have an account?",
+			"signInLink": "Sign in"
+		},
+		"forgotPassword": {
+			"title": "Forgot your password?",
+			"description": "Enter your email and we will send you a code to reset it.",
+			"submit": "Send code",
+			"submitting": "Sending"
+		},
+		"resetPassword": {
+			"title": "Reset password",
+			"description": "Enter the code we sent to {{email}} and choose a new password.",
+			"code": {
+				"label": "Verification code"
+			},
+			"newPassword": {
+				"label": "New password",
+				"placeholder": "newpassword"
+			},
+			"confirmPassword": {
+				"label": "Confirm password",
+				"placeholder": "repeat the password"
+			},
+			"submit": "Reset password",
+			"submitting": "Resetting",
+			"success": "Password updated. Sign in with your new password."
+		},
+		"verifyEmail": {
+			"title": "Verify your email",
+			"description": "Enter the code we sent to {{email}} to finish creating your account.",
+			"submit": "Verify",
+			"submitting": "Verifying"
+		}
+	},
+	"theme": {
+		"group": "Theme",
+		"system": "System",
+		"light": "Light",
+		"dark": "Dark"
+	},
+	"language": {
+		"group": "Language",
+		"system": "System",
+		"en": "English",
+		"es": "Spanish"
+	},
+	"protected": {
+		"nav": {
+			"dashboard": "Dashboard",
+			"links": "Links",
+			"search": "Open to search",
+			"settings": "Settings",
+			"users": "Users",
+			"apiKeys": "API Keys",
+			"campaigns": "Campaigns",
+			"qrCode": "QR Codes",
+			"docs": "Docs",
+			"mcp": "MCP",
+			"domains": "Domains"
+		},
+		"dashboard": {
+			"title": "Dashboard",
+			"description": "Click analytics of one link. Days and hours are in UTC.",
+			"link": {
+				"label": "Link",
+				"placeholder": "Select a link",
+				"search": "Search links…"
+			},
+			"empty": {
+				"title": "No links yet",
+				"description": "Create a link to see its metrics here."
+			},
+			"error": {
+				"title": "Could not load the metrics",
+				"description": "Try again in a moment."
+			},
+			"range": {
+				"label": "Period",
+				"placeholder": "Select a period"
+			},
+			"filters": {
+				"country": "Country",
+				"device": "Device",
+				"referrer": "Referrer",
+				"all": "All",
+				"clear": "Clear filters",
+				"active": "Filtered by"
+			},
+			"values": {
+				"direct": "Direct",
+				"unknown": "Unknown",
+				"mobile": "Mobile",
+				"tablet": "Tablet",
+				"desktop": "Desktop",
+				"bot": "Bot"
+			},
+			"stats": {
+				"total": {
+					"label": "Total clicks",
+					"description": "Clicks in the selected period that match the filters.",
+					"vsPrevious": "{{change}} vs the previous {{days}} days",
+					"noPrevious": "No clicks in the previous {{days}} days"
+				},
+				"average": {
+					"label": "Daily average",
+					"description": "Total clicks divided by the days in the period.",
+					"hint": "clicks per day"
+				},
+				"peak": {
+					"label": "Best day",
+					"description": "The day of the period with the most clicks.",
+					"none": "No clicks yet"
+				},
+				"topCountry": {
+					"label": "Top country",
+					"description": "The country that brought the most clicks.",
+					"none": "No country data"
+				}
+			},
+			"charts": {
+				"daily": {
+					"title": "Clicks over time",
+					"description": "Clicks per day (UTC).",
+					"series": "Clicks"
+				},
+				"devices": {
+					"title": "Devices",
+					"description": "Share of clicks by device.",
+					"center": "Clicks"
+				},
+				"map": {
+					"title": "Clicks by country",
+					"description": "Click a country to filter by it.",
+					"legend": "Clicks",
+					"noCountry": "{{count}} clicks without a known country."
+				},
+				"countries": {
+					"title": "Top countries",
+					"description": "Countries with the most clicks."
+				},
+				"referrers": {
+					"title": "Top referrers",
+					"description": "Where the clicks came from."
+				},
+				"hours": {
+					"title": "Clicks by hour",
+					"description": "Hour of the day (UTC)."
+				},
+				"weekdays": {
+					"title": "Clicks by weekday",
+					"description": "Day of the week (UTC)."
+				}
+			}
+		},
+		"command": {
+			"empty": "No results",
+			"general": "General",
+			"navigation": "Go to",
+			"open": "Open the command menu",
+			"placeholder": "Search pages and shortcuts...",
+			"shortcuts": "Keyboard shortcuts"
+		},
+		"organization": {
+			"create": {
+				"cancel": "Cancel",
+				"description": "Organizations hold your links, domains and API keys.",
+				"descriptionField": {
+					"label": "Description (optional)",
+					"placeholder": "What is it for?"
+				},
+				"name": {
+					"label": "Name",
+					"placeholder": "Acme Inc."
+				},
+				"submit": "Create organization",
+				"submitting": "Creating...",
+				"title": "New organization"
+			},
+			"new": "New organization",
+			"none": "No organization",
+			"selected": "Selected",
+			"switch": "Switch organization",
+			"validation": {
+				"nameRequired": "Enter a name",
+				"tooLong": "Use at most {{max}} characters"
+			},
+			"actions": "Organization actions",
+			"add": "Add",
+			"editAction": "Edit",
+			"deleteAction": "Delete",
+			"edit": {
+				"title": "Edit organization",
+				"description": "Change the name or description of this organization.",
+				"submit": "Save changes",
+				"submitting": "Saving..."
+			},
+			"delete": {
+				"title": "Delete {{name}}?",
+				"description": "This permanently deletes the organization with its links, domains and API keys. It can't be undone.",
+				"cancel": "Cancel",
+				"confirm": "Delete"
+			},
+			"loading": "Loading...",
+			"empty": {
+				"title": "Create an organization first",
+				"description": "Organizations hold your links, users and API keys. Create one to start using this page."
+			}
+		},
+		"settings": {
+			"logout": "Log out",
+			"loggingOut": "Logging out...",
+			"general": "General",
+			"account": "Account",
+			"search": "Search",
+			"noResults": "No results",
+			"close": "Close",
+			"appearance": "Appearance"
+		},
+		"sidebar": {
+			"closeMenu": "Close menu",
+			"collapse": "Collapse sidebar",
+			"expand": "Expand sidebar",
+			"primary": "Primary",
+			"openMenu": "Open menu"
+		},
+		"confirm": {
+			"cancel": "Cancel",
+			"delete": "Delete"
+		},
+		"table": {
+			"refresh": "Refresh",
+			"clearSearch": "Clear search"
+		},
+		"users": {
+			"title": "Users",
+			"description": "People with access to this organization.",
+			"search": "Search by name or email",
+			"empty": "No users found.",
+			"columns": {
+				"name": "Name",
+				"email": "Email",
+				"role": "Role",
+				"createdAt": "Joined"
+			},
+			"roles": {
+				"OWNER": "Owner",
+				"ADMIN": "Admin"
+			},
+			"invite": {
+				"action": "Add user",
+				"title": "Invite a user",
+				"description": "We will email them an invitation to join this organization.",
+				"email": "Email",
+				"emailInvalid": "Enter a valid email",
+				"submit": "Send invitation",
+				"submitting": "Sending..."
+			},
+			"delete": {
+				"label": "Remove user",
+				"title": "Remove {{name}}?",
+				"description": "They will lose access to this organization."
+			}
+		},
+		"apiKeys": {
+			"title": "API Keys",
+			"description": "Keys to use the API from your own apps.",
+			"empty": "No API keys yet.",
+			"never": "Never",
+			"columns": {
+				"name": "Name",
+				"key": "Key",
+				"scope": "Scope",
+				"lastUsed": "Last used",
+				"expires": "Expires",
+				"createdAt": "Created"
+			},
+			"scopes": {
+				"read": "Read",
+				"write": "Write"
+			},
+			"create": {
+				"action": "Create API key",
+				"title": "New API key",
+				"description": "Pick a name and what the key is allowed to do.",
+				"namePlaceholder": "Production server",
+				"nameRequired": "Enter a name",
+				"submit": "Create key",
+				"submitting": "Creating..."
+			},
+			"created": {
+				"title": "Your API key",
+				"description": "Copy it now: for security it won't be shown again.",
+				"label": "API key",
+				"copy": "Copy",
+				"copied": "Copied",
+				"done": "Done"
+			},
+			"delete": {
+				"label": "Delete API key",
+				"title": "Delete {{name}}?",
+				"description": "Apps using this key will stop working. It can't be undone."
+			}
+		},
+		"account": {
+			"profile": {
+				"title": "Profile",
+				"name": "Full name",
+				"email": "Email",
+				"provider": "Sign-in method",
+				"photo": "Profile photo"
+			},
+			"providers": {
+				"DEFAULT": "Email and password",
+				"GOOGLE": "Google"
+			},
+			"danger": {
+				"title": "Danger zone",
+				"label": "Delete account",
+				"description": "Permanently deletes your account. You will lose the data and access you have created, and this can't be undone.",
+				"action": "Delete account"
+			},
+			"confirm": {
+				"title": "Delete your account?",
+				"continue": "Continue"
+			},
+			"code": {
+				"title": "Confirm with the code",
+				"description": "We emailed you a verification code. Enter it to delete your account.",
+				"submit": "Delete account",
+				"submitting": "Deleting..."
+			}
+		},
+		"links": {
+			"title": "Links",
+			"description": "Short links of this organization.",
+			"empty": "No links yet. Create the first one.",
+			"never": "Never",
+			"noLimit": "No limit",
+			"open": "Open details",
+			"columns": {
+				"shortUrl": "Short link",
+				"destination": "Destination",
+				"clicks": "Click limit",
+				"expires": "Expires",
+				"createdAt": "Created",
+				"access": "Access"
+			},
+			"badges": {
+				"protected": "Password",
+				"expired": "Expired"
+			},
+			"create": {
+				"action": "Create link",
+				"title": "New link",
+				"description": "Paste a long URL and, if you want, shape how the short link behaves.",
+				"url": {
+					"label": "Destination URL",
+					"placeholder": "https://example.com/a/very/long/path",
+					"required": "Enter a URL",
+					"invalid": "Enter a valid http(s) URL"
+				},
+				"alias": {
+					"label": "Custom alias",
+					"placeholder": "summer-sale",
+					"hint": "Leave empty for a random code. 3 to 15 letters, numbers, - or _ (not 7 characters).",
+					"invalid": "Use 3 to 15 letters, numbers, - or _ (not 7 characters)"
+				},
+				"domain": {
+					"label": "Domain",
+					"placeholder": "Default domain",
+					"hint": "Type a new domain to add it. Verify it in Domains before use.",
+					"clear": "Clear",
+					"creating": "Adding domain..."
+				},
+				"expires": {
+					"label": "Expires on"
+				},
+				"maxClicks": {
+					"label": "Click limit",
+					"invalid": "Use a whole number above 0"
+				},
+				"password": {
+					"label": "Password",
+					"placeholder": "Ask for a password to open it"
+				},
+				"submit": "Create link",
+				"submitting": "Creating..."
+			},
+			"actions": {
+				"label": "Link actions",
+				"downloadQr": "Download QR",
+				"delete": "Delete link"
+			},
+			"delete": {
+				"label": "Delete link",
+				"title": "Delete /{{code}}?",
+				"description": "The short link will stop working. It can't be undone."
+			},
+			"drawer": {
+				"title": "Link details",
+				"copy": "Copy",
+				"copied": "Copied",
+				"origin": "Destination",
+				"shortUrl": "Short link",
+				"created": "Created",
+				"expires": "Expires",
+				"maxClicks": "Click limit",
+				"qr": {
+					"title": "QR code",
+					"download": "Download QR code"
+				},
+				"unlock": {
+					"title": "Unlock page",
+					"description": "Custom HTML shown to visitors who must enter the password.",
+					"label": "HTML",
+					"save": "Save page",
+					"saving": "Saving...",
+					"remove": "Use default page",
+					"notProtected": "This link has no password, so visitors never see this page.",
+					"custom": "Custom page",
+					"default": "Default page",
+					"edit": "Edit page",
+					"preview": {
+						"title": "Preview",
+						"reset": "Reset code",
+						"run": "Run",
+						"error": "Error",
+						"device": "Preview width",
+						"full": "Full width",
+						"tablet": "Tablet",
+						"mobile": "Mobile"
+					}
+				},
+				"close": "Close"
+			}
+		},
+		"domains": {
+			"title": "Domains",
+			"description": "Use your own domain for short links.",
+			"empty": "No domains yet.",
+			"never": "—",
+			"columns": {
+				"host": "Domain",
+				"status": "Status",
+				"record": "DNS record",
+				"createdAt": "Added"
+			},
+			"status": {
+				"verified": "Verified",
+				"pending": "Pending"
+			},
+			"create": {
+				"action": "Add domain",
+				"title": "Add a domain",
+				"description": "Enter the domain, then create the DNS record we show you.",
+				"host": {
+					"label": "Domain",
+					"placeholder": "go.example.com",
+					"required": "Enter a domain",
+					"invalid": "Enter a valid domain, without https://"
+				},
+				"submit": "Add domain",
+				"submitting": "Adding..."
+			},
+			"record": {
+				"type": "Type",
+				"name": "Name",
+				"value": "Value",
+				"hint": "Create this record, then verify.",
+				"copied": "Copied",
+				"copy": "Copy"
+			},
+			"verify": {
+				"label": "Verify domain",
+				"failed": "We couldn't find the DNS record yet. DNS changes can take a while."
+			},
+			"delete": {
+				"label": "Delete domain",
+				"title": "Delete {{host}}?",
+				"description": "Links using this domain will stop working. It can't be undone."
+			}
+		},
+		"toast": {
+			"organizationCreated": "Organization created",
+			"organizationUpdated": "Organization updated",
+			"apiKeyCreated": "API key created",
+			"domainCreated": "Domain added",
+			"linkCreated": "Link created",
+			"memberInvited": "Invitation sent",
+			"unlockSaved": "Unlock page saved",
+			"unlockRemoved": "Unlock page removed",
+			"qrDownloaded": "QR code downloaded",
+			"qrFailed": "Could not download the QR code",
+			"organizationDeleted": "Organization deleted",
+			"linkDeleted": "Link deleted",
+			"domainDeleted": "Domain deleted",
+			"apiKeyDeleted": "API key deleted",
+			"memberRemoved": "Member removed",
+			"accountDeleted": "Account deleted",
+			"qrStyleSaved": "QR style saved"
+		},
+		"qr": {
+			"title": "QR Codes",
+			"description": "The QR code of every link. Download it or style it with your colors and logo.",
+			"create": "Create QR code",
+			"loading": "Loading QR codes",
+			"empty": "Every link comes with a QR code. Create your first link and it shows up here.",
+			"download": "Download PNG",
+			"customize": "Customize QR code",
+			"style": {
+				"title": "Customize QR code",
+				"foreground": "Code color",
+				"background": "Background color",
+				"logo": "Logo (optional)",
+				"logoHint": "An https image shown in the middle of the code. If the host blocks downloads from other sites, the PNG is saved without it.",
+				"invalidColor": "Use colors like #1a2b3c.",
+				"lowContrast": "The code must be darker than the background, with enough contrast to scan.",
+				"invalidLogo": "Use an https URL.",
+				"reset": "Use default",
+				"save": "Save style",
+				"saving": "Saving..."
+			}
+		}
+	},
+	"errors": {
+		"generic": "Something went wrong. Try again.",
+		"invalidCredentials": "Incorrect email or password",
+		"emailTaken": "That email is already registered",
+		"providerMismatch": "That email is registered with another sign-in method",
+		"invalidCode": "The code is wrong or expired",
+		"tooManyAttempts": "Too many wrong codes. Request a new one.",
+		"codeTooSoon": "A code was requested too recently. Wait a minute.",
+		"googleEmailNotVerified": "The Google email is not verified"
+	}
+}

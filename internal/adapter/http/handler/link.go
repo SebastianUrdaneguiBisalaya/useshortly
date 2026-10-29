@@ -82,31 +82,44 @@ func (h *LinkHandler) domainID(r *http.Request) (*int64, error) {
 }
 
 type linkBody struct {
-	ID        int64   `json:"id"`
-	Code      string  `json:"code"`
-	ShortURL  string  `json:"short_url"`
-	DomainID  *int64  `json:"domain_id"`
-	OriginURL string  `json:"origin_url"`
-	ExpiresAt *string `json:"expires_at"`
-	MaxClicks *int64  `json:"max_clicks"`
-	Protected bool    `json:"protected"`
-	CreatedAt string  `json:"created_at"`
+	ID       int64  `json:"id"`
+	Code     string `json:"code"`
+	ShortURL string `json:"short_url"`
+	DomainID *int64 `json:"domain_id"`
+	// CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.
+	CampaignID *int64  `json:"campaign_id"`
+	ChannelID  *int64  `json:"channel_id"`
+	OriginURL  string  `json:"origin_url"`
+	ExpiresAt  *string `json:"expires_at"`
+	MaxClicks  *int64  `json:"max_clicks"`
+	Protected  bool    `json:"protected"`
+	// QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo).
+	QRStyle   qrStyleBody `json:"qr_style"`
+	CreatedAt string      `json:"created_at"`
 } // @name Link
+
+type qrStyleBody struct {
+	Foreground *string `json:"foreground"`
+	Background *string `json:"background"`
+	LogoURL    *string `json:"logo_url"`
+} // @name QRStyle
 
 type CreateLinkRequest struct {
 	URL       string     `json:"url"`
 	ExpiresAt *time.Time `json:"expires_at"`
 	Alias     string     `json:"alias"`
 	DomainID  *int64     `json:"domain_id"`
-	MaxClicks *int64     `json:"max_clicks"`
-	Password  string     `json:"password"`
+	// ChannelID shares the link in a campaign channel: the destination gets its utm_source, utm_medium and utm_campaign.
+	ChannelID *int64 `json:"channel_id"`
+	MaxClicks *int64 `json:"max_clicks"`
+	Password  string `json:"password"`
 } // @name CreateLinkRequest
 
 // Create shortens a URL for the organization the Tenant middleware already checked: a JWT
 // caller belongs to it, an API key was issued for it.
 //
 //	@Summary		Create a short link
-//	@Description	Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
+//	@Description	Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password, domain_id and channel_id are optional. With a channel_id the destination gets utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign), replacing those parameters if it already had them.
 //	@Tags			links
 //	@Accept			json
 //	@Produce		json
@@ -133,7 +146,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := h.links.Shorten(r.Context(), link.ShortenInput{
 		TenantID: tenant.ID, UserID: PrincipalFrom(r).UserID,
-		URL: in.URL, DomainID: in.DomainID, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
+		URL: in.URL, DomainID: in.DomainID, ChannelID: in.ChannelID, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
 	})
 	if err != nil {
 		WriteError(w, r, err)
@@ -142,23 +155,127 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusCreated, h.body(l))
 }
 
+func qrStyleOf(s link.QRStyle) qrStyleBody {
+	opt := func(v string) *string {
+		if v == "" {
+			return nil
+		}
+		return &v
+	}
+	return qrStyleBody{Foreground: opt(s.Foreground), Background: opt(s.Background), LogoURL: opt(s.LogoURL)}
+}
+
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
-		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, OriginURL: l.OriginURL,
-		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), CreatedAt: formatTime(l.CreatedAt),
+		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, CampaignID: l.CampaignID, ChannelID: l.ChannelID, OriginURL: l.OriginURL,
+		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), QRStyle: qrStyleOf(l.QRStyle), CreatedAt: formatTime(l.CreatedAt),
 	}
+}
+
+// SetQRStyleRequest is the new style of a link's QR code; an empty or missing field is the default.
+type SetQRStyleRequest struct {
+	Foreground string `json:"foreground"`
+	Background string `json:"background"`
+	LogoURL    string `json:"logo_url"`
+} // @name SetQRStyleRequest
+
+// SetQRStyle replaces the QR style of a link of the organization.
+//
+//	@Summary		Style a link's QR code
+//	@Description	Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.
+//	@Tags			links
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			linkID	path		int					true	"Link id"
+//	@Param			body	body		SetQRStyleRequest	true	"QR style"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	setLinkQrStyle
+//	@Router			/orgs/{orgID}/links/{linkID}/qr-style [put]
+func (h *LinkHandler) SetQRStyle(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	var in SetQRStyleRequest
+	if !decode(w, r, &in) {
+		return
+	}
+	l, err := h.links.SetQRStyle(r.Context(), tenant.ID, linkID, link.QRStyle{Foreground: in.Foreground, Background: in.Background, LogoURL: in.LogoURL})
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
+}
+
+// SetChannelRequest is the channel to put a link in; a missing or null channel_id takes it out of its campaign.
+type SetChannelRequest struct {
+	ChannelID *int64 `json:"channel_id"`
+} // @name SetChannelRequest
+
+// SetChannel puts a link of the organization in a campaign channel, or takes it out of its campaign.
+//
+//	@Summary		Put a link in a campaign channel
+//	@Description	Rewrites the destination with the utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign) of the channel, replacing those parameters if the link already had them. A missing or null channel_id takes the link out of its campaign and removes those three parameters from the destination. Needs a JWT or an API key with the write scope.
+//	@Tags			links
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			linkID	path		int					true	"Link id"
+//	@Param			body	body		SetChannelRequest	true	"Channel"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	setLinkChannel
+//	@Router			/orgs/{orgID}/links/{linkID}/channel [put]
+func (h *LinkHandler) SetChannel(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	var in SetChannelRequest
+	if !decode(w, r, &in) {
+		return
+	}
+	l, err := h.links.SetChannel(r.Context(), tenant.ID, PrincipalFrom(r).UserID, linkID, in.ChannelID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
 }
 
 // List answers one page of the organization's links, newest first.
 //
 //	@Summary		List links
-//	@Description	Needs a JWT or an API key with the read scope.
+//	@Description	Needs a JWT or an API key with the read scope. campaign_id and channel_id keep only the links of that campaign or channel.
 //	@Tags			links
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			orgID	path		int	true	"Organization id"
-//	@Param			limit	query		int	false	"Page size"
-//	@Param			offset	query		int	false	"Items to skip"
+//	@Param			orgID		path		int	true	"Organization id"
+//	@Param			limit		query		int	false	"Page size"
+//	@Param			offset		query		int	false	"Items to skip"
+//	@Param			campaign_id	query		int	false	"Only links in a channel of this campaign"
+//	@Param			channel_id	query		int	false	"Only links in this channel"
 //	@Success		200		{object}	LinkListResponse
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
@@ -176,7 +293,14 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	list, total, err := h.links.List(r.Context(), tenant.ID, p)
+	var f link.ListFilter
+	if f.CampaignID, ok = queryID(w, r, "campaign_id"); !ok {
+		return
+	}
+	if f.ChannelID, ok = queryID(w, r, "channel_id"); !ok {
+		return
+	}
+	list, total, err := h.links.List(r.Context(), tenant.ID, f, p)
 	if err != nil {
 		WriteError(w, r, err)
 		return
@@ -186,6 +310,40 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 		out = append(out, h.body(l))
 	}
 	writePage(w, out, p, total)
+}
+
+// Get answers one link of the organization; one of another organization is a 404.
+//
+//	@Summary		Get a link
+//	@Description	Needs a JWT or an API key with the read scope.
+//	@Tags			links
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int	true	"Organization id"
+//	@Param			linkID	path		int	true	"Link id"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	getLink
+//	@Router			/orgs/{orgID}/links/{linkID} [get]
+func (h *LinkHandler) Get(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	l, err := h.links.Get(r.Context(), tenant.ID, linkID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
 }
 
 // Delete removes a link of the organization; one of another organization is a 404.

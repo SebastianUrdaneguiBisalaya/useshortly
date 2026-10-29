@@ -232,6 +232,18 @@ func (s *Service) ByID(ctx context.Context, id int64) (User, error) {
 	return u, err
 }
 
+// Providers lists how the user can sign in (ProviderDefault, ProviderGoogle). Never nil.
+func (s *Service) Providers(ctx context.Context, userID int64) ([]Provider, error) {
+	ps, err := s.repo.ListProviders(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if ps == nil {
+		ps = []Provider{}
+	}
+	return ps, nil
+}
+
 func normalizeEmail(raw string) (string, error) {
 	email := strings.ToLower(strings.TrimSpace(raw))
 	addr, err := mail.ParseAddress(email)

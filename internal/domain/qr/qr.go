@@ -21,9 +21,15 @@ var (
 	ErrInvalidSize   = errors.New("qr: invalid size")
 )
 
+// Style holds the colors of a QR code as #rrggbb. An empty color is the default: black modules on white.
+type Style struct {
+	Foreground string
+	Background string
+}
+
 // Generator draws content as a QR code of about size pixels on a side.
 type Generator interface {
-	Generate(content string, format Format, size int) ([]byte, error)
+	Generate(content string, format Format, size int, style Style) ([]byte, error)
 }
 
 // ContentType is the media type of an image in the format.
@@ -43,8 +49,8 @@ func NewService(gen Generator) *Service {
 	return &Service{gen: gen}
 }
 
-// Render returns the image. An empty format means PNG and a zero size means DefaultSize.
-func (s *Service) Render(content string, format Format, size int) ([]byte, Format, error) {
+// Render returns the image, drawn with style. An empty format means PNG and a zero size means DefaultSize.
+func (s *Service) Render(content string, format Format, size int, style Style) ([]byte, Format, error) {
 	if format == "" {
 		format = PNG
 	}
@@ -57,6 +63,6 @@ func (s *Service) Render(content string, format Format, size int) ([]byte, Forma
 	if size < MinSize || size > MaxSize {
 		return nil, "", ErrInvalidSize
 	}
-	img, err := s.gen.Generate(content, format, size)
+	img, err := s.gen.Generate(content, format, size, style)
 	return img, format, err
 }

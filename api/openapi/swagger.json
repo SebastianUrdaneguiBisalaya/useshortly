@@ -85,6 +85,189 @@
                 },
                 "type": "object"
             },
+            "Campaign": {
+                "properties": {
+                    "channel_count": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "link_count": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignChannel": {
+                "properties": {
+                    "campaign_id": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignChannelClicks": {
+                "properties": {
+                    "clicks": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignChannelListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/CampaignChannel"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/PageMeta"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignChannelResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/CampaignChannel"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/Campaign"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/PageMeta"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Campaign"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignStats": {
+                "properties": {
+                    "by_hour": {
+                        "description": "ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "by_weekday": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "campaign_id": {
+                        "type": "integer"
+                    },
+                    "channels": {
+                        "description": "Channels lists every channel of the campaign, most clicks first, the ones without clicks included.",
+                        "items": {
+                            "$ref": "#/components/schemas/CampaignChannelClicks"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "countries": {
+                        "items": {
+                            "$ref": "#/components/schemas/ClickCount"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "daily": {
+                        "items": {
+                            "$ref": "#/components/schemas/DailyClicks"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "devices": {
+                        "items": {
+                            "$ref": "#/components/schemas/ClickCount"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "from": {
+                        "type": "string"
+                    },
+                    "previous_total": {
+                        "description": "PreviousTotal is the clicks of the window right before this one, as long as it.",
+                        "type": "integer"
+                    },
+                    "referrers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ClickCount"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "to": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignStatsResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/CampaignStats"
+                    }
+                },
+                "type": "object"
+            },
             "ClickCount": {
                 "properties": {
                     "clicks": {
@@ -122,6 +305,25 @@
                 },
                 "type": "object"
             },
+            "CreateCampaignRequest": {
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateChannelRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "CreateDomainRequest": {
                 "properties": {
                     "host": {
@@ -134,6 +336,10 @@
                 "properties": {
                     "alias": {
                         "type": "string"
+                    },
+                    "channel_id": {
+                        "description": "ChannelID shares the link in a campaign channel: the destination gets its utm_source, utm_medium and utm_campaign.",
+                        "type": "integer"
                     },
                     "domain_id": {
                         "type": "integer"
@@ -356,6 +562,13 @@
             },
             "Link": {
                 "properties": {
+                    "campaign_id": {
+                        "description": "CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.",
+                        "type": "integer"
+                    },
+                    "channel_id": {
+                        "type": "integer"
+                    },
                     "code": {
                         "type": "string"
                     },
@@ -379,6 +592,10 @@
                     },
                     "protected": {
                         "type": "boolean"
+                    },
+                    "qr_style": {
+                        "$ref": "#/components/schemas/QRStyle",
+                        "description": "QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."
                     },
                     "short_url": {
                         "type": "string"
@@ -411,6 +628,21 @@
             },
             "LinkStats": {
                 "properties": {
+                    "by_hour": {
+                        "description": "ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "by_weekday": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
                     "countries": {
                         "items": {
                             "$ref": "#/components/schemas/ClickCount"
@@ -436,6 +668,10 @@
                         "type": "string"
                     },
                     "link_id": {
+                        "type": "integer"
+                    },
+                    "previous_total": {
+                        "description": "PreviousTotal is the clicks of the window right before this one, as long as it.",
                         "type": "integer"
                     },
                     "referrers": {
@@ -478,8 +714,20 @@
                     "created_at": {
                         "type": "string"
                     },
+                    "email": {
+                        "type": "string"
+                    },
+                    "first_name": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "integer"
+                    },
+                    "image_url": {
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "type": "string"
                     },
                     "role": {
                         "type": "string"
@@ -577,9 +825,15 @@
                 },
                 "type": "object"
             },
-            "RefreshTokenRequest": {
+            "QRStyle": {
                 "properties": {
-                    "refresh_token": {
+                    "background": {
+                        "type": "string"
+                    },
+                    "foreground": {
+                        "type": "string"
+                    },
+                    "logo_url": {
                         "type": "string"
                     }
                 },
@@ -624,12 +878,6 @@
                     "refresh_expires_at": {
                         "type": "string"
                     },
-                    "refresh_token": {
-                        "type": "string"
-                    },
-                    "token": {
-                        "type": "string"
-                    },
                     "user": {
                         "$ref": "#/components/schemas/User"
                     }
@@ -640,6 +888,28 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/Session"
+                    }
+                },
+                "type": "object"
+            },
+            "SetChannelRequest": {
+                "properties": {
+                    "channel_id": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "SetQRStyleRequest": {
+                "properties": {
+                    "background": {
+                        "type": "string"
+                    },
+                    "foreground": {
+                        "type": "string"
+                    },
+                    "logo_url": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -709,6 +979,28 @@
                 },
                 "type": "object"
             },
+            "UpdateCampaignRequest": {
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateOrganizationRequest": {
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "User": {
                 "properties": {
                     "created_at": {
@@ -731,6 +1023,14 @@
                     },
                     "last_name": {
                         "type": "string"
+                    },
+                    "providers": {
+                        "description": "Providers is how the user can sign in: \"DEFAULT\" (email and password) and/or \"GOOGLE\".",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
                     },
                     "updated_at": {
                         "type": "string"
@@ -963,33 +1263,11 @@
         },
         "/auth/logout": {
             "post": {
+                "description": "Reads the refresh token from the refresh_token cookie; there is no body.",
                 "operationId": "logout",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "description": "Refresh token to revoke",
-                                "summary": "body"
-                            }
-                        }
-                    },
-                    "description": "Refresh token to revoke",
-                    "required": true
-                },
                 "responses": {
                     "204": {
                         "description": "No Content"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
                     },
                     "429": {
                         "content": {
@@ -1010,20 +1288,8 @@
         },
         "/auth/refresh": {
             "post": {
+                "description": "Reads the refresh token from the refresh_token cookie; there is no body.",
                 "operationId": "refreshSession",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RefreshTokenRequest",
-                                "description": "Refresh token",
-                                "summary": "body"
-                            }
-                        }
-                    },
-                    "description": "Refresh token",
-                    "required": true
-                },
                 "responses": {
                     "200": {
                         "content": {
@@ -1034,16 +1300,6 @@
                             }
                         },
                         "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
                     },
                     "401": {
                         "content": {
@@ -1794,6 +2050,114 @@
                 "tags": [
                     "orgs"
                 ]
+            },
+            "patch": {
+                "operationId": "updateOrganization",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOrganizationRequest",
+                                "description": "Organization data",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "Organization data",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OrganizationResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Update an organization",
+                "tags": [
+                    "orgs"
+                ]
             }
         },
         "/orgs/{orgID}/api-keys": {
@@ -2074,6 +2438,1072 @@
                 "summary": "Delete an API key",
                 "tags": [
                     "api-keys"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns": {
+            "get": {
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "listCampaigns",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Page size",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Items to skip",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "List campaigns",
+                "tags": [
+                    "campaigns"
+                ]
+            },
+            "post": {
+                "description": "A campaign groups links by marketing initiative; add channels to it, then put links in the channels. The name is unique in the organization, ignoring case. Needs a JWT or an API key with the write scope.",
+                "operationId": "createCampaign",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCampaignRequest",
+                                "description": "Campaign to create",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "Campaign to create",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Create a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns/{campaignID}": {
+            "delete": {
+                "description": "Removes the campaign and its channels. Its links stay, outside every campaign, and keep the UTM parameters they already carry. Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteCampaign",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Delete a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            },
+            "get": {
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getCampaign",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Get a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            },
+            "patch": {
+                "description": "Links already in the campaign keep the utm_campaign they were given; a new name only reaches the links put in its channels afterwards. Needs a JWT or an API key with the write scope.",
+                "operationId": "updateCampaign",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCampaignRequest",
+                                "description": "Fields to change",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "Fields to change",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Update a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns/{campaignID}/channels": {
+            "get": {
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "listCampaignChannels",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Page size",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Items to skip",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignChannelListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "List the channels of a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            },
+            "post": {
+                "description": "A channel is a place the campaign is shared (Instagram, email...). Its name becomes the utm_source of the links put in it, so it is unique in the campaign, ignoring case. A campaign has at most 100 channels. Needs a JWT or an API key with the write scope.",
+                "operationId": "createCampaignChannel",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChannelRequest",
+                                "description": "Channel to create",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "Channel to create",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignChannelResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Add a channel to a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns/{campaignID}/channels/{channelID}": {
+            "delete": {
+                "description": "Its links stay, outside every campaign, and keep the UTM parameters they already carry. Needs a JWT or an API key with the write scope.",
+                "operationId": "deleteCampaignChannel",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Channel id",
+                        "in": "path",
+                        "name": "channelID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Delete a channel of a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns/{campaignID}/export": {
+            "get": {
+                "description": "A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, UTC, both included); without them it counts every click. Needs a JWT or an API key with the read scope.",
+                "operationId": "exportCampaign",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "First day, YYYY-MM-DD (UTC)",
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Last day, YYYY-MM-DD (UTC)",
+                        "in": "query",
+                        "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "type": "file"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Export a campaign",
+                "tags": [
+                    "campaigns"
+                ]
+            }
+        },
+        "/orgs/{orgID}/campaigns/{campaignID}/stats": {
+            "get": {
+                "description": "Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "operationId": "getCampaignStats",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Campaign id",
+                        "in": "path",
+                        "name": "campaignID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "First day, YYYY-MM-DD (UTC)",
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Last day, YYYY-MM-DD (UTC)",
+                        "in": "query",
+                        "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this country (ISO 3166-1 alpha-2), or unknown",
+                        "in": "query",
+                        "name": "country",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this device (mobile, tablet, desktop, bot), or unknown",
+                        "in": "query",
+                        "name": "device",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks with this referrer, or direct for none",
+                        "in": "query",
+                        "name": "referrer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignStatsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Click statistics of a campaign",
+                "tags": [
+                    "analytics"
                 ]
             }
         },
@@ -2729,7 +4159,7 @@
         },
         "/orgs/{orgID}/links": {
             "get": {
-                "description": "Needs a JWT or an API key with the read scope.",
+                "description": "Needs a JWT or an API key with the read scope. campaign_id and channel_id keep only the links of that campaign or channel.",
                 "operationId": "listLinks",
                 "parameters": [
                     {
@@ -2753,6 +4183,22 @@
                         "description": "Items to skip",
                         "in": "query",
                         "name": "offset",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Only links in a channel of this campaign",
+                        "in": "query",
+                        "name": "campaign_id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Only links in this channel",
+                        "in": "query",
+                        "name": "channel_id",
                         "schema": {
                             "type": "integer"
                         }
@@ -2831,7 +4277,7 @@
                 ]
             },
             "post": {
-                "description": "Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.",
+                "description": "Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password, domain_id and channel_id are optional. With a channel_id the destination gets utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign), replacing those parameters if it already had them.",
                 "operationId": "createLink",
                 "parameters": [
                     {
@@ -3018,11 +4464,216 @@
                 "tags": [
                     "links"
                 ]
+            },
+            "get": {
+                "description": "Needs a JWT or an API key with the read scope.",
+                "operationId": "getLink",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Link id",
+                        "in": "path",
+                        "name": "linkID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Get a link",
+                "tags": [
+                    "links"
+                ]
+            }
+        },
+        "/orgs/{orgID}/links/{linkID}/channel": {
+            "put": {
+                "description": "Rewrites the destination with the utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign) of the channel, replacing those parameters if the link already had them. A missing or null channel_id takes the link out of its campaign and removes those three parameters from the destination. Needs a JWT or an API key with the write scope.",
+                "operationId": "setLinkChannel",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Link id",
+                        "in": "path",
+                        "name": "linkID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetChannelRequest",
+                                "description": "Channel",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "Channel",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Put a link in a campaign channel",
+                "tags": [
+                    "links"
+                ]
             }
         },
         "/orgs/{orgID}/links/{linkID}/qr": {
             "get": {
-                "description": "An image of the short URL, not JSON. Needs a JWT or an API key with the read scope.",
+                "description": "An image of the short URL, not JSON, drawn with the link's QR colors (the logo is not drawn by the server). Needs a JWT or an API key with the read scope.",
                 "operationId": "getLinkQr",
                 "parameters": [
                     {
@@ -3173,9 +4824,119 @@
                 ]
             }
         },
+        "/orgs/{orgID}/links/{linkID}/qr-style": {
+            "put": {
+                "description": "Colors are #rrggbb, the foreground darker than the background with enough contrast to scan. logo_url is an https image that clients draw in the middle of the code; the server only stores it. Missing fields are reset to the default. Needs a JWT or an API key with the write scope.",
+                "operationId": "setLinkQrStyle",
+                "parameters": [
+                    {
+                        "description": "Organization id",
+                        "in": "path",
+                        "name": "orgID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Link id",
+                        "in": "path",
+                        "name": "linkID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetQRStyleRequest",
+                                "description": "QR style",
+                                "summary": "body"
+                            }
+                        }
+                    },
+                    "description": "QR style",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "summary": "Style a link's QR code",
+                "tags": [
+                    "links"
+                ]
+            }
+        },
         "/orgs/{orgID}/links/{linkID}/stats": {
             "get": {
-                "description": "Clicks per day, referrer, country and device between from and to. Without them it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "description": "Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
                 "operationId": "getLinkStats",
                 "parameters": [
                     {
@@ -3208,6 +4969,30 @@
                         "description": "Last day, YYYY-MM-DD (UTC)",
                         "in": "query",
                         "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this country (ISO 3166-1 alpha-2), or unknown",
+                        "in": "query",
+                        "name": "country",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks from this device (mobile, tablet, desktop, bot), or unknown",
+                        "in": "query",
+                        "name": "device",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Only clicks with this referrer, or direct for none",
+                        "in": "query",
+                        "name": "referrer",
                         "schema": {
                             "type": "string"
                         }

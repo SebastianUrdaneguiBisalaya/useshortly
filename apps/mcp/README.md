@@ -22,17 +22,17 @@ token a client sends it: every call to the API is signed anew for the user behin
 
 ### Words you will meet
 
-| Word | In one sentence |
-|---|---|
-| **MCP** | A protocol that lets an AI assistant call *tools* (functions) on a server. This service is an MCP server. |
-| **OAuth 2.1** | The standard way to let an app act for a user without giving it the user's password. |
-| **Authorization code + PKCE** | The OAuth flow used here: the client gets a one-time *code* in the browser and swaps it for tokens, proving with a secret it invented (PKCE) that it is the same client that started the flow. |
-| **Access token** | What the client sends with every MCP request. Short-lived (15 minutes). |
-| **Refresh token** | Lets the client get a new access token without asking the user again. Lasts 14 days. |
-| **Scope** | A permission. Here `mcp:read` and `mcp:write`. The user decides which to grant. |
-| **CIMD** | *Client ID Metadata Document*: the client's `client_id` is a URL, and that URL serves a small JSON file describing the client (its name and redirect URLs). It replaces registering every client by hand. |
-| **JWT / JWKS** | A signed token, and the public keys used to check its signature. |
-| **Resource / audience** | Which server a token is meant for. A token for another resource is refused here. |
+| Word                          | In one sentence                                                                                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MCP**                       | A protocol that lets an AI assistant call _tools_ (functions) on a server. This service is an MCP server.                                                                                                 |
+| **OAuth 2.1**                 | The standard way to let an app act for a user without giving it the user's password.                                                                                                                      |
+| **Authorization code + PKCE** | The OAuth flow used here: the client gets a one-time _code_ in the browser and swaps it for tokens, proving with a secret it invented (PKCE) that it is the same client that started the flow.            |
+| **Access token**              | What the client sends with every MCP request. Short-lived (15 minutes).                                                                                                                                   |
+| **Refresh token**             | Lets the client get a new access token without asking the user again. Lasts 14 days.                                                                                                                      |
+| **Scope**                     | A permission. Here `mcp:read` and `mcp:write`. The user decides which to grant.                                                                                                                           |
+| **CIMD**                      | _Client ID Metadata Document_: the client's `client_id` is a URL, and that URL serves a small JSON file describing the client (its name and redirect URLs). It replaces registering every client by hand. |
+| **JWT / JWKS**                | A signed token, and the public keys used to check its signature.                                                                                                                                          |
+| **Resource / audience**       | Which server a token is meant for. A token for another resource is refused here.                                                                                                                          |
 
 ### The pieces
 
@@ -187,31 +187,31 @@ Because the API holds only the public key, even a stolen API `.env` cannot be us
 
 ## What it exposes
 
-| | |
-|---|---|
-| `POST /mcp` | The MCP endpoint (protocol 2026-07-28, stateless). GET and DELETE answer 405. |
-| `/.well-known/oauth-protected-resource` | Resource metadata (RFC 9728), the first thing a client reads after a 401. |
-| `/.well-known/oauth-authorization-server/api/auth` | Authorization server metadata (RFC 8414). |
-| `/api/auth/oauth2/authorize`, `/api/auth/oauth2/token`, `/api/auth/jwks` | OAuth endpoints and signing keys. |
-| `/sign-in`, `/consent` | The pages users see while authorizing a client. |
-| `/health` | Liveness. |
+|                                                                          |                                                                               |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `POST /mcp`                                                              | The MCP endpoint (protocol 2026-07-28, stateless). GET and DELETE answer 405. |
+| `/.well-known/oauth-protected-resource`                                  | Resource metadata (RFC 9728), the first thing a client reads after a 401.     |
+| `/.well-known/oauth-authorization-server/api/auth`                       | Authorization server metadata (RFC 8414).                                     |
+| `/api/auth/oauth2/authorize`, `/api/auth/oauth2/token`, `/api/auth/jwks` | OAuth endpoints and signing keys.                                             |
+| `/sign-in`, `/consent`                                                   | The pages users see while authorizing a client.                               |
+| `/health`                                                                | Liveness.                                                                     |
 
 ### Tools
 
 Read-only connections get the first group; connections where the user granted write access also get the second.
 
-| Tool | What it does |
-|---|---|
-| `whoami` | The account the connection acts for and whether it is read-only. |
-| `list_organizations` | Organizations of the user, with their ids (call this first). |
-| `list_links` | Links of an organization, paged. |
-| `get_link_stats` | Clicks per day plus top referrers, countries and devices. |
-| `get_link_qr` | The QR code of a link as a PNG image. |
-| `list_domains` | Custom domains and, for unverified ones, the DNS record to create. |
-| `create_link` | Shorten a URL (alias, expiration, click limit, password, custom domain). |
-| `delete_link` | Delete a link (marked destructive, so clients ask first). |
-| `add_domain` | Register a custom domain and get its DNS TXT record. |
-| `verify_domain` | Check the DNS record and verify the domain. |
+| Tool                 | What it does                                                                |
+| -------------------- | --------------------------------------------------------------------------- |
+| `whoami`             | The account the connection acts for and whether it is read-only.            |
+| `list_organizations` | Organizations of the user, with their ids (call this first).                |
+| `list_links`         | Links of an organization, paged.                                            |
+| `get_link_stats`     | Clicks per day/hour/weekday, top referrers, countries, devices; filterable. |
+| `get_link_qr`        | The QR code of a link as a PNG image.                                       |
+| `list_domains`       | Custom domains and, for unverified ones, the DNS record to create.          |
+| `create_link`        | Shorten a URL (alias, expiration, click limit, password, custom domain).    |
+| `delete_link`        | Delete a link (marked destructive, so clients ask first).                   |
+| `add_domain`         | Register a custom domain and get its DNS TXT record.                        |
+| `verify_domain`      | Check the DNS record and verify the domain.                                 |
 
 Prompts: `link_performance_report` (everyone) and `shorten_url` (write connections).
 
@@ -225,13 +225,13 @@ Follow the steps in order: each one needs the one before.
 
 ### 0. Install what you need once
 
-| Tool | Version | Why |
-|---|---|---|
-| Go | 1.26 or newer | the API |
-| Node.js | 24 | this service |
-| pnpm | 12.15.0 (`npm install -g pnpm@12.15.0`) | this service's package manager, pinned in `package.json` |
-| Redis | any recent | the API refuses to start without it (OTP codes, caches, rate limits) |
-| `sqlite3` CLI | any | applies the API's SQL migrations |
+| Tool          | Version                                 | Why                                                                  |
+| ------------- | --------------------------------------- | -------------------------------------------------------------------- |
+| Go            | 1.26 or newer                           | the API                                                              |
+| Node.js       | 24                                      | this service                                                         |
+| pnpm          | 12.15.0 (`npm install -g pnpm@12.15.0`) | this service's package manager, pinned in `package.json`             |
+| Redis         | any recent                              | the API refuses to start without it (OTP codes, caches, rate limits) |
+| `sqlite3` CLI | any                                     | applies the API's SQL migrations                                     |
 
 A quick Redis: `docker run -d --name redis -p 6379:6379 redis:7` (or `brew install redis && redis-server`).
 
@@ -463,9 +463,9 @@ That exercises the whole chain: OAuth, the MCP endpoint, the signed call to the 
 The URL is always `https://<your host>/mcp` (`http://localhost:4001/mcp` in development).
 
 - **Claude Code**: `claude mcp add --transport http useshortly https://mcp.example.com/mcp`, then run
-  `/mcp` inside Claude Code and choose *Authenticate*. A browser opens on your `/sign-in` page.
+  `/mcp` inside Claude Code and choose _Authenticate_. A browser opens on your `/sign-in` page.
 - **Claude and other apps with custom connectors**: add a remote MCP server with that URL.
-- **MCP Inspector**: `npx @modelcontextprotocol/inspector`, transport *Streamable HTTP*, that URL.
+- **MCP Inspector**: `npx @modelcontextprotocol/inspector`, transport _Streamable HTTP_, that URL.
 
 Check each client's own documentation for the exact steps: they change faster than this file. At sign-in
 the user enters their useshortly email and password (or uses Google), then sees what the client asks for
@@ -475,20 +475,20 @@ and can untick write access before allowing it.
 
 Copy `.env.example` to `.env`. `pnpm dev` and `pnpm start` read it; in Docker, Compose reads it.
 
-| Variable | Default | Notes |
-|---|---|---|
-| `MCP_SIGNING_KEY` | – | Ed25519 private key (PKCS8 PEM or its base64). Required. |
-| `AUTH_SECRET` | – | At least 32 characters. Required. |
-| `MCP_PUBLIC_URL` | `http://localhost:4001` | Where clients reach this service. **https in production**, no trailing slash. It is the OAuth issuer and the MCP resource, so changing it invalidates existing tokens. |
-| `API_URL` | `http://localhost:8080` | The API, without `/api/v1`. In Docker Compose it is `http://app:8080`. |
-| `PORT` | `4001` | The service also fetches its own signing keys from `127.0.0.1:PORT`, so it must be the port it really listens on. |
-| `ENVIRONMENT` | `development` | `production` demands an https `MCP_PUBLIC_URL`. |
-| `TRUST_PROXY` | `false` | Set `true` behind the reverse proxy so rate limits count each visitor, not the proxy. |
-| `MCP_DATABASE_PATH` | `data/mcp.db` | This service's own SQLite file. Migrations run on every start. |
-| `MCP_TURSO_DATABASE_URL`, `MCP_TURSO_AUTH_TOKEN` | empty | Both set: also sync that file with Turso Cloud. |
-| `MCP_SYNC_INTERVAL_SECONDS` | `30` | Pull/push period when syncing. |
-| `GOOGLE_CLIENT_ID` | empty | The same Google OAuth client the API uses; shows "Continue with Google". |
-| `TRUSTED_ORIGINS` | empty | Comma separated origins allowed to call Better Auth from a browser. |
+| Variable                                         | Default                 | Notes                                                                                                                                                                  |
+| ------------------------------------------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MCP_SIGNING_KEY`                                | –                       | Ed25519 private key (PKCS8 PEM or its base64). Required.                                                                                                               |
+| `AUTH_SECRET`                                    | –                       | At least 32 characters. Required.                                                                                                                                      |
+| `MCP_PUBLIC_URL`                                 | `http://localhost:4001` | Where clients reach this service. **https in production**, no trailing slash. It is the OAuth issuer and the MCP resource, so changing it invalidates existing tokens. |
+| `API_URL`                                        | `http://localhost:8080` | The API, without `/api/v1`. In Docker Compose it is `http://app:8080`.                                                                                                 |
+| `PORT`                                           | `4001`                  | The service also fetches its own signing keys from `127.0.0.1:PORT`, so it must be the port it really listens on.                                                      |
+| `ENVIRONMENT`                                    | `development`           | `production` demands an https `MCP_PUBLIC_URL`.                                                                                                                        |
+| `TRUST_PROXY`                                    | `false`                 | Set `true` behind the reverse proxy so rate limits count each visitor, not the proxy.                                                                                  |
+| `MCP_DATABASE_PATH`                              | `data/mcp.db`           | This service's own SQLite file. Migrations run on every start.                                                                                                         |
+| `MCP_TURSO_DATABASE_URL`, `MCP_TURSO_AUTH_TOKEN` | empty                   | Both set: also sync that file with Turso Cloud.                                                                                                                        |
+| `MCP_SYNC_INTERVAL_SECONDS`                      | `30`                    | Pull/push period when syncing.                                                                                                                                         |
+| `GOOGLE_CLIENT_ID`                               | empty                   | The same Google OAuth client the API uses; shows "Continue with Google".                                                                                               |
+| `TRUSTED_ORIGINS`                                | empty                   | Comma separated origins allowed to call Better Auth from a browser.                                                                                                    |
 
 On the API side the only addition is `MCP_PUBLIC_KEY` (PEM, or base64 of the raw 32 bytes). Empty means MCP
 access is off.
@@ -529,16 +529,16 @@ access is off.
 
 ## Troubleshooting
 
-| Symptom | Likely cause and fix |
-|---|---|
-| The service stops at start with `Invalid configuration:` | It lists each bad variable. The usual ones: `AUTH_SECRET` under 32 characters, `MCP_SIGNING_KEY` not an Ed25519 key, `MCP_PUBLIC_URL` with a trailing slash or `http` in production. |
-| A client says it cannot register or authorize | It probably needs dynamic client registration, which is off. Use a client that supports Client ID Metadata Documents. |
-| Sign-in says "useshortly could not be reached" | `API_URL` is wrong or the API is down. In Docker it must be `http://app:8080`. |
-| Sign-in works but every tool answers "reconnect" or a 401 | The API does not accept the MCP's tokens: `MCP_PUBLIC_KEY` is missing, differs from the private key, or the API was not restarted after adding it. |
-| `/mcp` answers 401 to a token that was just issued, and the log shows `JWKS fetch failed` | The service fetches its keys from `127.0.0.1:PORT`: `PORT` must be the port it listens on. |
-| Clients that worked stop working after you changed the address | `MCP_PUBLIC_URL` is the issuer inside every token. Reconnect the clients. |
-| Sign-in shows "Too many attempts" for everyone | The API's per-address limit (see Known limits), or someone is guessing passwords. |
-| The client sees no write tools | The user left write unticked on the consent screen, or the client only asked for read. Disconnect and connect again. |
+| Symptom                                                                                   | Likely cause and fix                                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The service stops at start with `Invalid configuration:`                                  | It lists each bad variable. The usual ones: `AUTH_SECRET` under 32 characters, `MCP_SIGNING_KEY` not an Ed25519 key, `MCP_PUBLIC_URL` with a trailing slash or `http` in production. |
+| A client says it cannot register or authorize                                             | It probably needs dynamic client registration, which is off. Use a client that supports Client ID Metadata Documents.                                                                |
+| Sign-in says "useshortly could not be reached"                                            | `API_URL` is wrong or the API is down. In Docker it must be `http://app:8080`.                                                                                                       |
+| Sign-in works but every tool answers "reconnect" or a 401                                 | The API does not accept the MCP's tokens: `MCP_PUBLIC_KEY` is missing, differs from the private key, or the API was not restarted after adding it.                                   |
+| `/mcp` answers 401 to a token that was just issued, and the log shows `JWKS fetch failed` | The service fetches its keys from `127.0.0.1:PORT`: `PORT` must be the port it listens on.                                                                                           |
+| Clients that worked stop working after you changed the address                            | `MCP_PUBLIC_URL` is the issuer inside every token. Reconnect the clients.                                                                                                            |
+| Sign-in shows "Too many attempts" for everyone                                            | The API's per-address limit (see Known limits), or someone is guessing passwords.                                                                                                    |
+| The client sees no write tools                                                            | The user left write unticked on the consent screen, or the client only asked for read. Disconnect and connect again.                                                                 |
 
 ## Working on the code
 

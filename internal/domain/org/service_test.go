@@ -62,6 +62,21 @@ func (r *fakeRepo) FindByID(_ context.Context, id int64) (Organization, error) {
 	return Organization{}, ErrNotFound
 }
 
+func (r *fakeRepo) Update(_ context.Context, id int64, name, description string, _ time.Time) (Organization, error) {
+	o, ok := r.orgs[id]
+	if !ok {
+		return Organization{}, ErrNotFound
+	}
+	for _, e := range r.orgs {
+		if e.ID != id && e.Name == name {
+			return Organization{}, ErrNameTaken
+		}
+	}
+	o.Name, o.Description = name, description
+	r.orgs[id] = o
+	return o, nil
+}
+
 func (r *fakeRepo) SoftDelete(_ context.Context, id int64, _ time.Time) error {
 	if _, ok := r.orgs[id]; !ok {
 		return ErrNotFound
@@ -426,4 +441,27 @@ func TestDeleteIsOwnerOnlyAndWakesThePurger(t *testing.T) {
 	assert.Equal(t, 1, waker.kicks)
 	assert.NotContains(t, repo.orgs, o.ID)
 	assert.ErrorIs(t, svc.Delete(ctx, 10, o.ID), ErrNotMember, "gone for everyone, owner included")
+}
+
+func TestUpdateIsOwnerOnlyAndValidates(t *testing.T) {
+	svc, repo, o := setup(t)
+	repo.members = append(repo.members, Member{ID: repo.id(), TenantID: o.ID, UserID: 11, Role: RoleAdmin})
+	other, err := svc.CreateOrganization(ctx, 12, "Other", "")
+	require.NoError(t, err)
+
+	_, err = svc.Update(ctx, 11, o.ID, "New", "d")
+	assert.ErrorIs(t, err, ErrNotOwner, "an admin cannot")
+	_, err = svc.Update(ctx, 99, o.ID, "New", "d")
+	assert.ErrorIs(t, err, ErrNotMember)
+	_, err = svc.Update(ctx, 10, o.ID, "  ", "d")
+	assert.ErrorIs(t, err, ErrInvalidName)
+	_, err = svc.Update(ctx, 10, o.ID, "New", strings.Repeat("x", 256))
+	assert.ErrorIs(t, err, ErrInvalidName)
+	_, err = svc.Update(ctx, 10, o.ID, other.Name, "")
+	assert.ErrorIs(t, err, ErrNameTaken)
+
+	got, err := svc.Update(ctx, 10, o.ID, " New ", " desc ")
+	require.NoError(t, err)
+	assert.Equal(t, "New", got.Name)
+	assert.Equal(t, "desc", got.Description)
 }

@@ -17,6 +17,9 @@ type Repository interface {
 	// FindAccountByProvider looks an account up by the provider's own id (e.g. Google's
 	// "sub"). Returns ErrNotFound.
 	FindAccountByProvider(ctx context.Context, provider Provider, accountID string) (Account, error)
+	// ListProviders returns the providers of the accounts the user has (one query), in a stable
+	// order. Empty when there are none.
+	ListProviders(ctx context.Context, userID int64) ([]Provider, error)
 	// UpdatePassword replaces the hash of the user's DEFAULT account and stamps updated_at
 	// with at (UTC). Returns ErrNotFound if the user has no password account.
 	UpdatePassword(ctx context.Context, userID int64, hash string, at time.Time) error

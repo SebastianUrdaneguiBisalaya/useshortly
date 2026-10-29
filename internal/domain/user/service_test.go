@@ -104,6 +104,13 @@ func (r *fakeRepo) FindAccount(_ context.Context, userID int64, p Provider) (Acc
 	return Account{}, ErrNotFound
 }
 
+func (r *fakeRepo) ListProviders(_ context.Context, userID int64) ([]Provider, error) {
+	if a, ok := r.accounts[userID]; ok {
+		return []Provider{a.Provider}, nil
+	}
+	return nil, nil
+}
+
 type fakeHasher struct{}
 
 func (fakeHasher) Hash(p string) (string, error) { return "hash:" + p, nil }
@@ -572,4 +579,17 @@ func TestByIDResolvesAUserAndTreatsAMissingOneAsInvalidCredentials(t *testing.T)
 
 	_, err = s.ByID(context.Background(), 6)
 	assert.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+func TestProvidersNeverNil(t *testing.T) {
+	repo := &fakeRepo{users: map[int64]User{}, accounts: map[int64]Account{7: {ID: 1, UserID: 7, Provider: ProviderGoogle}}}
+	s := &Service{repo: repo}
+	got, err := s.Providers(context.Background(), 7)
+	require.NoError(t, err)
+	assert.Equal(t, []Provider{ProviderGoogle}, got)
+
+	got, err = s.Providers(context.Background(), 99)
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
 }

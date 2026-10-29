@@ -13,16 +13,25 @@ type fakeStatsRepo struct {
 	got struct {
 		tenant, link int64
 		from, to     time.Time
+		filter       Filter
 	}
-	calls  int
-	result Stats
-	err    error
+	calls        int
+	result       Stats
+	previous     int64
+	previousFrom time.Time
+	previousTo   time.Time
+	err          error
 }
 
-func (f *fakeStatsRepo) Stats(_ context.Context, tenantID, linkID int64, from, to time.Time) (Stats, error) {
+func (f *fakeStatsRepo) Stats(_ context.Context, tenantID, linkID int64, from, to time.Time, flt Filter) (Stats, error) {
 	f.calls++
-	f.got.tenant, f.got.link, f.got.from, f.got.to = tenantID, linkID, from, to
+	f.got.tenant, f.got.link, f.got.from, f.got.to, f.got.filter = tenantID, linkID, from, to, flt
 	return f.result, f.err
+}
+
+func (f *fakeStatsRepo) Total(_ context.Context, _, _ int64, from, to time.Time, _ Filter) (int64, error) {
+	f.previousFrom, f.previousTo = from, to
+	return f.previous, f.err
 }
 
 func date(s string) time.Time {
@@ -128,4 +137,47 @@ func TestStatsListsAreNeverNil(t *testing.T) {
 func TestStatsPropagatesRepositoryErrors(t *testing.T) {
 	_, err := newStatsService(&fakeStatsRepo{err: ErrNotFound}).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
 	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestStatsComparesWithThePreviousPeriod(t *testing.T) {
+	repo := &fakeStatsRepo{previous: 7}
+	st, err := newStatsService(repo).Stats(context.Background(),
+		StatsQuery{TenantID: 1, LinkID: 1, From: date("2026-03-05"), To: date("2026-03-07")})
+	require.NoError(t, err)
+	assert.EqualValues(t, 7, st.PreviousTotal)
+	assert.Equal(t, date("2026-03-02"), repo.previousFrom, "same length, right before")
+	assert.Equal(t, date("2026-03-05"), repo.previousTo)
+}
+
+func TestStatsPadsHoursAndWeekdays(t *testing.T) {
+	st, err := newStatsService(&fakeStatsRepo{result: Stats{ByHour: []int64{1}}}).Stats(context.Background(), StatsQuery{TenantID: 1, LinkID: 1})
+	require.NoError(t, err)
+	assert.Len(t, st.ByHour, 24)
+	assert.Len(t, st.ByWeekday, 7)
+	assert.EqualValues(t, 1, st.ByHour[0])
+}
+
+func TestStatsTurnsLabelsBackIntoStoredValues(t *testing.T) {
+	str := func(s string) *string { return &s }
+	tests := []struct {
+		name string
+		q    StatsQuery
+		want Filter
+	}{
+		{"none", StatsQuery{}, Filter{}},
+		{"country is upper-cased", StatsQuery{Country: "pe"}, Filter{Country: str("PE")}},
+		{"unknown country", StatsQuery{Country: "unknown"}, Filter{Country: str("")}},
+		{"device is lower-cased", StatsQuery{Device: "Mobile"}, Filter{Device: str("mobile")}},
+		{"direct visits", StatsQuery{Referrer: "direct"}, Filter{Referrer: str("")}},
+		{"a referrer as is", StatsQuery{Referrer: "https://a.example"}, Filter{Referrer: str("https://a.example")}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeStatsRepo{}
+			tt.q.TenantID, tt.q.LinkID = 1, 1
+			_, err := newStatsService(repo).Stats(context.Background(), tt.q)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, repo.got.filter)
+		})
+	}
 }

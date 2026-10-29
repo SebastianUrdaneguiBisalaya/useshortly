@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/user"
 )
 
@@ -11,6 +13,13 @@ type AuthHandler struct {
 	google *user.GoogleService // nil when Google sign-in is not configured
 	reset  *user.PasswordResetService
 	delete *user.DeletionService // nil leaves account deletion out
+	secure bool                  // mark the session cookies Secure (the app is served over HTTPS)
+}
+
+// WithSecureCookies marks the session cookies Secure, so browsers only send them over HTTPS.
+func (h *AuthHandler) WithSecureCookies(secure bool) *AuthHandler {
+	h.secure = secure
+	return h
 }
 
 // WithDeletion enables deleting the account (see RequestDeletion and DeleteAccount).
@@ -38,30 +47,60 @@ type userBody struct {
 	ImageURL      string  `json:"image_url,omitempty"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     *string `json:"updated_at,omitempty"`
+	// Providers is how the user can sign in: "DEFAULT" (email and password) and/or "GOOGLE".
+	Providers []string `json:"providers"`
 } // @name User
 
-func newUserBody(u user.User) userBody {
+func newUserBody(u user.User, providers []user.Provider) userBody {
+	ps := make([]string, 0, len(providers))
+	for _, p := range providers {
+		ps = append(ps, string(p))
+	}
 	return userBody{
-		ID: u.ID, Email: u.Email, EmailVerified: u.EmailVerified, FirstName: u.FirstName, LastName: u.LastName,
+		Providers: ps,
+		ID:        u.ID, Email: u.Email, EmailVerified: u.EmailVerified, FirstName: u.FirstName, LastName: u.LastName,
 		ImageURL: u.ImageURL, CreatedAt: formatTime(u.CreatedAt), UpdatedAt: formatTimePtr(u.UpdatedAt),
 	}
 }
 
+// sessionBody is what the page may know about the session. The tokens themselves travel only in
+// httpOnly cookies, never in the body.
 type sessionBody struct {
 	User             userBody `json:"user"`
-	Token            string   `json:"token"`
 	ExpiresAt        string   `json:"expires_at"`
-	RefreshToken     string   `json:"refresh_token"`
 	RefreshExpiresAt string   `json:"refresh_expires_at"`
 } // @name Session
 
-func writeSession(w http.ResponseWriter, status int, s user.Session) {
+// writeSession sets the session cookies and answers with the user and the expiry times.
+func (h *AuthHandler) writeSession(w http.ResponseWriter, r *http.Request, status int, s user.Session) {
+	providers, err := h.users.Providers(r.Context(), s.User.ID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
 	// A session carries secrets: never let a proxy or the browser cache it.
 	w.Header().Set("Cache-Control", "no-store")
+	http.SetCookie(w, sessionCookie(AccessCookie, s.Token.Value, accessCookiePath, http.SameSiteLaxMode, s.Token.ExpiresAt, h.secure))
+	http.SetCookie(w, sessionCookie(RefreshCookie, s.Refresh.Token, refreshCookiePath, http.SameSiteStrictMode, s.Refresh.ExpiresAt, h.secure))
 	writeData(w, status, sessionBody{
-		User: newUserBody(s.User), Token: s.Token.Value, ExpiresAt: formatTime(s.Token.ExpiresAt),
-		RefreshToken: s.Refresh.Token, RefreshExpiresAt: formatTime(s.Refresh.ExpiresAt),
+		User: newUserBody(s.User, providers), ExpiresAt: formatTime(s.Token.ExpiresAt),
+		RefreshExpiresAt: formatTime(s.Refresh.ExpiresAt),
 	})
+}
+
+// clearSession tells the browser to drop both session cookies.
+func (h *AuthHandler) clearSession(w http.ResponseWriter) {
+	http.SetCookie(w, expiredCookie(AccessCookie, accessCookiePath, http.SameSiteLaxMode, h.secure))
+	http.SetCookie(w, expiredCookie(RefreshCookie, refreshCookiePath, http.SameSiteStrictMode, h.secure))
+}
+
+// refreshCookie is the refresh token the browser sent, or "" when there is none.
+func refreshCookie(r *http.Request) string {
+	c, err := r.Cookie(RefreshCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }
 
 type RegisterRequest struct {
@@ -84,10 +123,6 @@ type LoginRequest struct {
 type GoogleLoginRequest struct {
 	Code string `json:"code"`
 } // @name GoogleLoginRequest
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
-} // @name RefreshTokenRequest
 
 type ForgotPasswordRequest struct {
 	Email string `json:"email"`
@@ -153,7 +188,7 @@ func (h *AuthHandler) VerifyRegistration(w http.ResponseWriter, r *http.Request)
 		WriteError(w, r, err)
 		return
 	}
-	writeSession(w, http.StatusCreated, s)
+	h.writeSession(w, r, http.StatusCreated, s)
 }
 
 // Login signs in with email and password.
@@ -179,7 +214,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
 // Google signs in with the authorization code Google gave the client, creating the account
@@ -207,55 +242,51 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
-// Refresh trades a refresh token for a new access token and a new refresh token.
+// Refresh trades the refresh token cookie for new session cookies. The refresh token is rotated:
+// the old one stops working. A refresh token that is not valid also clears both cookies.
 //
-//	@Summary	Refresh a session
-//	@Tags		auth
-//	@Accept		json
-//	@Produce	json
-//	@Param		body	body		RefreshTokenRequest	true	"Refresh token"
-//	@Success	200		{object}	SessionResponse
-//	@Failure	400		{object}	ErrorResponse
-//	@Failure	401		{object}	ErrorResponse
-//	@Failure	429		{object}	ErrorResponse
+//	@Summary		Refresh a session
+//	@Description	Reads the refresh token from the refresh_token cookie; there is no body.
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200	{object}	SessionResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		429	{object}	ErrorResponse
 //	@ID	refreshSession
-//	@Router		/auth/refresh [post]
+//	@Router			/auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var in RefreshTokenRequest
-	if !decode(w, r, &in) {
-		return
-	}
-	s, err := h.users.Refresh(r.Context(), in.RefreshToken)
+	s, err := h.users.Refresh(r.Context(), refreshCookie(r))
 	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) || errors.Is(err, auth.ErrTokenExpired) {
+			h.clearSession(w)
+		}
 		WriteError(w, r, err)
 		return
 	}
-	writeSession(w, http.StatusOK, s)
+	h.writeSession(w, r, http.StatusOK, s)
 }
 
-// Logout revokes a refresh token. It answers 204 even for unknown tokens.
+// Logout revokes the refresh token of the cookie and clears both cookies. It answers 204 even
+// when there is no session.
 //
-//	@Summary	Sign out
-//	@Tags		auth
-//	@Accept		json
-//	@Param		body	body	RefreshTokenRequest	true	"Refresh token to revoke"
-//	@Success	204
-//	@Failure	400	{object}	ErrorResponse
-//	@Failure	429	{object}	ErrorResponse
+//	@Summary		Sign out
+//	@Description	Reads the refresh token from the refresh_token cookie; there is no body.
+//	@Tags			auth
+//	@Success		204
+//	@Failure		429	{object}	ErrorResponse
 //	@ID	logout
-//	@Router		/auth/logout [post]
+//	@Router			/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	var in RefreshTokenRequest
-	if !decode(w, r, &in) {
-		return
+	if token := refreshCookie(r); token != "" {
+		if err := h.users.Logout(r.Context(), token); err != nil {
+			WriteError(w, r, err)
+			return
+		}
 	}
-	if err := h.users.Logout(r.Context(), in.RefreshToken); err != nil {
-		WriteError(w, r, err)
-		return
-	}
+	h.clearSession(w)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -365,5 +396,11 @@ func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 //	@ID	getMe
 //	@Router		/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	writeData(w, http.StatusOK, newUserBody(PrincipalFrom(r).User))
+	u := PrincipalFrom(r).User
+	providers, err := h.users.Providers(r.Context(), u.ID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, newUserBody(u, providers))
 }

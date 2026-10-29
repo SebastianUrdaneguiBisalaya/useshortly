@@ -95,6 +95,26 @@ func (r *UserRepository) FindAccount(ctx context.Context, userID int64, provider
 	return r.findAccount(ctx, `SELECT `+accountColumns+` FROM accounts WHERE user_id = ? AND provider_id = ?`, userID, string(provider))
 }
 
+func (r *UserRepository) ListProviders(ctx context.Context, userID int64) ([]user.Provider, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT provider_id FROM accounts WHERE user_id = ? ORDER BY provider_id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user repo: list providers: %w", err)
+	}
+	defer rows.Close()
+	out := []user.Provider{}
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("user repo: list providers: %w", err)
+		}
+		out = append(out, user.Provider(p))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("user repo: list providers: %w", err)
+	}
+	return out, nil
+}
+
 func (r *UserRepository) FindAccountByProvider(ctx context.Context, provider user.Provider, accountID string) (user.Account, error) {
 	return r.findAccount(ctx, `SELECT `+accountColumns+` FROM accounts WHERE provider_id = ? AND account_id = ?`, string(provider), accountID)
 }

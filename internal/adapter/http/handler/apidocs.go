@@ -98,3 +98,30 @@ type DomainListData struct {
 type LinkStatsData struct {
 	Data statsBody `json:"data"`
 } // @name LinkStatsResponse
+
+// CampaignData answers with one campaign.
+type CampaignData struct {
+	Data campaignBody `json:"data"`
+} // @name CampaignResponse
+
+// CampaignListData answers with one page of campaigns.
+type CampaignListData struct {
+	Data []campaignBody `json:"data"`
+	Meta pageMeta       `json:"meta"`
+} // @name CampaignListResponse
+
+// CampaignChannelData answers with one campaign channel.
+type CampaignChannelData struct {
+	Data channelBody `json:"data"`
+} // @name CampaignChannelResponse
+
+// CampaignChannelListData answers with one page of campaign channels.
+type CampaignChannelListData struct {
+	Data []channelBody `json:"data"`
+	Meta pageMeta      `json:"meta"`
+} // @name CampaignChannelListResponse
+
+// CampaignStatsData answers with the clicks of one campaign.
+type CampaignStatsData struct {
+	Data campaignStatsBody `json:"data"`
+} // @name CampaignStatsResponse

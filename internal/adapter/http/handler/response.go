@@ -175,6 +175,21 @@ func idParam(w http.ResponseWriter, r *http.Request, name string) (int64, bool) 
 	return id, true
 }
 
+// queryID reads an optional positive integer query value; absent is nil and a bad one is a 400.
+func queryID(w http.ResponseWriter, r *http.Request, name string) (*int64, bool) {
+	raw := r.URL.Query().Get(name)
+	if raw == "" {
+		return nil, true
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		WriteAPIErrorDetails(w, http.StatusBadRequest, "invalid_filter", "the filter must be a positive integer id",
+			[]FieldError{{Field: name, Message: "invalid value"}})
+		return nil, false
+	}
+	return &id, true
+}
+
 func formatTime(t time.Time) string { return t.UTC().Format(time.RFC3339) }
 
 func formatTimePtr(t *time.Time) *string {

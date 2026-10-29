@@ -1,0 +1,610 @@
+{
+	"meta": {
+		"title": "useshortly — acortador de enlaces autoalojado",
+		"description": "Acorta enlaces, analiza clics y gestiona los dominios de tu organización.",
+		"auth": {
+			"signIn": {
+				"title": "Iniciar sesión — useshortly",
+				"description": "Inicia sesión en tu cuenta de useshortly para gestionar y analizar tus enlaces."
+			},
+			"signUp": {
+				"title": "Crear cuenta — useshortly",
+				"description": "Crea una cuenta gratis para empezar a acortar y analizar tus enlaces."
+			},
+			"verifyEmail": {
+				"title": "Verifica tu correo — useshortly",
+				"description": "Ingresa el código que te enviamos para confirmar tu correo electrónico."
+			},
+			"forgotPassword": {
+				"title": "Olvidé mi contraseña — useshortly",
+				"description": "Solicita un código para restablecer tu contraseña de useshortly."
+			},
+			"resetPassword": {
+				"title": "Restablecer contraseña — useshortly",
+				"description": "Elige una nueva contraseña para tu cuenta de useshortly."
+			}
+		}
+	},
+	"auth": {
+		"common": {
+			"or": "O",
+			"email": {
+				"label": "Correo electrónico",
+				"placeholder": "hello@gmail.com"
+			},
+			"password": {
+				"label": "Contraseña",
+				"placeholder": "tucontraseña",
+				"show": "Mostrar contraseña",
+				"hide": "Ocultar contraseña"
+			},
+			"google": "Continuar con Google",
+			"backToSignIn": "Volver a iniciar sesión"
+		},
+		"validation": {
+			"emailInvalid": "Ingresa un correo electrónico válido",
+			"passwordRequired": "Ingresa tu contraseña",
+			"passwordMin": "La contraseña debe tener al menos {{min}} caracteres",
+			"passwordMax": "La contraseña debe tener como máximo {{max}} caracteres",
+			"passwordsMismatch": "Las contraseñas no coinciden",
+			"codeInvalid": "Ingresa el código de {{length}} dígitos",
+			"firstNameRequired": "Ingresa tu nombre",
+			"lastNameRequired": "Ingresa tu apellido"
+		},
+		"signIn": {
+			"title": "Iniciar sesión",
+			"submit": "Iniciar sesión",
+			"submitting": "Iniciando sesión",
+			"google": "Iniciar sesión con Google",
+			"forgotPassword": "¿Olvidaste tu contraseña?",
+			"noAccount": "¿Aún no tienes cuenta?",
+			"signUpLink": "Crear cuenta"
+		},
+		"signUp": {
+			"title": "Crear cuenta",
+			"submit": "Crear cuenta",
+			"submitting": "Creando cuenta",
+			"google": "Registrarse con Google",
+			"firstName": {
+				"label": "Nombre",
+				"placeholder": "Juan"
+			},
+			"lastName": {
+				"label": "Apellido",
+				"placeholder": "Pérez"
+			},
+			"haveAccount": "¿Ya tienes cuenta?",
+			"signInLink": "Iniciar sesión"
+		},
+		"forgotPassword": {
+			"title": "¿Olvidaste tu contraseña?",
+			"description": "Ingresa tu correo y te enviaremos un código para restablecerla.",
+			"submit": "Enviar código",
+			"submitting": "Enviando"
+		},
+		"resetPassword": {
+			"title": "Restablecer contraseña",
+			"description": "Ingresa el código que enviamos a {{email}} y elige una nueva contraseña.",
+			"code": {
+				"label": "Código de verificación"
+			},
+			"newPassword": {
+				"label": "Nueva contraseña",
+				"placeholder": "nuevacontraseña"
+			},
+			"confirmPassword": {
+				"label": "Confirmar contraseña",
+				"placeholder": "repite la contraseña"
+			},
+			"submit": "Restablecer contraseña",
+			"submitting": "Restableciendo",
+			"success": "Contraseña actualizada. Inicia sesión con tu nueva contraseña."
+		},
+		"verifyEmail": {
+			"title": "Verifica tu correo",
+			"description": "Ingresa el código que enviamos a {{email}} para terminar de crear tu cuenta.",
+			"submit": "Verificar",
+			"submitting": "Verificando"
+		}
+	},
+	"theme": {
+		"group": "Tema",
+		"system": "Sistema",
+		"light": "Claro",
+		"dark": "Oscuro"
+	},
+	"language": {
+		"group": "Idioma",
+		"system": "Sistema",
+		"en": "Inglés",
+		"es": "Español"
+	},
+	"protected": {
+		"nav": {
+			"dashboard": "Panel",
+			"links": "Enlaces",
+			"search": "Abrir búsqueda",
+			"settings": "Configuración",
+			"users": "Usuarios",
+			"apiKeys": "Claves de API",
+			"campaigns": "Campañas",
+			"qrCode": "Códigos QR",
+			"docs": "Documentación",
+			"mcp": "MCP",
+			"domains": "Dominios"
+		},
+		"dashboard": {
+			"title": "Dashboard",
+			"description": "Analítica de clics de un enlace. Los días y horas están en UTC.",
+			"link": {
+				"label": "Enlace",
+				"placeholder": "Selecciona un enlace",
+				"search": "Buscar enlaces…"
+			},
+			"empty": {
+				"title": "Aún no hay enlaces",
+				"description": "Crea un enlace para ver sus métricas aquí."
+			},
+			"error": {
+				"title": "No se pudieron cargar las métricas",
+				"description": "Inténtalo de nuevo en un momento."
+			},
+			"range": {
+				"label": "Periodo",
+				"placeholder": "Selecciona un periodo"
+			},
+			"filters": {
+				"country": "País",
+				"device": "Dispositivo",
+				"referrer": "Origen",
+				"all": "Todos",
+				"clear": "Limpiar filtros",
+				"active": "Filtrado por"
+			},
+			"values": {
+				"direct": "Directo",
+				"unknown": "Desconocido",
+				"mobile": "Móvil",
+				"tablet": "Tableta",
+				"desktop": "Escritorio",
+				"bot": "Bot"
+			},
+			"stats": {
+				"total": {
+					"label": "Clics totales",
+					"description": "Clics del periodo seleccionado que cumplen los filtros.",
+					"vsPrevious": "{{change}} vs los {{days}} días anteriores",
+					"noPrevious": "Sin clics en los {{days}} días anteriores"
+				},
+				"average": {
+					"label": "Promedio diario",
+					"description": "Clics totales divididos entre los días del periodo.",
+					"hint": "clics por día"
+				},
+				"peak": {
+					"label": "Mejor día",
+					"description": "El día del periodo con más clics.",
+					"none": "Aún sin clics"
+				},
+				"topCountry": {
+					"label": "País principal",
+					"description": "El país que trajo más clics.",
+					"none": "Sin datos de país"
+				}
+			},
+			"charts": {
+				"daily": {
+					"title": "Clics en el tiempo",
+					"description": "Clics por día (UTC).",
+					"series": "Clics"
+				},
+				"devices": {
+					"title": "Dispositivos",
+					"description": "Proporción de clics por dispositivo.",
+					"center": "Clics"
+				},
+				"map": {
+					"title": "Clics por país",
+					"description": "Haz clic en un país para filtrar por él.",
+					"legend": "Clics",
+					"noCountry": "{{count}} clics sin país conocido."
+				},
+				"countries": {
+					"title": "Países principales",
+					"description": "Países con más clics."
+				},
+				"referrers": {
+					"title": "Orígenes principales",
+					"description": "De dónde vinieron los clics."
+				},
+				"hours": {
+					"title": "Clics por hora",
+					"description": "Hora del día (UTC)."
+				},
+				"weekdays": {
+					"title": "Clics por día de la semana",
+					"description": "Día de la semana (UTC)."
+				}
+			}
+		},
+		"command": {
+			"empty": "Sin resultados",
+			"general": "General",
+			"navigation": "Ir a",
+			"open": "Abrir el menú de comandos",
+			"placeholder": "Buscar páginas y atajos...",
+			"shortcuts": "Atajos de teclado"
+		},
+		"organization": {
+			"create": {
+				"cancel": "Cancelar",
+				"description": "Las organizaciones agrupan tus enlaces, dominios y claves de API.",
+				"descriptionField": {
+					"label": "Descripción (opcional)",
+					"placeholder": "¿Para qué es?"
+				},
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Acme S.A."
+				},
+				"submit": "Crear organización",
+				"submitting": "Creando...",
+				"title": "Nueva organización"
+			},
+			"new": "Nueva organización",
+			"none": "Sin organización",
+			"selected": "Seleccionada",
+			"switch": "Cambiar de organización",
+			"validation": {
+				"nameRequired": "Ingresa un nombre",
+				"tooLong": "Usa como máximo {{max}} caracteres"
+			},
+			"actions": "Acciones de la organización",
+			"add": "Añadir",
+			"editAction": "Editar",
+			"deleteAction": "Eliminar",
+			"edit": {
+				"title": "Editar organización",
+				"description": "Cambia el nombre o la descripción de esta organización.",
+				"submit": "Guardar cambios",
+				"submitting": "Guardando..."
+			},
+			"delete": {
+				"title": "¿Eliminar {{name}}?",
+				"description": "Se eliminará permanentemente la organización con sus enlaces, dominios y claves de API. No se puede deshacer.",
+				"cancel": "Cancelar",
+				"confirm": "Eliminar"
+			},
+			"loading": "Cargando...",
+			"empty": {
+				"title": "Primero crea una organización",
+				"description": "Las organizaciones agrupan tus enlaces, usuarios y claves de API. Crea una para empezar a usar esta página."
+			}
+		},
+		"settings": {
+			"logout": "Cerrar sesión",
+			"loggingOut": "Cerrando sesión...",
+			"general": "General",
+			"account": "Cuenta",
+			"search": "Buscar",
+			"noResults": "Sin resultados",
+			"close": "Cerrar",
+			"appearance": "Apariencia"
+		},
+		"sidebar": {
+			"closeMenu": "Cerrar menú",
+			"collapse": "Contraer barra lateral",
+			"expand": "Expandir barra lateral",
+			"primary": "Principal",
+			"openMenu": "Abrir menú"
+		},
+		"confirm": {
+			"cancel": "Cancelar",
+			"delete": "Eliminar"
+		},
+		"table": {
+			"refresh": "Actualizar",
+			"clearSearch": "Limpiar búsqueda"
+		},
+		"users": {
+			"title": "Usuarios",
+			"description": "Personas con acceso a esta organización.",
+			"search": "Buscar por nombre o correo",
+			"empty": "No se encontraron usuarios.",
+			"columns": {
+				"name": "Nombre",
+				"email": "Correo",
+				"role": "Rol",
+				"createdAt": "Se unió"
+			},
+			"roles": {
+				"OWNER": "Propietario",
+				"ADMIN": "Administrador"
+			},
+			"invite": {
+				"action": "Añadir usuario",
+				"title": "Invitar a un usuario",
+				"description": "Le enviaremos por correo una invitación para unirse a esta organización.",
+				"email": "Correo",
+				"emailInvalid": "Ingresa un correo válido",
+				"submit": "Enviar invitación",
+				"submitting": "Enviando..."
+			},
+			"delete": {
+				"label": "Quitar usuario",
+				"title": "¿Quitar a {{name}}?",
+				"description": "Perderá el acceso a esta organización."
+			}
+		},
+		"apiKeys": {
+			"title": "Claves de API",
+			"description": "Claves para usar la API desde tus propias aplicaciones.",
+			"empty": "Aún no hay claves de API.",
+			"never": "Nunca",
+			"columns": {
+				"name": "Nombre",
+				"key": "Clave",
+				"scope": "Alcance",
+				"lastUsed": "Último uso",
+				"expires": "Expira",
+				"createdAt": "Creada"
+			},
+			"scopes": {
+				"read": "Lectura",
+				"write": "Escritura"
+			},
+			"create": {
+				"action": "Crear clave de API",
+				"title": "Nueva clave de API",
+				"description": "Elige un nombre y lo que la clave puede hacer.",
+				"namePlaceholder": "Servidor de producción",
+				"nameRequired": "Ingresa un nombre",
+				"submit": "Crear clave",
+				"submitting": "Creando..."
+			},
+			"created": {
+				"title": "Tu clave de API",
+				"description": "Cópiala ahora: por seguridad no se mostrará de nuevo.",
+				"label": "Clave de API",
+				"copy": "Copiar",
+				"copied": "Copiada",
+				"done": "Listo"
+			},
+			"delete": {
+				"label": "Eliminar clave de API",
+				"title": "¿Eliminar {{name}}?",
+				"description": "Las aplicaciones que usen esta clave dejarán de funcionar. No se puede deshacer."
+			}
+		},
+		"account": {
+			"profile": {
+				"title": "Perfil",
+				"name": "Nombre completo",
+				"email": "Correo",
+				"provider": "Método de acceso",
+				"photo": "Foto de perfil"
+			},
+			"providers": {
+				"DEFAULT": "Correo y contraseña",
+				"GOOGLE": "Google"
+			},
+			"danger": {
+				"title": "Zona de peligro",
+				"label": "Eliminar cuenta",
+				"description": "Elimina tu cuenta de forma permanente. Perderás los datos y accesos que has creado, y no se puede deshacer.",
+				"action": "Eliminar cuenta"
+			},
+			"confirm": {
+				"title": "¿Eliminar tu cuenta?",
+				"continue": "Continuar"
+			},
+			"code": {
+				"title": "Confirma con el código",
+				"description": "Te enviamos un código de verificación por correo. Ingrésalo para eliminar tu cuenta.",
+				"submit": "Eliminar cuenta",
+				"submitting": "Eliminando..."
+			}
+		},
+		"links": {
+			"title": "Links",
+			"description": "Links cortos de esta organización.",
+			"empty": "Aún no hay links. Crea el primero.",
+			"never": "Nunca",
+			"noLimit": "Sin límite",
+			"open": "Abrir detalle",
+			"columns": {
+				"shortUrl": "Link corto",
+				"destination": "Destino",
+				"clicks": "Límite de clics",
+				"expires": "Expira",
+				"createdAt": "Creado",
+				"access": "Acceso"
+			},
+			"badges": {
+				"protected": "Contraseña",
+				"expired": "Expirado"
+			},
+			"create": {
+				"action": "Crear link",
+				"title": "Nuevo link",
+				"description": "Pega una URL larga y, si deseas, define cómo se comporta el link corto.",
+				"url": {
+					"label": "URL de destino",
+					"placeholder": "https://example.com/una/ruta/muy/larga",
+					"required": "Ingresa una URL",
+					"invalid": "Ingresa una URL http(s) válida"
+				},
+				"alias": {
+					"label": "Alias personalizado",
+					"placeholder": "oferta-verano",
+					"hint": "Déjalo vacío para un código aleatorio. De 3 a 15 letras, números, - o _ (no de 7 caracteres).",
+					"invalid": "Usa de 3 a 15 letras, números, - o _ (no de 7 caracteres)"
+				},
+				"domain": {
+					"label": "Dominio",
+					"placeholder": "Dominio por defecto",
+					"hint": "Escribe un dominio nuevo para añadirlo. Verifícalo en Dominios antes de usarlo.",
+					"clear": "Quitar",
+					"creating": "Añadiendo dominio..."
+				},
+				"expires": {
+					"label": "Expira el"
+				},
+				"maxClicks": {
+					"label": "Límite de clics",
+					"invalid": "Usa un número entero mayor a 0"
+				},
+				"password": {
+					"label": "Contraseña",
+					"placeholder": "Pedir contraseña para abrirlo"
+				},
+				"submit": "Crear link",
+				"submitting": "Creando..."
+			},
+			"actions": {
+				"label": "Acciones del link",
+				"downloadQr": "Descargar QR",
+				"delete": "Eliminar link"
+			},
+			"delete": {
+				"label": "Eliminar link",
+				"title": "¿Eliminar /{{code}}?",
+				"description": "El link corto dejará de funcionar. No se puede deshacer."
+			},
+			"drawer": {
+				"title": "Detalle del link",
+				"copy": "Copiar",
+				"copied": "Copiado",
+				"origin": "Destino",
+				"shortUrl": "Link corto",
+				"created": "Creado",
+				"expires": "Expira",
+				"maxClicks": "Límite de clics",
+				"qr": {
+					"title": "Código QR",
+					"download": "Descargar código QR"
+				},
+				"unlock": {
+					"title": "Página de desbloqueo",
+					"description": "HTML personalizado que ven quienes deben ingresar la contraseña.",
+					"label": "HTML",
+					"save": "Guardar página",
+					"saving": "Guardando...",
+					"remove": "Usar página por defecto",
+					"notProtected": "Este link no tiene contraseña, así que nadie verá esta página.",
+					"custom": "Página personalizada",
+					"default": "Página por defecto",
+					"edit": "Editar página",
+					"preview": {
+						"title": "Vista previa",
+						"reset": "Restablecer código",
+						"run": "Ejecutar",
+						"error": "Error",
+						"device": "Ancho de la vista previa",
+						"full": "Ancho completo",
+						"tablet": "Tableta",
+						"mobile": "Móvil"
+					}
+				},
+				"close": "Cerrar"
+			}
+		},
+		"domains": {
+			"title": "Dominios",
+			"description": "Usa tu propio dominio en los links cortos.",
+			"empty": "Aún no hay dominios.",
+			"never": "—",
+			"columns": {
+				"host": "Dominio",
+				"status": "Estado",
+				"record": "Registro DNS",
+				"createdAt": "Añadido"
+			},
+			"status": {
+				"verified": "Verificado",
+				"pending": "Pendiente"
+			},
+			"create": {
+				"action": "Añadir dominio",
+				"title": "Añadir un dominio",
+				"description": "Ingresa el dominio y crea el registro DNS que te mostramos.",
+				"host": {
+					"label": "Dominio",
+					"placeholder": "go.example.com",
+					"required": "Ingresa un dominio",
+					"invalid": "Ingresa un dominio válido, sin https://"
+				},
+				"submit": "Añadir dominio",
+				"submitting": "Añadiendo..."
+			},
+			"record": {
+				"type": "Tipo",
+				"name": "Nombre",
+				"value": "Valor",
+				"hint": "Crea este registro y luego verifica.",
+				"copied": "Copiado",
+				"copy": "Copiar"
+			},
+			"verify": {
+				"label": "Verificar dominio",
+				"failed": "Aún no encontramos el registro DNS. Los cambios de DNS pueden tardar."
+			},
+			"delete": {
+				"label": "Eliminar dominio",
+				"title": "¿Eliminar {{host}}?",
+				"description": "Los links que usan este dominio dejarán de funcionar. No se puede deshacer."
+			}
+		},
+		"toast": {
+			"organizationCreated": "Organización creada",
+			"organizationUpdated": "Organización actualizada",
+			"apiKeyCreated": "Clave de API creada",
+			"domainCreated": "Dominio agregado",
+			"linkCreated": "Enlace creado",
+			"memberInvited": "Invitación enviada",
+			"unlockSaved": "Página de desbloqueo guardada",
+			"unlockRemoved": "Página de desbloqueo eliminada",
+			"qrDownloaded": "Código QR descargado",
+			"qrFailed": "No se pudo descargar el código QR",
+			"organizationDeleted": "Organización eliminada",
+			"linkDeleted": "Enlace eliminado",
+			"domainDeleted": "Dominio eliminado",
+			"apiKeyDeleted": "Clave de API eliminada",
+			"memberRemoved": "Miembro eliminado",
+			"accountDeleted": "Cuenta eliminada",
+			"qrStyleSaved": "Estilo del QR guardado"
+		},
+		"qr": {
+			"title": "Códigos QR",
+			"description": "El código QR de cada enlace. Descárgalo o personalízalo con tus colores y logo.",
+			"create": "Crear código QR",
+			"loading": "Cargando códigos QR",
+			"empty": "Cada enlace trae su código QR. Crea tu primer enlace y aparecerá aquí.",
+			"download": "Descargar PNG",
+			"customize": "Personalizar código QR",
+			"style": {
+				"title": "Personalizar código QR",
+				"foreground": "Color del código",
+				"background": "Color de fondo",
+				"logo": "Logo (opcional)",
+				"logoHint": "Una imagen https que se muestra en el centro del código. Si el servidor bloquea descargas desde otros sitios, el PNG se guarda sin él.",
+				"invalidColor": "Usa colores como #1a2b3c.",
+				"lowContrast": "El código debe ser más oscuro que el fondo, con suficiente contraste para escanearse.",
+				"invalidLogo": "Usa una URL https.",
+				"reset": "Usar predeterminado",
+				"save": "Guardar estilo",
+				"saving": "Guardando..."
+			}
+		}
+	},
+	"errors": {
+		"generic": "Algo salió mal. Inténtalo de nuevo.",
+		"invalidCredentials": "Correo o contraseña incorrectos",
+		"emailTaken": "Ese correo ya está registrado",
+		"providerMismatch": "Ese correo está registrado con otro método de acceso",
+		"invalidCode": "El código es incorrecto o expiró",
+		"tooManyAttempts": "Demasiados códigos incorrectos. Solicita uno nuevo.",
+		"codeTooSoon": "Se pidió un código hace muy poco. Espera un minuto.",
+		"googleEmailNotVerified": "El correo de Google no está verificado"
+	}
+}

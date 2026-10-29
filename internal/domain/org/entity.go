@@ -33,6 +33,12 @@ type Member struct {
 	UserID    int64
 	Role      Role
 	CreatedAt time.Time
+
+	// Profile of the user. Filled only by Repository.ListMembers.
+	FirstName string
+	LastName  string
+	Email     string
+	ImageURL  string
 }
 
 // Invitation lets someone join a tenant as ADMIN. Email is stored lowercase.

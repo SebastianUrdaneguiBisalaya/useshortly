@@ -41,12 +41,19 @@ func (r *fakeLinkRepo) FindByID(_ context.Context, tenantID, id int64) (link.Lin
 	return link.Link{}, link.ErrNotFound
 }
 
-func (r *fakeLinkRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
+func (r *fakeLinkRepo) ListByTenant(_ context.Context, tenantID int64, f link.ListFilter, p page.Params) ([]link.Link, int, error) {
 	var all []link.Link
 	for _, l := range r.links {
-		if l.TenantID == tenantID {
-			all = append(all, l)
+		if l.TenantID != tenantID {
+			continue
 		}
+		if f.ChannelID != nil && (l.ChannelID == nil || *l.ChannelID != *f.ChannelID) {
+			continue
+		}
+		if f.CampaignID != nil && (l.CampaignID == nil || *l.CampaignID != *f.CampaignID) {
+			continue
+		}
+		all = append(all, l)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
 	lo := min(p.Offset, len(all))
@@ -63,6 +70,19 @@ func (r *fakeLinkRepo) Delete(_ context.Context, tenantID, id int64) error {
 	}
 	return link.ErrNotFound
 }
+
+func (r *fakeLinkRepo) SetChannel(_ context.Context, tenantID, id int64, channelID *int64, originURL string, _ int64, _ time.Time) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			l.ChannelID, l.OriginURL = channelID, originURL
+			r.links[code] = l
+			return nil
+		}
+	}
+	return link.ErrNotFound
+}
+
+func (r *fakeLinkRepo) SetQRStyle(context.Context, int64, int64, link.QRStyle) error { return nil }
 
 func (r *fakeLinkRepo) ConsumeClick(_ context.Context, id int64) error {
 	for code, l := range r.links {
@@ -275,4 +295,28 @@ func TestCreateProtectedLink(t *testing.T) {
 	assert.Contains(t, visit.Body.String(), "password_required")
 	assert.Empty(t, visit.Header().Get("Location"), "a protected link does not redirect")
 	assert.Empty(t, clicks.got, "a refused visit is not a click")
+}
+
+func TestGetLink(t *testing.T) {
+	repo := &fakeLinkRepo{links: map[string]link.Link{}}
+	h := NewLinkHandler(link.NewService(repo, unusedGen{}, fakeHasher{}, nil), &fakeClicks{}, "http://x", false)
+	created := createLink(t, h, `{"url":"https://example.com/g","alias":"get-link"}`)
+	require.Equal(t, http.StatusCreated, created.Code, created.Body.String())
+
+	get := func(tenantID int64, linkID string) *httptest.ResponseRecorder {
+		req := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/", nil), map[string]string{"linkID": linkID})
+		req = req.WithContext(WithTenant(req.Context(), Tenant{ID: tenantID}))
+		rec := httptest.NewRecorder()
+		h.Get(rec, req)
+		return rec
+	}
+
+	found := get(1, "1")
+	require.Equal(t, http.StatusOK, found.Code, found.Body.String())
+	assert.Contains(t, found.Body.String(), `"code":"get-link"`)
+	assert.Contains(t, found.Body.String(), `"short_url":"http://x/get-link"`)
+
+	assert.Equal(t, http.StatusNotFound, get(2, "1").Code, "another organization's link is a 404")
+	assert.Equal(t, http.StatusNotFound, get(1, "99").Code)
+	assert.Equal(t, http.StatusNotFound, get(1, "abc").Code, "an id that is not a number matches no link")
 }

@@ -32,21 +32,21 @@ Always check the `[MODES: declarative, ...]` marker in a doc before applying it.
 Typical setup:
 
 ```tsx
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route } from 'react-router';
 
 function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="about" element={<About />} />
-        <Route path="dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardHome />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+	return (
+		<BrowserRouter>
+			<Routes>
+				<Route path='/' element={<Home />} />
+				<Route path='about' element={<About />} />
+				<Route path='dashboard' element={<DashboardLayout />}>
+					<Route index element={<DashboardHome />} />
+					<Route path='settings' element={<Settings />} />
+				</Route>
+			</Routes>
+		</BrowserRouter>
+	);
 }
 ```
 

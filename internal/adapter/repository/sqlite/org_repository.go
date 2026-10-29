@@ -62,6 +62,26 @@ func (r *OrgRepository) FindByID(ctx context.Context, id int64) (org.Organizatio
 	return o, err
 }
 
+func (r *OrgRepository) Update(ctx context.Context, id int64, name, description string, at time.Time) (org.Organization, error) {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE organizations SET name = ?, description = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
+		name, nullString(description), formatTime(at), id)
+	if isUniqueViolation(err) {
+		return org.Organization{}, org.ErrNameTaken
+	}
+	if err != nil {
+		return org.Organization{}, fmt.Errorf("org repo: update: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return org.Organization{}, fmt.Errorf("org repo: update: %w", err)
+	}
+	if n == 0 {
+		return org.Organization{}, org.ErrNotFound
+	}
+	return r.FindByID(ctx, id)
+}
+
 func (r *OrgRepository) SoftDelete(ctx context.Context, id int64, at time.Time) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -134,16 +154,27 @@ func (r *OrgRepository) FindMember(ctx context.Context, tenantID, userID int64) 
 
 func (r *OrgRepository) ListMembers(ctx context.Context, tenantID int64) ([]org.Member, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+memberColumns+` FROM org_members WHERE tenant_id = ? ORDER BY id`, tenantID)
+		`SELECT m.id, m.tenant_id, m.user_id, m.role, m.created_at, u.first_name, u.last_name, u.email, u.image_url
+		 FROM org_members m JOIN users u ON u.id = m.user_id
+		 WHERE m.tenant_id = ? ORDER BY m.id`, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("org repo: list members: %w", err)
 	}
 	defer rows.Close()
 	var out []org.Member
 	for rows.Next() {
-		m, err := scanMember(rows)
-		if err != nil {
-			return nil, err
+		var (
+			m               org.Member
+			role, createdAt string
+			image           sql.NullString
+		)
+		if err := rows.Scan(&m.ID, &m.TenantID, &m.UserID, &role, &createdAt, &m.FirstName, &m.LastName, &m.Email, &image); err != nil {
+			return nil, fmt.Errorf("org repo: scan member: %w", err)
+		}
+		m.Role, m.ImageURL = org.Role(role), image.String
+		var perr error
+		if m.CreatedAt, perr = parseTime(createdAt); perr != nil {
+			return nil, fmt.Errorf("org repo: member created_at: %w", perr)
 		}
 		out = append(out, m)
 	}

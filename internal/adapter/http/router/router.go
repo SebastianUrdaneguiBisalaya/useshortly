@@ -11,16 +11,17 @@ import (
 )
 
 type Handlers struct {
-	Auth     *middlewares.Auth   // who is calling
-	Tenant   *middlewares.Tenant // which organization they act on
-	Accounts *handler.AuthHandler
-	Orgs     *handler.OrgHandler
-	APIKeys  *handler.APIKeyHandler
-	Links    *handler.LinkHandler
-	Stats    *handler.StatsHandler
-	QR       *handler.QRHandler
-	Pages    *handler.UnlockPageHandler
-	Domains  *handler.DomainHandler
+	Auth      *middlewares.Auth   // who is calling
+	Tenant    *middlewares.Tenant // which organization they act on
+	Accounts  *handler.AuthHandler
+	Orgs      *handler.OrgHandler
+	APIKeys   *handler.APIKeyHandler
+	Links     *handler.LinkHandler
+	Stats     *handler.StatsHandler
+	QR        *handler.QRHandler
+	Pages     *handler.UnlockPageHandler
+	Domains   *handler.DomainHandler
+	Campaigns *handler.CampaignHandler
 	// Limits protects the endpoints from floods and guessing; nil limits nothing.
 	Limits *middlewares.RateLimits
 }
@@ -73,6 +74,7 @@ func NewRouter(h Handlers) http.Handler {
 	userOrg := user.PathPrefix("/orgs/{orgID}").Subrouter()
 	userOrg.Use(h.Tenant.Require)
 	userOrg.HandleFunc("", h.Orgs.Get).Methods(http.MethodGet)
+	userOrg.HandleFunc("", h.Orgs.Update).Methods(http.MethodPatch)
 	userOrg.HandleFunc("", h.Orgs.Delete).Methods(http.MethodDelete)
 	userOrg.HandleFunc("/members", h.Orgs.ListMembers).Methods(http.MethodGet)
 	userOrg.HandleFunc("/members/{userID}", h.Orgs.RemoveMember).Methods(http.MethodDelete)
@@ -87,9 +89,10 @@ func NewRouter(h Handlers) http.Handler {
 	either.Use(h.Auth.UserOrKey, h.Limits.PerPrincipal())
 	eitherOrg := either.PathPrefix("/orgs/{orgID}").Subrouter()
 	eitherOrg.Use(h.Tenant.Require)
-	// Creating and deleting need the write scope; listing only the read scope.
+	// Creating and deleting need the write scope; listing and reading one only the read scope.
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Create))).Methods(http.MethodPost)
 	eitherOrg.Handle("/links", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Links.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.Delete))).Methods(http.MethodDelete)
 	// The page protected links show: the organization's for all of them, or one link's own.
 	eitherOrg.Handle("/unlock-page", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Pages.Get))).Methods(http.MethodGet)
@@ -104,7 +107,19 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Domains.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/domains/{domainID}/verify", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Verify))).Methods(http.MethodPost)
 	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Create))).Methods(http.MethodPost)
+	eitherOrg.Handle("/campaigns", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Update))).Methods(http.MethodPatch)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.CreateChannel))).Methods(http.MethodPost)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.ListChannels))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels/{channelID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.DeleteChannel))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns/{campaignID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.GetCampaign))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}/export", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.Export))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/links/{linkID}/qr-style", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.SetQRStyle))).Methods(http.MethodPut)
+	eitherOrg.Handle("/links/{linkID}/channel", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.SetChannel))).Methods(http.MethodPut)
 	eitherOrg.Handle("/links/{linkID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.Get))).Methods(http.MethodGet)
 
 	// Public redirect. Registered last so it never shadows /health or /api.

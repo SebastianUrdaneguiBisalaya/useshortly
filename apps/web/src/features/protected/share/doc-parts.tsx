@@ -63,7 +63,7 @@ export function DocTable({ rows, nameLabel = 'Name', typeLabel = 'Type', caption
 	);
 }
 
-const METHOD_VARIANT = { DELETE: 'destructive', GET: 'default', POST: 'success', PUT: 'warning' } as const;
+const METHOD_VARIANT = { DELETE: 'destructive', GET: 'default', PATCH: 'warning', POST: 'success', PUT: 'warning' } as const;
 
 export function MethodBadge({ method }: { method: keyof typeof METHOD_VARIANT }) {
 	return (

@@ -87,6 +87,7 @@ const CHANNEL_EXAMPLE = `{
   }
 }`;
 
+const INVALID_TIMEZONE: EndpointError = { code: 'invalid_timezone', meaning: 'tz is not an IANA time zone name such as America/Lima.', status: 400 };
 const CAMPAIGN_NOT_FOUND: EndpointError = { code: 'not_found', meaning: 'The campaign does not exist or belongs to another organization.', status: 404 };
 const NAME_ERRORS: EndpointError[] = [
 	{ code: 'invalid_name', meaning: 'The name is empty, has control characters or is longer than the limit (100 characters for a campaign, 50 for a channel).', status: 400 },
@@ -339,13 +340,14 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 			{
 				description:
 					'Clicks on every link in the campaign’s channels, per day, hour, weekday, country, device and referrer, the total of the previous period of the same length, and the clicks of each channel. Without from and to it covers the last 30 days; the longest period is 366 days.',
-				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from is after to, or the period is longer than 366 days.', status: 400 }],
+				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from is after to, or the period is longer than 366 days.', status: 400 }, INVALID_TIMEZONE],
 				id: 'get-campaign-stats',
 				method: 'GET',
 				path: '/campaigns/{campaignID}/stats',
 				query: [
-					{ description: 'First day, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
-					{ description: 'Last day, YYYY-MM-DD (UTC).', name: 'to', type: 'string' },
+					{ description: 'First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted).', name: 'from', type: 'string' },
+					{ description: 'Last day, YYYY-MM-DD, a day of tz.', name: 'to', type: 'string' },
+					{ description: 'IANA time zone the days, hours and weekdays are counted in, such as America/Lima. UTC when omitted.', name: 'tz', type: 'string' },
 					{ description: 'Only clicks from this country (ISO 3166-1 alpha-2), or unknown.', name: 'country', type: 'string' },
 					{ description: 'mobile, tablet, desktop, bot or unknown.', name: 'device', type: 'string' },
 					{ description: 'A referrer URL, or direct for none.', name: 'referrer', type: 'string' },
@@ -359,13 +361,14 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 			{
 				description:
 					'A CSV file, not JSON, with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to; without them it counts every click.',
-				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from or to is not a date, or from is after to.', status: 400 }],
+				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from or to is not a date, or from is after to.', status: 400 }, INVALID_TIMEZONE],
 				id: 'export-campaign',
 				method: 'GET',
 				path: '/campaigns/{campaignID}/export',
 				query: [
-					{ description: 'First day, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
-					{ description: 'Last day, YYYY-MM-DD (UTC).', name: 'to', type: 'string' },
+					{ description: 'First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted).', name: 'from', type: 'string' },
+					{ description: 'Last day, YYYY-MM-DD, a day of tz.', name: 'to', type: 'string' },
+					{ description: 'IANA time zone the days, hours and weekdays are counted in, such as America/Lima. UTC when omitted.', name: 'tz', type: 'string' },
 				],
 				queryExample: 'from=2026-06-01&to=2026-06-30',
 				returns: 'Blob // text/csv',
@@ -431,19 +434,20 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 		title: 'QR codes',
 	},
 	{
-		description: 'Clicks are counted per UTC day. Every number can be narrowed to one country, device or referrer.',
+		description: 'Clicks are counted per day of the tz time zone (UTC when omitted). Every number can be narrowed to one country, device or referrer.',
 		endpoints: [
 			{
 				description:
 					'Clicks per day, hour, weekday, country, device and referrer, plus the total of the previous period of the same length. Without from and to it covers the last 30 days; the longest period is 366 days.',
-				errors: [{ code: 'invalid_range', meaning: 'from is after to, or the period is longer than 366 days.', status: 400 }],
+				errors: [{ code: 'invalid_range', meaning: 'from is after to, or the period is longer than 366 days.', status: 400 }, INVALID_TIMEZONE],
 				id: 'get-stats',
 				queryExample: 'from=2026-06-01&to=2026-06-30&country=PE',
 				method: 'GET',
 				path: '/links/{linkID}/stats',
 				query: [
-					{ description: 'First day, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
-					{ description: 'Last day, YYYY-MM-DD (UTC).', name: 'to', type: 'string' },
+					{ description: 'First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted).', name: 'from', type: 'string' },
+					{ description: 'Last day, YYYY-MM-DD, a day of tz.', name: 'to', type: 'string' },
+					{ description: 'IANA time zone the days, hours and weekdays are counted in, such as America/Lima. UTC when omitted.', name: 'tz', type: 'string' },
 					{ description: 'Only clicks from this country (ISO 3166-1 alpha-2), or unknown.', name: 'country', type: 'string' },
 					{ description: 'mobile, tablet, desktop, bot or unknown.', name: 'device', type: 'string' },
 					{ description: 'A referrer URL, or direct for none.', name: 'referrer', type: 'string' },

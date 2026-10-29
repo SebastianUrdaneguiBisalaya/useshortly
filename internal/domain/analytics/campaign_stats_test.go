@@ -14,6 +14,7 @@ type fakeCampaignRepo struct {
 		tenant, campaign int64
 		from, to         time.Time
 		filter           Filter
+		loc              *time.Location
 	}
 	stats        Stats
 	channels     []ChannelCount
@@ -23,8 +24,8 @@ type fakeCampaignRepo struct {
 	err          error
 }
 
-func (f *fakeCampaignRepo) CampaignStats(_ context.Context, tenantID, campaignID int64, from, to time.Time, flt Filter) (Stats, []ChannelCount, error) {
-	f.got.tenant, f.got.campaign, f.got.from, f.got.to, f.got.filter = tenantID, campaignID, from, to, flt
+func (f *fakeCampaignRepo) CampaignStats(_ context.Context, tenantID, campaignID int64, from, to time.Time, loc *time.Location, flt Filter) (Stats, []ChannelCount, error) {
+	f.got.tenant, f.got.campaign, f.got.from, f.got.to, f.got.loc, f.got.filter = tenantID, campaignID, from, to, loc, flt
 	return f.stats, f.channels, f.err
 }
 
@@ -91,4 +92,16 @@ func TestCampaignStatsPropagatesRepositoryErrors(t *testing.T) {
 func TestCampaignStatsNeedsTheCampaignRepository(t *testing.T) {
 	_, err := newStatsService(&fakeStatsRepo{}).CampaignStats(context.Background(), CampaignQuery{TenantID: 1, CampaignID: 1})
 	assert.ErrorIs(t, err, ErrCampaignsDisabled)
+}
+
+func TestCampaignStatsCountsInTheRequestedTimeZone(t *testing.T) {
+	lima := mustLocation(t, "America/Lima")
+	repo := &fakeCampaignRepo{}
+	_, err := newCampaignStatsService(repo).CampaignStats(context.Background(), CampaignQuery{TenantID: 1, CampaignID: 1, From: date("2026-03-01"), To: date("2026-03-02"), Location: lima})
+	require.NoError(t, err)
+
+	assert.Equal(t, time.Date(2026, 3, 1, 5, 0, 0, 0, time.UTC), repo.got.from.UTC())
+	assert.Equal(t, time.Date(2026, 3, 3, 5, 0, 0, 0, time.UTC), repo.got.to.UTC())
+	assert.Same(t, lima, repo.got.loc)
+	assert.Equal(t, time.Date(2026, 2, 27, 5, 0, 0, 0, time.UTC), repo.previousFrom.UTC())
 }

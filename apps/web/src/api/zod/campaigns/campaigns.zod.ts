@@ -209,7 +209,7 @@ export const DeleteCampaignChannelParams = zod.object({
 export const DeleteCampaignChannelResponse = zod.void();
 
 /**
- * A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, UTC, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
+ * A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, days of tz, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
  * @summary Export a campaign
  */
 export const ExportCampaignParams = zod.object({
@@ -218,8 +218,9 @@ export const ExportCampaignParams = zod.object({
 });
 
 export const ExportCampaignQueryParams = zod.object({
-	from: zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
-	to: zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)'),
+	from: zod.string().optional().describe('First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)'),
+	to: zod.string().optional().describe('Last day, YYYY-MM-DD, a day of tz'),
+	tz: zod.string().optional().describe('IANA time zone the days are counted in, e.g. America/Lima. UTC when omitted'),
 });
 
 export const ExportCampaignResponse = zod.unknown();

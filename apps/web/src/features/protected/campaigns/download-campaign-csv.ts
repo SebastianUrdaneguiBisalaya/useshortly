@@ -6,7 +6,7 @@ import { useTranslate } from '~/hooks/use-translate';
 
 /**
  * Downloads the CSV of a campaign: a row per link with the clicks it got between `from` and `to` (every click without
- * them). The request needs the `Authorization` header, so a plain link would not work: the file is read as a Blob and
+ * them), counted in the days of the display time zone (`tz`). The request needs the `Authorization` header, so a plain link would not work: the file is read as a Blob and
  * saved through an object URL, and the outcome is reported with a toast.
  */
 export function useDownloadCampaignCsv(orgID: number, campaignID: number) {

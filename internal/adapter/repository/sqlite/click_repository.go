@@ -33,29 +33,30 @@ func (r *ClickRepository) Create(ctx context.Context, c analytics.Click) (analyt
 }
 
 // Stats implements analytics.StatsRepository.
-func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, f analytics.Filter) (analytics.Stats, error) {
+// Days, hours and weekdays are counted in loc, with the offset each click had when it happened.
+func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, loc *time.Location, f analytics.Filter) (analytics.Stats, error) {
 	if err := r.checkLink(ctx, tenantID, linkID); err != nil {
 		return analytics.Stats{}, err
 	}
 	window, args := clickWindow(linkID, from, to, f)
-	return r.aggregate(ctx, window, args)
+	return r.aggregate(ctx, window, args, zoneShift(loc, from, to))
 }
 
-// aggregate summarizes the clicks a WHERE clause selects.
-func (r *ClickRepository) aggregate(ctx context.Context, window string, args []any) (analytics.Stats, error) {
+// aggregate summarizes the clicks a WHERE clause selects; shift is the zoneShift of its window.
+func (r *ClickRepository) aggregate(ctx context.Context, window string, args []any, shift string) (analytics.Stats, error) {
 	var st analytics.Stats
 	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM clicks WHERE `+window, args...).Scan(&st.Total); err != nil {
 		return analytics.Stats{}, fmt.Errorf("click repo: total: %w", err)
 	}
 
 	var err error
-	if st.Daily, err = r.daily(ctx, window, args); err != nil {
+	if st.Daily, err = r.daily(ctx, window, args, shift); err != nil {
 		return analytics.Stats{}, err
 	}
-	if st.ByHour, err = r.bucketed(ctx, "hour", `CAST(substr(clicked_at, 12, 2) AS INTEGER)`, 24, window, args); err != nil {
+	if st.ByHour, err = r.bucketed(ctx, "hour", `CAST(strftime('%H', substr(clicked_at, 1, 19), `+shift+`) AS INTEGER)`, 24, window, args); err != nil {
 		return analytics.Stats{}, err
 	}
-	if st.ByWeekday, err = r.bucketed(ctx, "weekday", `CAST(strftime('%w', substr(clicked_at, 1, 10)) AS INTEGER)`, 7, window, args); err != nil {
+	if st.ByWeekday, err = r.bucketed(ctx, "weekday", `CAST(strftime('%w', substr(clicked_at, 1, 19), `+shift+`) AS INTEGER)`, 7, window, args); err != nil {
 		return analytics.Stats{}, err
 	}
 	if st.Referrers, err = r.top(ctx, "referrer", analytics.TopN, window, args); err != nil {
@@ -71,12 +72,12 @@ func (r *ClickRepository) aggregate(ctx context.Context, window string, args []a
 }
 
 // CampaignStats implements analytics.CampaignStatsRepository.
-func (r *ClickRepository) CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f analytics.Filter) (analytics.Stats, []analytics.ChannelCount, error) {
+func (r *ClickRepository) CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, loc *time.Location, f analytics.Filter) (analytics.Stats, []analytics.ChannelCount, error) {
 	if err := r.checkCampaign(ctx, tenantID, campaignID); err != nil {
 		return analytics.Stats{}, nil, err
 	}
 	window, args := scopedWindow(campaignClicks, []any{campaignID}, from, to, f)
-	st, err := r.aggregate(ctx, window, args)
+	st, err := r.aggregate(ctx, window, args, zoneShift(loc, from, to))
 	if err != nil {
 		return analytics.Stats{}, nil, err
 	}
@@ -199,9 +200,9 @@ func scopedWindow(scope string, scopeArgs []any, from, to time.Time, f analytics
 	return where, args
 }
 
-func (r *ClickRepository) daily(ctx context.Context, window string, args []any) ([]analytics.DayCount, error) {
+func (r *ClickRepository) daily(ctx context.Context, window string, args []any, shift string) ([]analytics.DayCount, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT substr(clicked_at, 1, 10), count(*) FROM clicks WHERE `+window+` GROUP BY 1 ORDER BY 1`, args...)
+		`SELECT strftime('%Y-%m-%d', substr(clicked_at, 1, 19), `+shift+`), count(*) FROM clicks WHERE `+window+` GROUP BY 1 ORDER BY 1`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("click repo: daily: %w", err)
 	}

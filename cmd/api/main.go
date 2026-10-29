@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // zone names such as America/Lima must resolve in minimal images (debian-slim has no tzdata) too
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/google"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/adapter/auth/mcptoken"

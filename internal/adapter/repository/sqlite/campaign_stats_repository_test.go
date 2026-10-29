@@ -53,7 +53,7 @@ func TestClickRepositoryCampaignStats(t *testing.T) {
 	click(outside, day(2), "PE", "mobile", "") // no campaign
 
 	from, to := day(1).Truncate(24*time.Hour), day(4).Truncate(24*time.Hour)
-	st, channels, err := clicks.CampaignStats(ctx, 1, a.ID, from, to, analytics.Filter{})
+	st, channels, err := clicks.CampaignStats(ctx, 1, a.ID, from, to, time.UTC, analytics.Filter{})
 	require.NoError(t, err)
 	assert.EqualValues(t, 4, st.Total, "only the campaign's clicks inside the window")
 	assert.Equal(t, []analytics.DayCount{{Date: "2026-01-01", Clicks: 1}, {Date: "2026-01-02", Clicks: 3}}, st.Daily)
@@ -67,7 +67,7 @@ func TestClickRepositoryCampaignStats(t *testing.T) {
 	}, channels, "every channel is listed, the quiet one with zero")
 
 	mobile := "mobile"
-	st, channels, err = clicks.CampaignStats(ctx, 1, a.ID, from, to, analytics.Filter{Device: &mobile})
+	st, channels, err = clicks.CampaignStats(ctx, 1, a.ID, from, to, time.UTC, analytics.Filter{Device: &mobile})
 	require.NoError(t, err)
 	assert.EqualValues(t, 3, st.Total)
 	assert.EqualValues(t, 2, channels[0].Clicks, "the filter also narrows the channel counts")
@@ -80,7 +80,7 @@ func TestClickRepositoryCampaignStats(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, total)
 
-	_, _, err = clicks.CampaignStats(ctx, 2, a.ID, from, to, analytics.Filter{})
+	_, _, err = clicks.CampaignStats(ctx, 2, a.ID, from, to, time.UTC, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrCampaignNotFound, "another tenant's campaign looks unknown")
 	_, err = clicks.CampaignTotal(ctx, 2, a.ID, from, to, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrCampaignNotFound)

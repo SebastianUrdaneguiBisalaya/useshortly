@@ -27,7 +27,7 @@ type Count struct {
 	Clicks int64
 }
 
-// DayCount is the clicks of one UTC day.
+// DayCount is the clicks of one day of the query's time zone.
 type DayCount struct {
 	Date   string // YYYY-MM-DD
 	Clicks int64
@@ -43,7 +43,7 @@ type Stats struct {
 	// same filter, to compare against Total.
 	PreviousTotal int64
 	Daily         []DayCount // one entry per day, zero days included
-	// ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday), zeros included.
+	// ByHour has 24 entries (hour 0..23 of the query's time zone) and ByWeekday 7 (0 is Sunday), zeros included.
 	ByHour    []int64
 	ByWeekday []int64
 	Referrers []Count
@@ -59,13 +59,15 @@ type Filter struct {
 	Referrer *string
 }
 
-// StatsQuery selects a link of a tenant and a window. From and To are days (their time of day
-// is ignored); zero values mean "the last DefaultDays days, ending today".
+// StatsQuery selects a link of a tenant and a window. From and To are calendar days (their time of day
+// is ignored) read in Location; zero values mean "the last DefaultDays days, ending today".
 type StatsQuery struct {
 	TenantID int64
 	LinkID   int64
 	From     time.Time
 	To       time.Time
+	// Location is the time zone whose days, hours and weekdays the stats count; nil means UTC.
+	Location *time.Location
 	// Country, Device and Referrer keep only the clicks with that value, written as the lists
 	// return them: "direct" is a visit without referrer and "unknown" a missing country or device.
 	// Empty does not filter.
@@ -79,9 +81,10 @@ type StatsRepository interface {
 	// Stats aggregates the clicks of the link with from <= at < to that pass the filter. Referrers
 	// and Devices are capped at TopN and Countries at MaxCountries, most frequent first; Daily
 	// has only the days with clicks and ByHour and ByWeekday only the hours and weekdays with
-	// clicks (index = hour or weekday). Names are as stored, "" meaning absent.
+	// clicks (index = hour or weekday), all counted in loc (daylight saving included). Names are as
+	// stored, "" meaning absent.
 	// Returns ErrNotFound if the link does not exist in that tenant.
-	Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, f Filter) (Stats, error)
+	Stats(ctx context.Context, tenantID, linkID int64, from, to time.Time, loc *time.Location, f Filter) (Stats, error)
 	// Total counts the clicks of the link with from <= at < to that pass the filter.
 	Total(ctx context.Context, tenantID, linkID int64, from, to time.Time, f Filter) (int64, error)
 }
@@ -108,6 +111,7 @@ type CampaignQuery struct {
 	CampaignID int64
 	From       time.Time
 	To         time.Time
+	Location   *time.Location
 	Country    string
 	Device     string
 	Referrer   string
@@ -118,7 +122,7 @@ type CampaignStatsRepository interface {
 	// CampaignStats aggregates the clicks of every link in a channel of the campaign, like
 	// StatsRepository.Stats does for one link, and counts them per channel of the campaign.
 	// Returns ErrCampaignNotFound if the campaign does not exist in that tenant.
-	CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f Filter) (Stats, []ChannelCount, error)
+	CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, loc *time.Location, f Filter) (Stats, []ChannelCount, error)
 	// CampaignTotal counts the clicks of the campaign with from <= at < to that pass the filter.
 	CampaignTotal(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f Filter) (int64, error)
 }
@@ -141,19 +145,19 @@ func NewService(repo StatsRepository) *Service {
 
 // Stats returns the clicks of a link of the tenant over the window.
 func (s *Service) Stats(ctx context.Context, q StatsQuery) (Stats, error) {
-	from, to, err := s.window(q.From, q.To)
+	loc := zone(q.Location)
+	from, to, err := s.window(q.From, q.To, loc)
 	if err != nil {
 		return Stats{}, err
 	}
 	f := filter(q)
 	// The repository takes a half-open range, so "to" includes its whole last day.
 	end := to.AddDate(0, 0, 1)
-	st, err := s.repo.Stats(ctx, q.TenantID, q.LinkID, from, end, f)
+	st, err := s.repo.Stats(ctx, q.TenantID, q.LinkID, from, end, loc, f)
 	if err != nil {
 		return Stats{}, err
 	}
-	span := end.Sub(from)
-	if st.PreviousTotal, err = s.repo.Total(ctx, q.TenantID, q.LinkID, from.Add(-span), from, f); err != nil {
+	if st.PreviousTotal, err = s.repo.Total(ctx, q.TenantID, q.LinkID, previousStart(from, end), from, f); err != nil {
 		return Stats{}, err
 	}
 	st.LinkID = q.LinkID
@@ -165,18 +169,18 @@ func (s *Service) CampaignStats(ctx context.Context, q CampaignQuery) (CampaignS
 	if s.campaigns == nil {
 		return CampaignStats{}, ErrCampaignsDisabled
 	}
-	from, to, err := s.window(q.From, q.To)
+	loc := zone(q.Location)
+	from, to, err := s.window(q.From, q.To, loc)
 	if err != nil {
 		return CampaignStats{}, err
 	}
 	f := filter(StatsQuery{Country: q.Country, Device: q.Device, Referrer: q.Referrer})
 	end := to.AddDate(0, 0, 1)
-	st, channels, err := s.campaigns.CampaignStats(ctx, q.TenantID, q.CampaignID, from, end, f)
+	st, channels, err := s.campaigns.CampaignStats(ctx, q.TenantID, q.CampaignID, from, end, loc, f)
 	if err != nil {
 		return CampaignStats{}, err
 	}
-	span := end.Sub(from)
-	if st.PreviousTotal, err = s.campaigns.CampaignTotal(ctx, q.TenantID, q.CampaignID, from.Add(-span), from, f); err != nil {
+	if st.PreviousTotal, err = s.campaigns.CampaignTotal(ctx, q.TenantID, q.CampaignID, previousStart(from, end), from, f); err != nil {
 		return CampaignStats{}, err
 	}
 	if channels == nil {
@@ -198,17 +202,52 @@ func finish(st Stats, from, to time.Time) Stats {
 	return st
 }
 
-// window resolves the optional days into from <= to, both at midnight UTC.
-func (s *Service) window(from, to time.Time) (time.Time, time.Time, error) {
-	if to.IsZero() {
-		to = s.now()
+// zone is the time zone a query counts in: UTC when none was given.
+func zone(loc *time.Location) *time.Location {
+	if loc == nil {
+		return time.UTC
 	}
-	to = day(to)
+	return loc
+}
+
+// LoadLocation resolves an IANA time zone name such as "America/Lima"; empty means UTC. Anything else that is not a zone
+// name ("Local" included, which would depend on the server) is ErrInvalidTimeZone.
+func LoadLocation(name string) (*time.Location, error) {
+	if name == "" {
+		return time.UTC, nil
+	}
+	if name == "Local" {
+		return nil, ErrInvalidTimeZone
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, ErrInvalidTimeZone
+	}
+	return loc, nil
+}
+
+// previousStart is where the window right before from..end starts: as many calendar days back as the window has.
+// Counting days (not hours) keeps it aligned to local midnights across a daylight saving change.
+func previousStart(from, end time.Time) time.Time {
+	days := int(end.Sub(from).Round(24*time.Hour) / (24 * time.Hour))
+	return from.AddDate(0, 0, -days)
+}
+
+// window resolves the optional days into from <= to, both at midnight of loc. A given day is the calendar date its
+// value has in UTC (the handler parses YYYY-MM-DD as UTC midnight) and is then taken as a day of loc; the default
+// "today" is the date it is right now in loc.
+func (s *Service) window(from, to time.Time, loc *time.Location) (time.Time, time.Time, error) {
+	if to.IsZero() {
+		to = day(s.now().In(loc), loc)
+	} else {
+		to = day(to.UTC(), loc)
+	}
 	if from.IsZero() {
 		from = to.AddDate(0, 0, -(DefaultDays - 1))
+	} else {
+		from = day(from.UTC(), loc)
 	}
-	from = day(from)
-	if from.After(to) || to.Sub(from) >= MaxDays*24*time.Hour {
+	if from.After(to) || to.After(from.AddDate(0, 0, MaxDays-1)) {
 		return time.Time{}, time.Time{}, ErrInvalidRange
 	}
 	return from, to, nil
@@ -243,9 +282,10 @@ func pad(have []int64, n int) []int64 {
 	return out
 }
 
-func day(t time.Time) time.Time {
-	y, m, d := t.UTC().Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+// day is the midnight in loc of t's calendar date, read in t's own zone.
+func day(t time.Time, loc *time.Location) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, loc)
 }
 
 // fillDays returns every day from..to, taking the counts the repository had.

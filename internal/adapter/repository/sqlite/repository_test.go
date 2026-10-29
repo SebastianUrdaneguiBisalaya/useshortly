@@ -357,7 +357,7 @@ func TestClickRepositoryStats(t *testing.T) {
 	add(theirs.ID, at("1h"), "https://other.example", "FR", "desktop") // another tenant's link
 
 	from, to := at("0h"), at("72h") // [03-01, 03-04)
-	st, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{})
+	st, err := clicks.Stats(ctx, 1, mine.ID, from, to, time.UTC, analytics.Filter{})
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 4, st.Total)
@@ -373,7 +373,7 @@ func TestClickRepositoryStats(t *testing.T) {
 	assert.Equal(t, []int64{2, 1, 1, 0, 0, 0, 0}, st.ByWeekday, "03-01 is a Sunday")
 
 	pe := "PE"
-	onlyPE, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{Country: &pe})
+	onlyPE, err := clicks.Stats(ctx, 1, mine.ID, from, to, time.UTC, analytics.Filter{Country: &pe})
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, onlyPE.Total)
 	direct, none := "", ""
@@ -384,20 +384,20 @@ func TestClickRepositoryStats(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, directOnly)
 
-	empty, err := clicks.Stats(ctx, 1, mine.ID, at("500h"), at("600h"), analytics.Filter{})
+	empty, err := clicks.Stats(ctx, 1, mine.ID, at("500h"), at("600h"), time.UTC, analytics.Filter{})
 	require.NoError(t, err)
 	assert.Zero(t, empty.Total)
 	assert.Empty(t, empty.Daily)
 
-	_, err = clicks.Stats(ctx, 2, mine.ID, from, to, analytics.Filter{})
+	_, err = clicks.Stats(ctx, 2, mine.ID, from, to, time.UTC, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrNotFound, "another tenant cannot read my link's stats")
-	_, err = clicks.Stats(ctx, 1, 9999, from, to, analytics.Filter{})
+	_, err = clicks.Stats(ctx, 1, 9999, from, to, time.UTC, analytics.Filter{})
 	assert.ErrorIs(t, err, analytics.ErrNotFound)
 
 	for i := 0; i < analytics.TopN+5; i++ {
 		add(mine.ID, at("1h"), "https://many.example/"+string(rune('a'+i)), "", "")
 	}
-	capped, err := clicks.Stats(ctx, 1, mine.ID, from, to, analytics.Filter{})
+	capped, err := clicks.Stats(ctx, 1, mine.ID, from, to, time.UTC, analytics.Filter{})
 	require.NoError(t, err)
 	assert.Len(t, capped.Referrers, analytics.TopN)
 }

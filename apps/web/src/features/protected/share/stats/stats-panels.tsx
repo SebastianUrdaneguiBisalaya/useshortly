@@ -13,7 +13,7 @@ import { Icon } from '~/components/ui/foundations/icon/icon';
 import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import type { Locale } from '~/i18n';
-import { hoursInDisplayZone } from '~/lib/date-time';
+import { getDisplayTimeZone } from '~/lib/date-time';
 import {
 	addDays,
 	clampRange,
@@ -67,11 +67,13 @@ export function resolveStatsQuery(query: StatsQueryValues) {
 		days: daysInRange(range.from, range.to),
 		hasFilters: query.country !== null || query.device !== null || query.referrer !== null,
 		range,
+		// The period as the API takes it: days of the display time zone, which also counts the hours and weekdays in it.
+		requestRange: { ...range, tz: getDisplayTimeZone() },
 	};
 }
 
 /** The query parameters of the statistics requests: the period and the filters that are applied. */
-export function statsParams(range: { from: string; to: string }, query: StatsQueryValues) {
+export function statsParams(range: { from: string; to: string; tz?: string }, query: StatsQueryValues) {
 	return {
 		...range,
 		...(query.country && { country: query.country }),
@@ -211,7 +213,7 @@ export function StatsGrid({
 			<Panel className='col-span-12 lg:col-span-6' title={t('protected.dashboard.charts.hours.title')}>
 				<Chart.Bar
 					bars={[{ color: CHART_COLORS.blue, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
-					data={hoursInDisplayZone(data?.by_hour ?? []).map((clicks, hour) => ({ clicks, label: String(hour).padStart(2, '0') }))}
+					data={(data?.by_hour ?? []).map((clicks, hour) => ({ clicks, label: String(hour).padStart(2, '0') }))}
 					xAxisKey='label'
 				/>
 			</Panel>

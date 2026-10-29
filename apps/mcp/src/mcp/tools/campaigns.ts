@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod';
 import { segment } from '../../api/client.js';
 import { campaign, campaignChannel, campaignStats, pageMeta } from '../../api/schemas.js';
-import { day, topCounts } from './analytics.js';
+import { day, timeZone, topCounts } from './analytics.js';
 import { guard, ok, type ToolContext } from './helpers.js';
 import { oneLine } from './text.js';
 
@@ -114,13 +114,14 @@ export function registerCampaignStats(server: McpServer, { api }: ToolContext) {
 		{
 			title: 'Campaign click statistics',
 			description:
-				'Click statistics of a whole campaign: total clicks across all its links (with the previous period of the same length to compare), the clicks of each channel (most clicks first, channels without clicks included), clicks per day, per UTC hour and per weekday, and the top referrers, countries and devices. Can be narrowed to one country, device or referrer. Without dates it covers the last 30 days; the longest period is 366 days.',
+				'Click statistics of a whole campaign: total clicks across all its links (with the previous period of the same length to compare), the clicks of each channel (most clicks first, channels without clicks included), clicks per day, per hour of the day and per weekday (counted in the tz time zone, UTC by default), and the top referrers, countries and devices. Can be narrowed to one country, device or referrer. Without dates it covers the last 30 days; the longest period is 366 days.',
 			inputSchema: z
 				.object({
 					organization_id: organizationId,
 					campaign_id: campaignId,
-					from: day.optional().describe('First day to include, YYYY-MM-DD (UTC).'),
-					to: day.optional().describe('Last day to include, YYYY-MM-DD (UTC).'),
+					from: day.optional().describe('First day to include, YYYY-MM-DD, a day of tz (UTC when tz is omitted).'),
+					to: day.optional().describe('Last day to include, YYYY-MM-DD, a day of tz.'),
+					tz: timeZone.optional(),
 					country: z.string().trim().min(1).max(7).optional().describe('Only clicks from this country: ISO 3166-1 alpha-2 code such as PE, or "unknown".'),
 					device: z.string().trim().min(1).max(16).optional().describe('Only clicks from this device: mobile, tablet, desktop, bot or "unknown".'),
 					referrer: z.string().trim().min(1).max(255).optional().describe('Only clicks with this referrer exactly as listed, or "direct" for none.'),
@@ -128,13 +129,13 @@ export function registerCampaignStats(server: McpServer, { api }: ToolContext) {
 				.refine(v => !v.from || !v.to || v.from <= v.to, { message: 'from must not be after to', path: ['from'] }),
 			annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
 		},
-		({ organization_id, campaign_id, from, to, country, device, referrer }) =>
+		({ organization_id, campaign_id, from, to, tz, country, device, referrer }) =>
 			guard(async () => {
 				const { data } = await api.get(`/orgs/${segment(organization_id)}/campaigns/${segment(campaign_id)}/stats`, campaignStats, {
-					query: { from, to, country, device, referrer },
+					query: { from, to, tz, country, device, referrer },
 				});
 				const filters = Object.entries({ country, device, referrer }).flatMap(([k, v]) => (v ? [`${k}=${oneLine(v, 80)}`] : []));
-				const period = `from ${data.from} to ${data.to}`;
+				const period = `from ${data.from} to ${data.to}${tz ? ` (${tz})` : ''}`;
 				const busiest = data.daily.reduce<{ date: string; clicks: number } | null>((best, d) => (d.clicks > (best?.clicks ?? 0) ? d : best), null);
 				const channels = data.channels.map(c => `${oneLine(c.name, 60)} (${c.clicks})`).join(', ');
 				const lines = data.total

@@ -737,6 +737,29 @@ func TestClicksAreEnrichedAndReportedAsStats(t *testing.T) {
 		assert.Equal(t, []any{}, res.body["referrers"])
 	})
 
+	t.Run("tz counts the days in that time zone", func(t *testing.T) {
+		lima, err := time.LoadLocation("America/Lima")
+		require.NoError(t, err)
+		res := e.do("GET", stats+"?tz=America/Lima", ana, nil)
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		assert.EqualValues(t, 3, res.body["total"])
+		assert.Equal(t, time.Now().In(lima).Format("2006-01-02"), res.body["to"], "today is the date it is in Lima")
+		assert.Len(t, res.body["daily"], analytics.DefaultDays)
+		var inHours float64
+		for _, n := range res.body["by_hour"].([]any) {
+			inHours += n.(float64)
+		}
+		assert.EqualValues(t, 3, inHours, "every click falls in one hour of the zone")
+	})
+
+	t.Run("an unknown tz is 400", func(t *testing.T) {
+		for _, tz := range []string{"Mars/Olympus", "Local", "lima", "../etc/passwd"} {
+			res := e.do("GET", stats+"?tz="+tz, ana, nil)
+			assert.Equal(t, http.StatusBadRequest, res.status, tz)
+			assert.Equal(t, "invalid_timezone", res.errCode(), tz)
+		}
+	})
+
 	t.Run("bad ranges are 400", func(t *testing.T) {
 		for _, q := range []string{"from=yesterday", "to=2026-13-40", "from=2026-03-05&to=2026-03-01", "from=2020-01-01&to=2026-01-01"} {
 			res := e.do("GET", stats+"?"+q, ana, nil)

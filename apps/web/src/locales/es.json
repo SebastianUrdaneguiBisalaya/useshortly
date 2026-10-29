@@ -195,7 +195,7 @@
 			"charts": {
 				"daily": {
 					"title": "Clics en el tiempo",
-					"description": "Clics por día (UTC).",
+					"description": "Clics por día en tu zona horaria.",
 					"series": "Clics"
 				},
 				"devices": {
@@ -219,11 +219,11 @@
 				},
 				"hours": {
 					"title": "Clics por hora",
-					"description": "Hora del día (Lima)."
+					"description": "Hora del día en tu zona horaria."
 				},
 				"weekdays": {
 					"title": "Clics por día de la semana",
-					"description": "Día de la semana (UTC)."
+					"description": "Día de la semana en tu zona horaria."
 				}
 			}
 		},

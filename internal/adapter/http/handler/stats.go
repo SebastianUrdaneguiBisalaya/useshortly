@@ -33,7 +33,7 @@ type statsBody struct {
 	// PreviousTotal is the clicks of the window right before this one, as long as it.
 	PreviousTotal int64     `json:"previous_total"`
 	Daily         []dayBody `json:"daily"`
-	// ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).
+	// ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).
 	ByHour    []int64     `json:"by_hour"`
 	ByWeekday []int64     `json:"by_weekday"`
 	Referrers []countBody `json:"referrers"`
@@ -55,7 +55,7 @@ type campaignStatsBody struct {
 	// PreviousTotal is the clicks of the window right before this one, as long as it.
 	PreviousTotal int64     `json:"previous_total"`
 	Daily         []dayBody `json:"daily"`
-	// ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).
+	// ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).
 	ByHour    []int64     `json:"by_hour"`
 	ByWeekday []int64     `json:"by_weekday"`
 	Referrers []countBody `json:"referrers"`
@@ -68,17 +68,18 @@ type campaignStatsBody struct {
 const dateLayout = "2006-01-02"
 
 // Get answers the clicks of one link of the organization between ?from= and ?to= (YYYY-MM-DD,
-// both included, UTC). Without them it covers the last 30 days.
+// both included, days of ?tz=, UTC by default). Without them it covers the last 30 days.
 //
 //	@Summary		Click statistics of a link
-//	@Description	Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+//	@Description	Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
 //	@Tags			analytics
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			orgID	path		int		true	"Organization id"
 //	@Param			linkID	path		int		true	"Link id"
-//	@Param			from	query		string	false	"First day, YYYY-MM-DD (UTC)"
-//	@Param			to		query		string	false	"Last day, YYYY-MM-DD (UTC)"
+//	@Param			from	query		string	false	"First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)"
+//	@Param			to		query		string	false	"Last day, YYYY-MM-DD, a day of tz"
+//	@Param			tz		query		string	false	"IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted"
 //	@Param			country	query		string	false	"Only clicks from this country (ISO 3166-1 alpha-2), or unknown"
 //	@Param			device	query		string	false	"Only clicks from this device (mobile, tablet, desktop, bot), or unknown"
 //	@Param			referrer	query		string	false	"Only clicks with this referrer, or direct for none"
@@ -107,8 +108,12 @@ func (h *StatsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	loc, ok := timeZoneParam(w, r)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
-	st, err := h.stats.Stats(r.Context(), analytics.StatsQuery{TenantID: tenant.ID, LinkID: linkID, From: from, To: to,
+	st, err := h.stats.Stats(r.Context(), analytics.StatsQuery{TenantID: tenant.ID, LinkID: linkID, From: from, To: to, Location: loc,
 		Country: q.Get("country"), Device: q.Get("device"), Referrer: q.Get("referrer")})
 	if err != nil {
 		WriteError(w, r, err)
@@ -126,17 +131,18 @@ func (h *StatsHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCampaign answers the clicks of every link of one campaign of the organization between ?from=
-// and ?to= (YYYY-MM-DD, both included, UTC). Without them it covers the last 30 days.
+// and ?to= (YYYY-MM-DD, both included, days of ?tz=, UTC by default). Without them it covers the last 30 days.
 //
 //	@Summary		Click statistics of a campaign
-//	@Description	Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+//	@Description	Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
 //	@Tags			analytics
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			orgID		path		int		true	"Organization id"
 //	@Param			campaignID	path		int		true	"Campaign id"
-//	@Param			from		query		string	false	"First day, YYYY-MM-DD (UTC)"
-//	@Param			to			query		string	false	"Last day, YYYY-MM-DD (UTC)"
+//	@Param			from		query		string	false	"First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)"
+//	@Param			to			query		string	false	"Last day, YYYY-MM-DD, a day of tz"
+//	@Param			tz			query		string	false	"IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted"
 //	@Param			country		query		string	false	"Only clicks from this country (ISO 3166-1 alpha-2), or unknown"
 //	@Param			device		query		string	false	"Only clicks from this device (mobile, tablet, desktop, bot), or unknown"
 //	@Param			referrer	query		string	false	"Only clicks with this referrer, or direct for none"
@@ -165,8 +171,12 @@ func (h *StatsHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	loc, ok := timeZoneParam(w, r)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
-	st, err := h.stats.CampaignStats(r.Context(), analytics.CampaignQuery{TenantID: tenant.ID, CampaignID: campaignID, From: from, To: to,
+	st, err := h.stats.CampaignStats(r.Context(), analytics.CampaignQuery{TenantID: tenant.ID, CampaignID: campaignID, From: from, To: to, Location: loc,
 		Country: q.Get("country"), Device: q.Get("device"), Referrer: q.Get("referrer")})
 	if err != nil {
 		WriteError(w, r, err)
@@ -208,4 +218,15 @@ func dateParam(w http.ResponseWriter, r *http.Request, name string) (time.Time, 
 		return time.Time{}, false
 	}
 	return t, true
+}
+
+// timeZoneParam reads the optional ?tz= IANA time zone name; absent is UTC.
+func timeZoneParam(w http.ResponseWriter, r *http.Request) (*time.Location, bool) {
+	loc, err := analytics.LoadLocation(r.URL.Query().Get("tz"))
+	if err != nil {
+		WriteAPIErrorDetails(w, http.StatusBadRequest, "invalid_timezone", "tz must be an IANA time zone name like America/Lima",
+			[]FieldError{{Field: "tz", Message: "unknown time zone"}})
+		return nil, false
+	}
+	return loc, true
 }

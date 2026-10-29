@@ -296,20 +296,42 @@ func TestExport(t *testing.T) {
 	a, _ := s.Create(ctx, CreateInput{TenantID: 1, Name: "A"})
 	day := func(d int) time.Time { return time.Date(2026, 1, d, 15, 0, 0, 0, time.UTC) }
 
-	rows, err := s.Export(ctx, 1, a.ID, time.Time{}, time.Time{})
+	rows, err := s.Export(ctx, 1, a.ID, time.Time{}, time.Time{}, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, rows, "no links encodes as an empty list")
 	assert.True(t, repo.from.IsZero() && repo.to.IsZero(), "no days counts every click")
 
-	_, err = s.Export(ctx, 1, a.ID, day(10), day(12))
+	_, err = s.Export(ctx, 1, a.ID, day(10), day(12), nil)
 	require.NoError(t, err)
 	assert.Equal(t, time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC), repo.from)
 	assert.Equal(t, time.Date(2026, 1, 13, 0, 0, 0, 0, time.UTC), repo.to, "the last day is included")
 
-	_, err = s.Export(ctx, 1, a.ID, day(12), day(10))
+	_, err = s.Export(ctx, 1, a.ID, day(12), day(10), nil)
 	assert.ErrorIs(t, err, ErrInvalidRange)
-	_, err = s.Export(ctx, 1, a.ID, day(10), time.Time{})
+	_, err = s.Export(ctx, 1, a.ID, day(10), time.Time{}, nil)
 	assert.NoError(t, err, "one open side is fine")
-	_, err = s.Export(ctx, 2, a.ID, time.Time{}, time.Time{})
+	_, err = s.Export(ctx, 2, a.ID, time.Time{}, time.Time{}, nil)
 	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestExportCountsDaysInATimeZone(t *testing.T) {
+	ctx := context.Background()
+	s, repo := newService(t)
+	a, _ := s.Create(ctx, CreateInput{TenantID: 1, Name: "A"})
+	from, to := time.Date(2026, 3, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
+
+	lima, err := time.LoadLocation("America/Lima")
+	require.NoError(t, err)
+	_, err = s.Export(ctx, 1, a.ID, from, to, lima)
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, 3, 7, 5, 0, 0, 0, time.UTC), repo.from.UTC(), "a Lima day starts at 05:00 UTC")
+	assert.Equal(t, time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC), repo.to.UTC())
+
+	// Clocks go forward on 8 March 2026 in New York, so the window ends at UTC-4.
+	ny, err := time.LoadLocation("America/New_York")
+	require.NoError(t, err)
+	_, err = s.Export(ctx, 1, a.ID, from, to, ny)
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, 3, 7, 5, 0, 0, 0, time.UTC), repo.from.UTC())
+	assert.Equal(t, time.Date(2026, 3, 10, 4, 0, 0, 0, time.UTC), repo.to.UTC())
 }

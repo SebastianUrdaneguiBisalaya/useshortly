@@ -8,11 +8,15 @@
 
 export type ExportCampaignParams = {
 	/**
-	 * First day, YYYY-MM-DD (UTC)
+	 * First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)
 	 */
 	from?: string;
 	/**
-	 * Last day, YYYY-MM-DD (UTC)
+	 * Last day, YYYY-MM-DD, a day of tz
 	 */
 	to?: string;
+	/**
+	 * IANA time zone the days are counted in, e.g. America/Lima. UTC when omitted
+	 */
+	tz?: string;
 };

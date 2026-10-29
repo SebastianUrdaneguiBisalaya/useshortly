@@ -133,14 +133,18 @@ func (s *Service) Resolve(ctx context.Context, tenantID, channelID int64) (campa
 }
 
 // Export lists the links of a campaign of the tenant with the clicks they got between the days
-// from and to, both included (UTC). A zero day leaves that side open, so with neither it counts
-// every click.
-func (s *Service) Export(ctx context.Context, tenantID, campaignID int64, from, to time.Time) ([]ExportRow, error) {
+// from and to, both included, as days of loc (UTC when nil): each starts at the local midnight, so the
+// counts match the days the statistics show. A zero day leaves that side open, so with neither it
+// counts every click.
+func (s *Service) Export(ctx context.Context, tenantID, campaignID int64, from, to time.Time, loc *time.Location) ([]ExportRow, error) {
+	if loc == nil {
+		loc = time.UTC
+	}
 	if !from.IsZero() {
-		from = day(from)
+		from = day(from, loc)
 	}
 	if !to.IsZero() {
-		to = day(to).AddDate(0, 0, 1) // the repository takes a half-open range
+		to = day(to, loc).AddDate(0, 0, 1) // the repository takes a half-open range
 	}
 	if !from.IsZero() && !to.IsZero() && !from.Before(to) {
 		return nil, ErrInvalidRange
@@ -155,9 +159,10 @@ func (s *Service) Export(ctx context.Context, tenantID, campaignID int64, from, 
 	return rows, nil
 }
 
-func day(t time.Time) time.Time {
+// day is the midnight in loc of the calendar date t has in UTC (the handler parses YYYY-MM-DD as UTC midnight).
+func day(t time.Time, loc *time.Location) time.Time {
 	y, m, d := t.UTC().Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	return time.Date(y, m, d, 0, 0, 0, 0, loc)
 }
 
 // cleanName trims a name and checks it is 1..max characters without control characters.

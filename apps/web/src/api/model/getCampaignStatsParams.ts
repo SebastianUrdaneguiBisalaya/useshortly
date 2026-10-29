@@ -8,13 +8,17 @@
 
 export type GetCampaignStatsParams = {
 	/**
-	 * First day, YYYY-MM-DD (UTC)
+	 * First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)
 	 */
 	from?: string;
 	/**
-	 * Last day, YYYY-MM-DD (UTC)
+	 * Last day, YYYY-MM-DD, a day of tz
 	 */
 	to?: string;
+	/**
+	 * IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted
+	 */
+	tz?: string;
 	/**
 	 * Only clicks from this country (ISO 3166-1 alpha-2), or unknown
 	 */

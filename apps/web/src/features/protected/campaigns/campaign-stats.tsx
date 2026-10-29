@@ -25,12 +25,12 @@ export function CampaignStats({ orgID, campaignID }: { orgID: number; campaignID
 	const [exportOpen, setExportOpen] = useState(false);
 	// Period and filters live in the URL, as in the dashboard, so a view can be shared and survives a reload.
 	const [query, setQuery] = useQueryStates(statsParsers, statsQueryOptions);
-	const { days, hasFilters, range } = resolveStatsQuery(query);
+	const { days, hasFilters, range, requestRange } = resolveStatsQuery(query);
 
-	const params: GetCampaignStatsParams = statsParams(range, query);
+	const params: GetCampaignStatsParams = statsParams(requestRange, query);
 	const stats = useGetCampaignStats(orgID, campaignID, params, { query: { placeholderData: keepPreviousData } });
 	// The filter menus must keep offering every value while one is applied, so they read the unfiltered numbers.
-	const unfiltered = useGetCampaignStats(orgID, campaignID, range, { query: { enabled: hasFilters, placeholderData: keepPreviousData } });
+	const unfiltered = useGetCampaignStats(orgID, campaignID, requestRange, { query: { enabled: hasFilters, placeholderData: keepPreviousData } });
 	const optionsSource = (hasFilters ? unfiltered.data : stats.data)?.data;
 	const data = stats.data?.data;
 	const channels = data?.channels ?? [];
@@ -55,7 +55,7 @@ export function CampaignStats({ orgID, campaignID }: { orgID: number; campaignID
 								className='justify-start'
 								onClick={() => {
 									setExportOpen(false);
-									void exporter.download(range);
+									void exporter.download(requestRange);
 								}}
 								variant='ghost'
 							>

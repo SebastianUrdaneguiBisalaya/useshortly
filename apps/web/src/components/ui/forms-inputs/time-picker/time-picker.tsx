@@ -424,7 +424,7 @@ function Root(props: TimePickerRootProps) {
 		[value]
 	);
 
-	useClickOutside(rootRef, () => setOpen(false), contentRef);
+	useClickOutside(rootRef, () => setOpen(false), contentRef, openState);
 	useEscapeKey(openState, () => setOpen(false));
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: props identity changes every render; only reacting to isControlled/format is intentional

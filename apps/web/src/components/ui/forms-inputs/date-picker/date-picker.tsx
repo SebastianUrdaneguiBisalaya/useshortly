@@ -343,7 +343,7 @@ function Root(props: DatePickerRootProps) {
 		[defaultEndMinutes, defaultStartMinutes, mode, rangeValue, singleValue]
 	);
 
-	useClickOutside(rootRef, () => setOpen(false), contentRef);
+	useClickOutside(rootRef, () => setOpen(false), contentRef, openState);
 	useEscapeKey(openState, () => setOpen(false));
 
 	const setDraftTime = useCallback((boundary: 'from' | 'to', value: TimeValue) => {

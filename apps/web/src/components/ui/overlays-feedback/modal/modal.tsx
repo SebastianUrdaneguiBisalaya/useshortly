@@ -2,7 +2,7 @@
 
 import { cloneElement, createContext, type HTMLAttributes, type MouseEvent, type ReactElement, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { claimOverlayLayer, registerEscapeHandler } from '../../utils/overlay/overlayStack';
+import { claimOverlayLayer, isOutsideDismissPending, registerEscapeHandler } from '../../utils/overlay/overlayStack';
 import { cn } from '../../utils/tailwind/cn';
 
 type ModalContextType = {
@@ -244,7 +244,9 @@ function Content({ children, className, overlayClassName, wrapperClassName, role
 			<div
 				aria-hidden='true'
 				className={cn('absolute inset-0 bg-overlay transition-opacity duration-300 ease-out', animate ? 'opacity-100 ease-out' : 'opacity-0 ease-in', overlayClassName)}
-				onClick={() => setOpen(false)}
+				onClick={() => {
+					if (!isOutsideDismissPending()) setOpen(false);
+				}}
 				role='button'
 				tabIndex={-1}
 			/>

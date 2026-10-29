@@ -2,6 +2,7 @@
 
 import type { HTMLAttributes, ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { isOutsideDismissPending } from "../../utils/overlay/overlayStack";
 import { cn } from "../../utils/tailwind/cn";
 import { Modal, useDialogTransition, useModalContext } from "../modal/modal";
 
@@ -39,7 +40,9 @@ function Content({ children, className }: DrawerContentProps) {
           "absolute inset-0 bg-overlay transition-opacity duration-420 ease-in-out",
           animate ? "opacity-100" : "opacity-0",
         )}
-        onClick={() => setOpen(false)}
+        onClick={() => {
+          if (!isOutsideDismissPending()) setOpen(false);
+        }}
       />
       <div
         aria-modal="true"

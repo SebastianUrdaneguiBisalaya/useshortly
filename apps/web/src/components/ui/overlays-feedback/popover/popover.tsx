@@ -66,7 +66,7 @@ function PopoverRoot({ children, open: controlledOpen, defaultOpen = false, onOp
 	const triggerRef = React.useRef<HTMLSpanElement>(null);
 	const contentRef = React.useRef<HTMLDivElement>(null);
 
-	useClickOutside(triggerRef, () => setOpen(false), contentRef);
+	useClickOutside(triggerRef, () => setOpen(false), contentRef, open);
 	useEscapeKey(open, () => setOpen(false));
 
 	const value = React.useMemo(

@@ -54,3 +54,27 @@ export function claimOverlayLayer(): {
 		},
 	};
 }
+
+let outsideDismissPending = false;
+
+/**
+ * Records that a `mousedown` just dismissed an overlay by landing outside it. The `click` that follows lands on
+ * the same spot, so a backdrop under that spot (Modal, Drawer…) would close too; backdrops check
+ * `isOutsideDismissPending` to leave that click alone. The flag clears once the click has bubbled to `document`,
+ * which is after React ran the backdrop's `onClick`.
+ */
+export function markOutsideDismiss(): void {
+	outsideDismissPending = true;
+	document.addEventListener(
+		'click',
+		() => {
+			outsideDismissPending = false;
+		},
+		{ once: true }
+	);
+}
+
+/** True while the click that follows an outside-dismiss `mousedown` is still being dispatched. */
+export function isOutsideDismissPending(): boolean {
+	return outsideDismissPending;
+}

@@ -132,7 +132,7 @@ function Root<T extends string>(props: SelectRootProps<T>) {
 	const [open, setOpen] = useState<boolean>(false);
 	const [query, setQuery] = useState<string>('');
 
-	useClickOutside(rootRef, () => setOpen(false), contentRef);
+	useClickOutside(rootRef, () => setOpen(false), contentRef, open);
 	useEscapeKey(open, () => setOpen(false));
 
 	useEffect(() => {

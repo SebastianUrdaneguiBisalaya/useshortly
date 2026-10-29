@@ -20,7 +20,11 @@ function loadImage(src: string, crossOrigin?: 'anonymous') {
 /** Draws `value` with the colors of `style` (black on white by default) and saves it as `<filename>.png`. The logo goes in the middle when it can be read; a host that does not allow it (CORS) leaves the code without one. */
 async function downloadQr(value: string, filename: string, style?: QRStyle) {
 	const { background, foreground, logoUrl } = resolveQrStyle(style);
-	const svg = renderToStaticMarkup(<QRCodeSVG bgColor={background} fgColor={foreground} level={logoUrl ? 'H' : 'M'} marginSize={4} size={PNG_SIZE} value={value} />);
+	// React does not write the SVG namespace, and without it the browser cannot load the markup as an image.
+	const svg = renderToStaticMarkup(<QRCodeSVG bgColor={background} fgColor={foreground} level={logoUrl ? 'H' : 'M'} marginSize={4} size={PNG_SIZE} value={value} />).replace(
+		'<svg',
+		'<svg xmlns="http://www.w3.org/2000/svg"'
+	);
 	const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
 	try {
 		const image = await loadImage(url);
@@ -44,8 +48,11 @@ async function downloadQr(value: string, filename: string, style?: QRStyle) {
 		const link = document.createElement('a');
 		link.href = URL.createObjectURL(png);
 		link.download = `${filename}.png`;
+		document.body.appendChild(link);
 		link.click();
-		URL.revokeObjectURL(link.href);
+		link.remove();
+		// Revoking right away can cancel the download before the browser reads the blob.
+		setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
 	} finally {
 		URL.revokeObjectURL(url);
 	}

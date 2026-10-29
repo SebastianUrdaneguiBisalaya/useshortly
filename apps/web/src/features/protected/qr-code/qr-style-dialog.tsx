@@ -9,8 +9,17 @@ import { ColorPicker } from '~/components/ui/data-display/color-picker/color-pic
 import { Input } from '~/components/ui/forms-inputs/input/input';
 import { Modal } from '~/components/ui/overlays-feedback/modal/modal';
 import { useTranslate } from '~/hooks/use-translate';
+import { diffPayload } from '~/utils/diff-payload';
 import { HEX_COLOR, isScannable } from '../share/qr-contrast';
 import { DEFAULT_QR_BACKGROUND, DEFAULT_QR_FOREGROUND, QrImage } from '../share/qr-image';
+
+type QrStyleData = { background?: string; foreground?: string; logo_url?: string };
+
+/** A color as it is stored: lowercase, and absent when it is the default. */
+function nonDefault(color: string | undefined, fallback: string) {
+	const value = color?.toLowerCase();
+	return !value || value === fallback.toLowerCase() ? undefined : value;
+}
 
 /** Dialog to change a link's QR colors and logo, with a live preview. Mount it only while open so the draft always starts from the saved style. */
 export function QrStyleDialog({ orgID, link, onOpenChange }: { orgID: number; link: Link; onOpenChange: (open: boolean) => void }) {
@@ -22,6 +31,11 @@ export function QrStyleDialog({ orgID, link, onOpenChange }: { orgID: number; li
 	const [background, setBackground] = useState(link.qr_style?.background || DEFAULT_QR_BACKGROUND);
 	const [logoUrl, setLogoUrl] = useState(link.qr_style?.logo_url ?? '');
 
+	const savedStyle: QrStyleData = {
+		background: nonDefault(link.qr_style?.background, DEFAULT_QR_BACKGROUND),
+		foreground: nonDefault(link.qr_style?.foreground, DEFAULT_QR_FOREGROUND),
+		logo_url: link.qr_style?.logo_url || undefined,
+	};
 	const logo = logoUrl.trim();
 	const colorsValid = HEX_COLOR.test(foreground) && HEX_COLOR.test(background);
 	const logoValid = logo === '' || /^https:\/\/\S+$/.test(logo);
@@ -34,7 +48,12 @@ export function QrStyleDialog({ orgID, link, onOpenChange }: { orgID: number; li
 				: undefined;
 	const preview = { background, foreground, logo_url: logoValid && logo ? logo : undefined };
 
-	const save = (data: { background?: string; foreground?: string; logo_url?: string }) =>
+	const save = (data: QrStyleData) => {
+		// The backend replaces the whole style (a missing field means the default), so the diff only tells whether anything changed; the full style is what gets sent.
+		if (Object.keys(diffPayload(savedStyle, data)).length === 0) {
+			onOpenChange(false);
+			return;
+		}
 		setStyle.mutate(
 			{ data, linkID: link.id as number, orgID },
 			{
@@ -45,6 +64,7 @@ export function QrStyleDialog({ orgID, link, onOpenChange }: { orgID: number; li
 				},
 			}
 		);
+	};
 
 	return (
 		<Modal.Root onOpenChange={onOpenChange} open>
@@ -102,8 +122,8 @@ export function QrStyleDialog({ orgID, link, onOpenChange }: { orgID: number; li
 						disabled={error !== undefined || setStyle.isPending}
 						onClick={() =>
 							save({
-								background: background === DEFAULT_QR_BACKGROUND ? undefined : background.toLowerCase(),
-								foreground: foreground === DEFAULT_QR_FOREGROUND ? undefined : foreground.toLowerCase(),
+								background: nonDefault(background, DEFAULT_QR_BACKGROUND),
+								foreground: nonDefault(foreground, DEFAULT_QR_FOREGROUND),
 								logo_url: logo || undefined,
 							})
 						}
@@ -128,7 +148,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 			</span>
 			<ColorPicker onValueChange={onChange} value={value}>
 				<ColorPicker.Trigger aria-label={label} />
-				<ColorPicker.Content aria-label={label}>
+				<ColorPicker.Content aria-label={label} className='z-[1000]'>
 					<ColorPicker.Gradient />
 					<div className='flex items-center gap-2'>
 						<ColorPicker.HexField />

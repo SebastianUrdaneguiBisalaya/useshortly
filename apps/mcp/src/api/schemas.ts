@@ -13,6 +13,11 @@ export const link = z.object({
 	code: z.string(),
 	short_url: z.string(),
 	domain_id: z.number().nullable(),
+	// The campaign channel the link was shared in; null (and empty names) when it is in no campaign.
+	campaign_id: z.number().nullable().default(null),
+	channel_id: z.number().nullable().default(null),
+	campaign_name: z.string().default(''),
+	channel_name: z.string().default(''),
 	origin_url: z.string(),
 	expires_at: z.string().nullable(),
 	max_clicks: z.number().nullable(),
@@ -66,4 +71,32 @@ export const domain = z.object({
 	created_at: z.string(),
 	// The DNS record to create; the API leaves it out once the domain is verified.
 	verification: z.object({ type: z.string(), name: z.string(), value: z.string() }).optional(),
+});
+
+export const campaign = z.object({
+	id: z.number(),
+	name: z.string(),
+	description: z.string().default(''),
+	channel_count: z.number().default(0),
+	link_count: z.number().default(0),
+	created_at: z.string(),
+	updated_at: z.string().nullable().default(null),
+});
+
+export const campaignChannel = z.object({
+	id: z.number(),
+	campaign_id: z.number(),
+	name: z.string(),
+	created_at: z.string(),
+});
+
+const channelClicks = z.object({ id: z.number(), name: z.string(), clicks: z.number() });
+
+/** Like `linkStats` for every link of a campaign, plus the clicks of each channel (most clicks first, quiet ones included). */
+export const campaignStats = linkStats.omit({ link_id: true }).extend({
+	campaign_id: z.number(),
+	channels: z
+		.array(channelClicks)
+		.nullable()
+		.transform(v => v ?? []),
 });

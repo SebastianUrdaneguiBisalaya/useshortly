@@ -1,5 +1,5 @@
 import type { UserApi } from '../../api/client.js';
-import { ApiAuthError, ApiError, ApiForbiddenError, ApiNotFoundError, ApiRateLimitedError, ApiRequestError, ApiUnavailableError } from '../../api/errors.js';
+import { ApiAuthError, ApiError, ApiForbiddenError, ApiNotFoundError, ApiRateLimitedError, ApiRequestError, ApiUnavailableError, hintFor } from '../../api/errors.js';
 
 /** What every tool gets: the API as the signed-in user, already limited to the granted scope. */
 export type ToolContext = { api: UserApi };
@@ -28,10 +28,11 @@ export function describeError(error: unknown): string {
 	if (error instanceof ApiForbiddenError) {
 		return `useshortly refused this action: ${error.message}. The user may lack access to this organization or did not grant the needed permission.`;
 	}
-	if (error instanceof ApiNotFoundError) return `Not found: ${error.message}. Check the id (list the items again to see valid ids).`;
+	if (error instanceof ApiNotFoundError) return `Not found: ${error.message}. ${hintFor(error.code) ?? 'Check the id (list the items again to see valid ids).'}`;
 	if (error instanceof ApiRequestError) {
 		const details = error.details ? ` Details: ${JSON.stringify(error.details)}` : '';
-		return `useshortly rejected the request: ${error.message}.${details}`;
+		const hint = hintFor(error.code);
+		return `useshortly rejected the request: ${error.message}.${details}${hint ? ` ${hint}` : ''}`;
 	}
 	if (error instanceof ApiUnavailableError) return 'useshortly is unavailable right now. Try again shortly.';
 	if (error instanceof ApiError) return `useshortly answered with an error: ${error.message}`;

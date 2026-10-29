@@ -31,7 +31,7 @@ function DocsContent({ orgID }: { orgID: number }) {
 	const base = apiBase();
 
 	return (
-		<Page.Root className='h-full' size='md'>
+		<Page.Root className='h-full py-3 sm:py-3' size='md'>
 			<DocsToc aria-label='On this page'>
 				{SECTIONS.map(section => (
 					<DocsToc.Item id={section.id} key={section.id} title={section.title} />
@@ -57,8 +57,8 @@ function DocsContent({ orgID }: { orgID: number }) {
 					</Prose>
 					<BlockCode.Root
 						code={`BASE_URL=${base}
-ORG_ID=${orgID}
-USHORTLY_API_KEY=usl_…   # created in the next section`}
+						ORG_ID=${orgID}
+						USHORTLY_API_KEY=usl_…   # created in the next section`}
 						language='bash'
 					>
 						<BlockCode.Header>

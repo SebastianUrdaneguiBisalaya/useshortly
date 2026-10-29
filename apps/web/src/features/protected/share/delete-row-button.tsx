@@ -24,7 +24,6 @@ export function DeleteRowButton({ label, title, description, onConfirm }: { labe
 				</Button>
 			</ConfirmDialog.Trigger>
 			<ConfirmDialog.Content>
-				<ConfirmDialog.Icon />
 				<ConfirmDialog.Title>{title}</ConfirmDialog.Title>
 				<ConfirmDialog.Description>{description}</ConfirmDialog.Description>
 				<ConfirmDialog.Footer>

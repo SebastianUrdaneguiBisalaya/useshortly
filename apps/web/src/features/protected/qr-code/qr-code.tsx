@@ -32,7 +32,7 @@ function QrCodeContent({ orgID }: { orgID: number }) {
 	const styled = styling && (rows.find(link => link.id === styling.id) ?? styling);
 
 	return (
-		<Page.Root className='h-full' size='full'>
+		<Page.Root className='h-full py-3 sm:py-3' size='full'>
 			<Page.Header>
 				<div>
 					<Page.Title>{t('protected.qr.title')}</Page.Title>

@@ -81,9 +81,9 @@ function ProtectedShell() {
 				</SidebarFloat.Footer>
 			</SidebarFloat>
 			{/* The sidebar floats (fixed), so on desktop the content reserves its width: the rail while collapsed, the full panel once expanded. Same duration and easing as the sidebar. */}
-			<div className={cn('flex h-full flex-col overflow-y-auto transition-[padding] duration-300 ease-in-out motion-reduce:transition-none', collapsed ? 'md:pl-24' : 'md:pl-72')}>
-				<Layout.HStack className='w-full p-2'>
-					<Button className='rounded-md p-2 md:hidden' variant='secondary' onClick={() => setMobileOpen(true)} type='button' aria-label={t('protected.sidebar.openMenu')}>
+			<div className={cn('flex h-full flex-col overflow-y-auto transition-[padding] duration-300 ease-in-out motion-reduce:transition-none', collapsed ? 'md:pl-20' : 'md:pl-68')}>
+				<Layout.HStack className='w-full p-2 md:hidden'>
+					<Button className='rounded-md p-2' variant='secondary' onClick={() => setMobileOpen(true)} type='button' aria-label={t('protected.sidebar.openMenu')}>
 						<Button.Icon icon={<Icon icon={Menu} size='md' />} />
 					</Button>
 				</Layout.HStack>

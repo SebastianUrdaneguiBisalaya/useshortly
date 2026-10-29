@@ -129,7 +129,7 @@ function DomainsContent({ orgID }: { orgID: number }) {
 	);
 
 	return (
-		<Page.Root className='h-full' size='full'>
+		<Page.Root className='h-full py-3 sm:py-3' size='full'>
 			<Page.Header>
 				<div>
 					<Page.Title>{t('protected.domains.title')}</Page.Title>

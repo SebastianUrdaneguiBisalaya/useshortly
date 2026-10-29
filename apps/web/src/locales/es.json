@@ -676,6 +676,11 @@
 						"empty": "Esta campaña aún no tiene canales.",
 						"more": "Y {{count}} canales más con menos clics."
 					}
+				},
+				"export": {
+					"action": "Exportar CSV",
+					"period": "Periodo seleccionado",
+					"allTime": "Todo el tiempo"
 				}
 			},
 			"channelForm": {
@@ -712,7 +717,9 @@
 			"campaignDeleted": "Campaña eliminada",
 			"channelCreated": "Canal añadido",
 			"channelDeleted": "Canal eliminado",
-			"linkChannelUpdated": "Link actualizado"
+			"linkChannelUpdated": "Link actualizado",
+			"campaignExported": "Campaña exportada",
+			"campaignExportFailed": "No se pudo exportar la campaña"
 		},
 		"qr": {
 			"title": "Códigos QR",

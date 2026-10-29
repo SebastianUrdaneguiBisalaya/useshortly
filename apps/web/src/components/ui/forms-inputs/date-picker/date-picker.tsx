@@ -507,7 +507,7 @@ function Root(props: DatePickerRootProps) {
 
 	return (
 		<DatePickerContext.Provider value={contextValue}>
-			<div className={cn('relative inline-block w-full', className)} ref={rootRef}>
+			<div className={cn('relative flex w-full flex-col gap-1.5', className)} ref={rootRef}>
 				{children}
 			</div>
 		</DatePickerContext.Provider>
@@ -519,14 +519,22 @@ function Root(props: DatePickerRootProps) {
 export interface DatePickerLabelProps {
 	children: ReactNode;
 	className?: string;
+	/** Appends a required-field indicator (`*`) after the label text. */
+	required?: boolean;
 }
 
 /** Optional label associated with `DatePicker.Trigger` via `htmlFor`/`id`. */
-function Label({ children, className }: DatePickerLabelProps) {
+function Label({ children, className, required }: DatePickerLabelProps) {
 	const { triggerId } = useDatePickerContext();
 	return (
 		<label className={cn('text-sm font-medium font-primary text-foreground', className)} htmlFor={triggerId}>
 			{children}
+			{required && (
+				<span aria-hidden='true' className='text-destructive'>
+					{' '}
+					*
+				</span>
+			)}
 		</label>
 	);
 }
@@ -664,7 +672,7 @@ function TimeRow() {
 	if (mode === 'single') {
 		const bounds = timeBoundsForDay(draftSingle, minDate, maxDate);
 		return (
-			<div className='mt-3'>
+			<div className='mt-3 sm:mt-0 sm:self-center sm:border-l sm:border-border sm:pl-3'>
 				<TimeField hourCycle={hourCycle} lang={lang} maxValue={bounds.maxValue} minuteStep={minuteStep} minValue={bounds.minValue} onChange={setFrom} value={draftTimes.from} />
 			</div>
 		);
@@ -737,19 +745,21 @@ function Content({ className }: DatePickerContentProps) {
 				</button>
 			</div>
 
-			<div className='flex flex-col sm:flex-row'>
-				{Array.from(
-					{
-						length: numberOfMonths,
-					},
-					(_, index) => {
-						const monthDate = addMonths(viewDate, index);
-						return <MonthPanel key={`${monthDate.getFullYear()}-${monthDate.getMonth()}`} monthDate={monthDate} />;
-					}
-				)}
-			</div>
+			<div className={cn('flex flex-col', withTime && mode === 'single' && 'sm:flex-row')}>
+				<div className='flex flex-col sm:flex-row'>
+					{Array.from(
+						{
+							length: numberOfMonths,
+						},
+						(_, index) => {
+							const monthDate = addMonths(viewDate, index);
+							return <MonthPanel key={`${monthDate.getFullYear()}-${monthDate.getMonth()}`} monthDate={monthDate} />;
+						}
+					)}
+				</div>
 
-			{withTime && <TimeRow />}
+				{withTime && <TimeRow />}
+			</div>
 
 			{needsFooter && (
 				<div className='mt-2 flex items-center justify-end gap-2 border-t border-border px-2 pt-2 pb-1'>

@@ -254,14 +254,22 @@ function Root<T extends string>(props: SelectRootProps<T>) {
 export interface SelectLabelProps {
 	children: React.ReactNode;
 	className?: string;
+	/** Appends a required-field indicator (`*`) after the label text. */
+	required?: boolean;
 }
 
 /** Optional label associated with `Select.Trigger` via `htmlFor`/`id`. */
-function Label({ children, className }: SelectLabelProps) {
+function Label({ children, className, required }: SelectLabelProps) {
 	const { triggerId } = useSelect();
 	return (
 		<label className={cn('text-sm font-medium font-primary text-foreground', className)} htmlFor={triggerId}>
 			{children}
+			{required && (
+				<span aria-hidden='true' className='text-destructive'>
+					{' '}
+					*
+				</span>
+			)}
 		</label>
 	);
 }

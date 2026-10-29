@@ -483,14 +483,22 @@ function Root(props: TimePickerRootProps) {
 export interface TimePickerLabelProps {
 	children: ReactNode;
 	className?: string;
+	/** Appends a required-field indicator (`*`) after the label text. */
+	required?: boolean;
 }
 
 /** Optional label associated with `TimePicker.Trigger` via `htmlFor`/`id`. */
-function Label({ children, className }: TimePickerLabelProps) {
+function Label({ children, className, required }: TimePickerLabelProps) {
 	const { triggerId } = useTimePickerContext();
 	return (
 		<label className={cn('text-sm font-medium font-primary text-foreground', className)} htmlFor={triggerId}>
 			{children}
+			{required && (
+				<span aria-hidden='true' className='text-destructive'>
+					{' '}
+					*
+				</span>
+			)}
 		</label>
 	);
 }

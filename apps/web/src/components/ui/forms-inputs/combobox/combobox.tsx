@@ -395,14 +395,25 @@ function ComboboxRoot(props: ComboboxProps) {
 	);
 }
 
-export interface ComboboxLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {}
+export interface ComboboxLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+	/** Appends a required-field indicator (`*`) after the label text. */
+	required?: boolean;
+}
 
 /** Label of the field; clicking it focuses the input. */
-function ComboboxLabel({ className, ...props }: ComboboxLabelProps) {
+function ComboboxLabel({ children, className, required, ...props }: ComboboxLabelProps) {
 	const { inputId, labelId } = useComboboxContext();
 	return (
 		// biome-ignore lint/a11y/noLabelWithoutControl: wired to the input through `htmlFor`.
-		<label className={cn('font-primary text-sm font-medium text-foreground', className)} htmlFor={inputId} id={labelId} {...props} />
+		<label className={cn('font-primary text-sm font-medium text-foreground', className)} htmlFor={inputId} id={labelId} {...props}>
+			{children}
+			{required && (
+				<span aria-hidden='true' className='text-destructive'>
+					{' '}
+					*
+				</span>
+			)}
+		</label>
 	);
 }
 

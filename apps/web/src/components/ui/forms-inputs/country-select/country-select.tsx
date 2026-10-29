@@ -169,6 +169,8 @@ export interface CountrySelectLabelProps {
 	children: React.ReactNode;
 	/** Extra classes for the label. */
 	className?: string;
+	/** Appends a required-field indicator (`*`) after the label text. */
+	required?: boolean;
 }
 
 /** Visible label associated with `CountrySelect.Trigger`. */

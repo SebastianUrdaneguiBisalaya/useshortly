@@ -227,12 +227,12 @@ function NumberInputRoot({
 
   return (
     <NumberInputContext.Provider value={contextValue}>
-      <div className="inline-flex flex-col gap-1.5">
+      <div className="flex w-full flex-col gap-1.5">
         {label}
         <div
           aria-disabled={disabled || undefined}
           className={cn(
-            "inline-flex h-9 w-fit items-center rounded-md border border-border bg-background font-primary text-sm text-foreground focus-within:border-ring",
+            "flex h-9 w-full items-center rounded-md border border-border bg-background font-primary text-sm text-foreground focus-within:border-ring",
             disabled && "opacity-50",
             className,
           )}
@@ -333,7 +333,7 @@ function NumberInputField({
       aria-valuenow={value ?? undefined}
       autoComplete="off"
       className={cn(
-        "h-full w-20 min-w-0 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
+        "h-full w-full min-w-0 flex-1 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
         "focus-visible:outline-none",
         className,
       )}

@@ -564,6 +564,39 @@
 				"channels": "Channels",
 				"links": "Links",
 				"createdAt": "Created"
+			},
+			"create": {
+				"action": "New campaign",
+				"title": "New campaign",
+				"description": "A campaign groups the links you share for one initiative. Add channels to it afterwards.",
+				"submit": "Create campaign",
+				"submitting": "Creating..."
+			},
+			"edit": {
+				"label": "Edit campaign",
+				"title": "Edit campaign",
+				"description": "Links already in this campaign keep the campaign name they were given. A new name only applies to links you put in its channels from now on.",
+				"submit": "Save changes",
+				"submitting": "Saving..."
+			},
+			"form": {
+				"name": {
+					"label": "Name",
+					"placeholder": "Black Friday"
+				},
+				"description": {
+					"label": "Description (optional)",
+					"placeholder": "What is this campaign for?"
+				}
+			},
+			"validation": {
+				"nameRequired": "Enter a name",
+				"tooLong": "Use at most {{max}} characters"
+			},
+			"delete": {
+				"label": "Delete campaign",
+				"title": "Delete {{name}}?",
+				"description": "Its channels are removed. Its links stay and keep working, but are no longer part of a campaign. It can't be undone."
 			}
 		},
 		"toast": {
@@ -583,7 +616,10 @@
 			"apiKeyDeleted": "API key deleted",
 			"memberRemoved": "Member removed",
 			"accountDeleted": "Account deleted",
-			"qrStyleSaved": "QR style saved"
+			"qrStyleSaved": "QR style saved",
+			"campaignCreated": "Campaign created",
+			"campaignUpdated": "Campaign updated",
+			"campaignDeleted": "Campaign deleted"
 		},
 		"qr": {
 			"title": "QR Codes",
@@ -616,6 +652,9 @@
 		"invalidCode": "The code is wrong or expired",
 		"tooManyAttempts": "Too many wrong codes. Request a new one.",
 		"codeTooSoon": "A code was requested too recently. Wait a minute.",
-		"googleEmailNotVerified": "The Google email is not verified"
+		"googleEmailNotVerified": "The Google email is not verified",
+		"nameTaken": "That name is already in use",
+		"invalidName": "Enter a name of up to 100 characters",
+		"invalidDescription": "The description can have up to 500 characters"
 	}
 }

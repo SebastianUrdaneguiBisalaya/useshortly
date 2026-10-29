@@ -9,6 +9,9 @@ const errorKeys = {
 	google_email_not_verified: 'errors.googleEmailNotVerified',
 	invalid_code: 'errors.invalidCode',
 	invalid_credentials: 'errors.invalidCredentials',
+	invalid_description: 'errors.invalidDescription',
+	invalid_name: 'errors.invalidName',
+	name_taken: 'errors.nameTaken',
 	provider_mismatch: 'errors.providerMismatch',
 	too_many_attempts: 'errors.tooManyAttempts',
 } satisfies Record<string, TranslationKey>;

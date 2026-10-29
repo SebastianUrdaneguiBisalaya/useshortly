@@ -564,6 +564,39 @@
 				"channels": "Canales",
 				"links": "Links",
 				"createdAt": "Creada"
+			},
+			"create": {
+				"action": "Nueva campaña",
+				"title": "Nueva campaña",
+				"description": "Una campaña agrupa los links que compartes para una misma iniciativa. Después añade canales.",
+				"submit": "Crear campaña",
+				"submitting": "Creando..."
+			},
+			"edit": {
+				"label": "Editar campaña",
+				"title": "Editar campaña",
+				"description": "Los links que ya están en esta campaña conservan el nombre que tenía. Un nombre nuevo solo se aplica a los links que pongas en sus canales desde ahora.",
+				"submit": "Guardar cambios",
+				"submitting": "Guardando..."
+			},
+			"form": {
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Black Friday"
+				},
+				"description": {
+					"label": "Descripción (opcional)",
+					"placeholder": "¿Para qué es esta campaña?"
+				}
+			},
+			"validation": {
+				"nameRequired": "Ingresa un nombre",
+				"tooLong": "Usa como máximo {{max}} caracteres"
+			},
+			"delete": {
+				"label": "Eliminar campaña",
+				"title": "¿Eliminar {{name}}?",
+				"description": "Se eliminan sus canales. Sus links se conservan y siguen funcionando, pero dejan de ser parte de una campaña. No se puede deshacer."
 			}
 		},
 		"toast": {
@@ -583,7 +616,10 @@
 			"apiKeyDeleted": "Clave de API eliminada",
 			"memberRemoved": "Miembro eliminado",
 			"accountDeleted": "Cuenta eliminada",
-			"qrStyleSaved": "Estilo del QR guardado"
+			"qrStyleSaved": "Estilo del QR guardado",
+			"campaignCreated": "Campaña creada",
+			"campaignUpdated": "Campaña actualizada",
+			"campaignDeleted": "Campaña eliminada"
 		},
 		"qr": {
 			"title": "Códigos QR",
@@ -616,6 +652,9 @@
 		"invalidCode": "El código es incorrecto o expiró",
 		"tooManyAttempts": "Demasiados códigos incorrectos. Solicita uno nuevo.",
 		"codeTooSoon": "Se pidió un código hace muy poco. Espera un minuto.",
-		"googleEmailNotVerified": "El correo de Google no está verificado"
+		"googleEmailNotVerified": "El correo de Google no está verificado",
+		"nameTaken": "Ese nombre ya está en uso",
+		"invalidName": "Ingresa un nombre de hasta 100 caracteres",
+		"invalidDescription": "La descripción puede tener hasta 500 caracteres"
 	}
 }

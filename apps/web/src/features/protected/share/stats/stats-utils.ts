@@ -1,9 +1,15 @@
 import type { Locale } from '~/i18n';
+import { todayInDisplayZone } from '~/lib/date-time';
 
 /**
- * The API counts clicks per UTC day (`YYYY-MM-DD`). Everything here works on those day strings, so the
- * calendar day the user picks is sent as the UTC day with the same number, never shifted by their offset.
+ * The API counts clicks per UTC day (`YYYY-MM-DD`) and per UTC hour. Everything here works on those day strings, so the
+ * calendar day the user picks is sent as the UTC day with the same number, never shifted by their offset. "Today" and the
+ * hours of the day are the ones of the display time zone (see `lib/date-time`); a day bucket itself cannot be re-cut in the
+ * browser, so the daily and weekday charts stay in UTC days.
  */
+
+/** The day the date picker stops at: today in the display time zone. */
+export const todayUtc = todayInDisplayZone;
 
 /** Longest period the API accepts is 366 days (a gap of 365 between `from` and `to`). */
 export const MAX_RANGE_DAYS = 365;
@@ -15,10 +21,6 @@ const pad = (value: number) => String(value).padStart(2, '0');
 
 function toUtcDate(day: string) {
 	return new Date(`${day}T00:00:00Z`);
-}
-
-export function todayUtc() {
-	return new Date().toISOString().slice(0, 10);
 }
 
 export function addDays(day: string, amount: number) {

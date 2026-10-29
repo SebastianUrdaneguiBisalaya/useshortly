@@ -13,6 +13,7 @@ import { Icon } from '~/components/ui/foundations/icon/icon';
 import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import type { Locale } from '~/i18n';
+import { hoursInDisplayZone } from '~/lib/date-time';
 import {
 	addDays,
 	clampRange,
@@ -210,7 +211,7 @@ export function StatsGrid({
 			<Panel className='col-span-12 lg:col-span-6' title={t('protected.dashboard.charts.hours.title')}>
 				<Chart.Bar
 					bars={[{ color: CHART_COLORS.blue, dataKey: 'clicks', name: t('protected.dashboard.charts.daily.series'), radius: [4, 4, 0, 0] }]}
-					data={(data?.by_hour ?? []).map((clicks, hour) => ({ clicks, label: String(hour).padStart(2, '0') }))}
+					data={hoursInDisplayZone(data?.by_hour ?? []).map((clicks, hour) => ({ clicks, label: String(hour).padStart(2, '0') }))}
 					xAxisKey='label'
 				/>
 			</Panel>
@@ -336,7 +337,6 @@ function Metrics({ stats, days, isLoading }: { stats: StatsData | undefined; day
 				icon={<Icon icon={MousePointerClick} size='sm' />}
 				isLoading={isLoading}
 				label={t('protected.dashboard.stats.total.label')}
-				sparkline={{ data: daily.map(day => day.clicks ?? 0) }}
 				tone={change === null || change === 0 ? 'default' : change > 0 ? 'positive' : 'negative'}
 				value={number.format(total)}
 			/>

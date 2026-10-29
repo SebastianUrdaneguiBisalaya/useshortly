@@ -758,6 +758,9 @@
 		"invalidDescription": "La descripción puede tener hasta 500 caracteres",
 		"tooManyChannels": "Una campaña puede tener hasta 100 canales",
 		"campaignUrlTooLong": "El destino con los parámetros de la campaña supera los 255 caracteres",
-		"channelNotFound": "Ese canal ya no existe"
+		"channelNotFound": "Ese canal ya no existe",
+		"campaignsDisabled": "Las campañas no están activadas en este servidor",
+		"invalidFilter": "Ese filtro no es válido",
+		"invalidRange": "Elige un periodo de hasta 366 días que termine después de empezar"
 	}
 }

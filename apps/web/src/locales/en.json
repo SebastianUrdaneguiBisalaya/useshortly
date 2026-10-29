@@ -758,6 +758,9 @@
 		"invalidDescription": "The description can have up to 500 characters",
 		"tooManyChannels": "A campaign can have up to 100 channels",
 		"campaignUrlTooLong": "The destination with the campaign parameters is longer than 255 characters",
-		"channelNotFound": "That channel no longer exists"
+		"channelNotFound": "That channel no longer exists",
+		"campaignsDisabled": "Campaigns are not enabled on this server",
+		"invalidFilter": "That filter is not valid",
+		"invalidRange": "Choose a period of up to 366 days that ends after it starts"
 	}
 }

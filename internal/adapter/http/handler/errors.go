@@ -7,6 +7,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/campaign"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/org"
@@ -76,6 +77,15 @@ var httpErrors = []struct {
 	{link.ErrAliasTaken, apiError{http.StatusConflict, "alias_taken", "the alias is already in use"}},
 	{link.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "expires_at must be in the future"}},
 	{link.ErrInvalidMaxClicks, apiError{http.StatusBadRequest, "invalid_max_clicks", "max_clicks must be greater than 0"}},
+	{campaign.ErrNotFound, apiError{http.StatusNotFound, "not_found", "campaign not found"}},
+	{campaign.ErrChannelNotFound, apiError{http.StatusNotFound, "channel_not_found", "channel not found"}},
+	{campaign.ErrInvalidName, apiError{http.StatusBadRequest, "invalid_name", "the name must be 1 to 100 characters without control characters"}},
+	{campaign.ErrInvalidDescription, apiError{http.StatusBadRequest, "invalid_description", "the description must be at most 500 characters"}},
+	{campaign.ErrNameTaken, apiError{http.StatusConflict, "name_taken", "the organization already has a campaign with that name"}},
+	{campaign.ErrInvalidChannelName, apiError{http.StatusBadRequest, "invalid_name", "the channel name must be 1 to 50 characters without control characters"}},
+	{campaign.ErrChannelNameTaken, apiError{http.StatusConflict, "name_taken", "the campaign already has a channel with that name"}},
+	{campaign.ErrTooManyChannels, apiError{http.StatusConflict, "too_many_channels", "a campaign has at most 100 channels"}},
+	{campaign.ErrInvalidRange, apiError{http.StatusBadRequest, "invalid_range", "from must not be after to"}},
 	{unlockpage.ErrNotFound, apiError{http.StatusNotFound, "not_found", "unlock page not found"}},
 	{unlockpage.ErrInvalidHTML, apiError{http.StatusBadRequest, "invalid_html", "the page is empty or larger than 64 KB"}},
 
@@ -86,6 +96,8 @@ var httpErrors = []struct {
 	{link.ErrPasswordRequired, apiError{http.StatusUnauthorized, "password_required", "this link is protected, unlock it with its password"}},
 	{link.ErrWrongPassword, apiError{http.StatusUnauthorized, "wrong_password", "the password is wrong"}},
 	{link.ErrTooManyAttempts, apiError{http.StatusTooManyRequests, "too_many_attempts", "too many attempts, wait before trying again (see the Retry-After header)"}},
+	{link.ErrCampaignsDisabled, apiError{http.StatusBadRequest, "campaigns_disabled", "campaigns are not enabled"}},
+	{link.ErrCampaignURLTooLong, apiError{http.StatusBadRequest, "campaign_url_too_long", "the url plus the campaign utm parameters must be at most 255 characters"}},
 	{link.ErrDomainsDisabled, apiError{http.StatusBadRequest, "domains_disabled", "custom domains are not enabled"}},
 	{link.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
 	{link.ErrExpired, apiError{http.StatusGone, "link_expired", "the link expired"}},

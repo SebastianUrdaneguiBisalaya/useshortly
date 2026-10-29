@@ -82,14 +82,17 @@ func (h *LinkHandler) domainID(r *http.Request) (*int64, error) {
 }
 
 type linkBody struct {
-	ID        int64   `json:"id"`
-	Code      string  `json:"code"`
-	ShortURL  string  `json:"short_url"`
-	DomainID  *int64  `json:"domain_id"`
-	OriginURL string  `json:"origin_url"`
-	ExpiresAt *string `json:"expires_at"`
-	MaxClicks *int64  `json:"max_clicks"`
-	Protected bool    `json:"protected"`
+	ID       int64  `json:"id"`
+	Code     string `json:"code"`
+	ShortURL string `json:"short_url"`
+	DomainID *int64 `json:"domain_id"`
+	// CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.
+	CampaignID *int64  `json:"campaign_id"`
+	ChannelID  *int64  `json:"channel_id"`
+	OriginURL  string  `json:"origin_url"`
+	ExpiresAt  *string `json:"expires_at"`
+	MaxClicks  *int64  `json:"max_clicks"`
+	Protected  bool    `json:"protected"`
 	// QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo).
 	QRStyle   qrStyleBody `json:"qr_style"`
 	CreatedAt string      `json:"created_at"`
@@ -106,15 +109,17 @@ type CreateLinkRequest struct {
 	ExpiresAt *time.Time `json:"expires_at"`
 	Alias     string     `json:"alias"`
 	DomainID  *int64     `json:"domain_id"`
-	MaxClicks *int64     `json:"max_clicks"`
-	Password  string     `json:"password"`
+	// ChannelID shares the link in a campaign channel: the destination gets its utm_source, utm_medium and utm_campaign.
+	ChannelID *int64 `json:"channel_id"`
+	MaxClicks *int64 `json:"max_clicks"`
+	Password  string `json:"password"`
 } // @name CreateLinkRequest
 
 // Create shortens a URL for the organization the Tenant middleware already checked: a JWT
 // caller belongs to it, an API key was issued for it.
 //
 //	@Summary		Create a short link
-//	@Description	Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
+//	@Description	Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password, domain_id and channel_id are optional. With a channel_id the destination gets utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign), replacing those parameters if it already had them.
 //	@Tags			links
 //	@Accept			json
 //	@Produce		json
@@ -141,7 +146,7 @@ func (h *LinkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := h.links.Shorten(r.Context(), link.ShortenInput{
 		TenantID: tenant.ID, UserID: PrincipalFrom(r).UserID,
-		URL: in.URL, DomainID: in.DomainID, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
+		URL: in.URL, DomainID: in.DomainID, ChannelID: in.ChannelID, Alias: in.Alias, ExpiresAt: in.ExpiresAt, MaxClicks: in.MaxClicks, Password: in.Password,
 	})
 	if err != nil {
 		WriteError(w, r, err)
@@ -162,7 +167,7 @@ func qrStyleOf(s link.QRStyle) qrStyleBody {
 
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
-		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, OriginURL: l.OriginURL,
+		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, CampaignID: l.CampaignID, ChannelID: l.ChannelID, OriginURL: l.OriginURL,
 		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), QRStyle: qrStyleOf(l.QRStyle), CreatedAt: formatTime(l.CreatedAt),
 	}
 }
@@ -214,16 +219,63 @@ func (h *LinkHandler) SetQRStyle(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, h.body(l))
 }
 
+// SetChannelRequest is the channel to put a link in; a missing or null channel_id takes it out of its campaign.
+type SetChannelRequest struct {
+	ChannelID *int64 `json:"channel_id"`
+} // @name SetChannelRequest
+
+// SetChannel puts a link of the organization in a campaign channel, or takes it out of its campaign.
+//
+//	@Summary		Put a link in a campaign channel
+//	@Description	Rewrites the destination with the utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign) of the channel, replacing those parameters if the link already had them. A missing or null channel_id takes the link out of its campaign and removes those three parameters from the destination. Needs a JWT or an API key with the write scope.
+//	@Tags			links
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			orgID	path		int					true	"Organization id"
+//	@Param			linkID	path		int					true	"Link id"
+//	@Param			body	body		SetChannelRequest	true	"Channel"
+//	@Success		200		{object}	LinkResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Failure		403		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse
+//	@ID	setLinkChannel
+//	@Router			/orgs/{orgID}/links/{linkID}/channel [put]
+func (h *LinkHandler) SetChannel(w http.ResponseWriter, r *http.Request) {
+	tenant, ok := tenantFrom(w, r)
+	if !ok {
+		return
+	}
+	linkID, ok := idParam(w, r, "linkID")
+	if !ok {
+		return
+	}
+	var in SetChannelRequest
+	if !decode(w, r, &in) {
+		return
+	}
+	l, err := h.links.SetChannel(r.Context(), tenant.ID, PrincipalFrom(r).UserID, linkID, in.ChannelID)
+	if err != nil {
+		WriteError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, h.body(l))
+}
+
 // List answers one page of the organization's links, newest first.
 //
 //	@Summary		List links
-//	@Description	Needs a JWT or an API key with the read scope.
+//	@Description	Needs a JWT or an API key with the read scope. campaign_id and channel_id keep only the links of that campaign or channel.
 //	@Tags			links
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			orgID	path		int	true	"Organization id"
-//	@Param			limit	query		int	false	"Page size"
-//	@Param			offset	query		int	false	"Items to skip"
+//	@Param			orgID		path		int	true	"Organization id"
+//	@Param			limit		query		int	false	"Page size"
+//	@Param			offset		query		int	false	"Items to skip"
+//	@Param			campaign_id	query		int	false	"Only links in a channel of this campaign"
+//	@Param			channel_id	query		int	false	"Only links in this channel"
 //	@Success		200		{object}	LinkListResponse
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
@@ -241,7 +293,14 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	list, total, err := h.links.List(r.Context(), tenant.ID, p)
+	var f link.ListFilter
+	if f.CampaignID, ok = queryID(w, r, "campaign_id"); !ok {
+		return
+	}
+	if f.ChannelID, ok = queryID(w, r, "channel_id"); !ok {
+		return
+	}
+	list, total, err := h.links.List(r.Context(), tenant.ID, f, p)
 	if err != nil {
 		WriteError(w, r, err)
 		return

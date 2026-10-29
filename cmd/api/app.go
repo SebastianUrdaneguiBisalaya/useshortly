@@ -113,7 +113,7 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains).WithChannels(campaigns)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
-	stats := analytics.NewService(clickRepo)
+	stats := analytics.NewService(clickRepo).WithCampaigns(clickRepo)
 	pages := unlockpage.NewService(sqlite.NewUnlockPageRepository(db))
 
 	return &app{
@@ -121,17 +121,18 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 		clicks: clicks,
 		purger: purger,
 		handler: router.NewRouter(router.Handlers{
-			Auth:     newAuthMiddleware(users, keys, a.mcp),
-			Tenant:   middlewares.NewTenant(orgs),
-			Accounts: handler.NewAuthHandler(users, google, reset).WithDeletion(deletion).WithSecureCookies(strings.HasPrefix(cfg.AppURL, "https://")),
-			Orgs:     handler.NewOrgHandler(orgs),
-			APIKeys:  handler.NewAPIKeyHandler(keys),
-			Links:    handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
-			Stats:    handler.NewStatsHandler(stats),
-			Pages:    handler.NewUnlockPageHandler(pages),
-			Domains:  handler.NewDomainHandler(domains),
-			Limits:   a.limits,
-			QR:       handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
+			Auth:      newAuthMiddleware(users, keys, a.mcp),
+			Tenant:    middlewares.NewTenant(orgs),
+			Accounts:  handler.NewAuthHandler(users, google, reset).WithDeletion(deletion).WithSecureCookies(strings.HasPrefix(cfg.AppURL, "https://")),
+			Orgs:      handler.NewOrgHandler(orgs),
+			APIKeys:   handler.NewAPIKeyHandler(keys),
+			Links:     handler.NewLinkHandler(links, clicks, cfg.AppURL, cfg.TrustProxy).WithDomains(domains).WithUnlockPages(pages).WithUnlockFooter(orgs, cfg.AbuseEmail),
+			Stats:     handler.NewStatsHandler(stats),
+			Pages:     handler.NewUnlockPageHandler(pages),
+			Domains:   handler.NewDomainHandler(domains),
+			Campaigns: handler.NewCampaignHandler(campaigns, cfg.AppURL),
+			Limits:    a.limits,
+			QR:        handler.NewQRHandler(links, qr.NewService(qradapter.NewGenerator()), cfg.AppURL),
 		}),
 	}
 }

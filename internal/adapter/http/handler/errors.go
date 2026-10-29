@@ -60,6 +60,8 @@ var httpErrors = []struct {
 	{apikey.ErrInvalidExpiry, apiError{http.StatusBadRequest, "invalid_expiry", "the expiration must be in the future"}},
 
 	{analytics.ErrNotFound, apiError{http.StatusNotFound, "not_found", "link not found"}},
+	{analytics.ErrCampaignNotFound, apiError{http.StatusNotFound, "not_found", "campaign not found"}},
+	{analytics.ErrCampaignsDisabled, apiError{http.StatusNotFound, "campaigns_disabled", "campaigns are not enabled"}},
 	{analytics.ErrInvalidRange, apiError{http.StatusBadRequest, "invalid_range", "from must not be after to, and the range is at most 366 days"}},
 
 	{qr.ErrInvalidFormat, apiError{http.StatusBadRequest, "invalid_format", "the format must be png or svg"}},

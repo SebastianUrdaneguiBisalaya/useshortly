@@ -11,16 +11,17 @@ import (
 )
 
 type Handlers struct {
-	Auth     *middlewares.Auth   // who is calling
-	Tenant   *middlewares.Tenant // which organization they act on
-	Accounts *handler.AuthHandler
-	Orgs     *handler.OrgHandler
-	APIKeys  *handler.APIKeyHandler
-	Links    *handler.LinkHandler
-	Stats    *handler.StatsHandler
-	QR       *handler.QRHandler
-	Pages    *handler.UnlockPageHandler
-	Domains  *handler.DomainHandler
+	Auth      *middlewares.Auth   // who is calling
+	Tenant    *middlewares.Tenant // which organization they act on
+	Accounts  *handler.AuthHandler
+	Orgs      *handler.OrgHandler
+	APIKeys   *handler.APIKeyHandler
+	Links     *handler.LinkHandler
+	Stats     *handler.StatsHandler
+	QR        *handler.QRHandler
+	Pages     *handler.UnlockPageHandler
+	Domains   *handler.DomainHandler
+	Campaigns *handler.CampaignHandler
 	// Limits protects the endpoints from floods and guessing; nil limits nothing.
 	Limits *middlewares.RateLimits
 }
@@ -106,6 +107,16 @@ func NewRouter(h Handlers) http.Handler {
 	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Domains.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/domains/{domainID}/verify", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Verify))).Methods(http.MethodPost)
 	eitherOrg.Handle("/domains/{domainID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Domains.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Create))).Methods(http.MethodPost)
+	eitherOrg.Handle("/campaigns", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.List))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.Get))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Update))).Methods(http.MethodPatch)
+	eitherOrg.Handle("/campaigns/{campaignID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.Delete))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.CreateChannel))).Methods(http.MethodPost)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.ListChannels))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}/channels/{channelID}", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Campaigns.DeleteChannel))).Methods(http.MethodDelete)
+	eitherOrg.Handle("/campaigns/{campaignID}/stats", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Stats.GetCampaign))).Methods(http.MethodGet)
+	eitherOrg.Handle("/campaigns/{campaignID}/export", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.Campaigns.Export))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/qr", middlewares.Scope(apikey.ScopeRead)(http.HandlerFunc(h.QR.Get))).Methods(http.MethodGet)
 	eitherOrg.Handle("/links/{linkID}/qr-style", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.SetQRStyle))).Methods(http.MethodPut)
 	eitherOrg.Handle("/links/{linkID}/channel", middlewares.Scope(apikey.ScopeWrite)(http.HandlerFunc(h.Links.SetChannel))).Methods(http.MethodPut)

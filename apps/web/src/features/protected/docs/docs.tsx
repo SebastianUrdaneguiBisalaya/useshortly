@@ -126,8 +126,8 @@ USHORTLY_API_KEY=usl_…   # created in the next section`}
 					<H2>Requests and responses</H2>
 					<Prose>
 						<Typography.P>
-							Bodies are JSON: send <Code>Content-Type: application/json</Code>. Dates are RFC 3339 in UTC, except statistics days, which are <Code>YYYY-MM-DD</Code> in UTC. Ids are
-							numbers.
+							Bodies are JSON: send <Code>Content-Type: application/json</Code>. Dates are RFC 3339 in UTC, except statistics days, which are <Code>YYYY-MM-DD</Code> days of the{' '}
+							<Code>tz</Code> time zone (UTC when omitted). Ids are numbers.
 						</Typography.P>
 						<Typography.P>
 							A successful response wraps its payload in <Code>data</Code>. Lists add <Code>meta</Code> and are paged with <Code>limit</Code> and <Code>offset</Code>, newest first.

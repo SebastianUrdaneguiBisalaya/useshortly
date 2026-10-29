@@ -525,7 +525,7 @@ export const useDeleteCampaignChannel = <TError = ErrorType<ErrorResponse>, TCon
 	return useMutation(getDeleteCampaignChannelMutationOptions(options), queryClient);
 };
 /**
- * A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, UTC, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
+ * A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, days of tz, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
  * @summary Export a campaign
  */
 export const exportCampaign = (orgID: number, campaignID: number, params?: ExportCampaignParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {

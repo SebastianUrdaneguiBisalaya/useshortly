@@ -9,7 +9,7 @@ import type { ClickCount } from './clickCount';
 import type { DailyClicks } from './dailyClicks';
 
 export interface LinkStats {
-	/** ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday). */
+	/** ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday). */
 	by_hour?: number[];
 	by_weekday?: number[];
 	countries?: ClickCount[];

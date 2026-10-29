@@ -8,7 +8,7 @@
 import * as zod from 'zod';
 
 /**
- * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a campaign
  */
 export const GetCampaignStatsParams = zod.object({
@@ -17,8 +17,9 @@ export const GetCampaignStatsParams = zod.object({
 });
 
 export const GetCampaignStatsQueryParams = zod.object({
-	from: zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
-	to: zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)'),
+	from: zod.string().optional().describe('First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)'),
+	to: zod.string().optional().describe('Last day, YYYY-MM-DD, a day of tz'),
+	tz: zod.string().optional().describe('IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted'),
 	country: zod.string().optional().describe('Only clicks from this country (ISO 3166-1 alpha-2), or unknown'),
 	device: zod.string().optional().describe('Only clicks from this device (mobile, tablet, desktop, bot), or unknown'),
 	referrer: zod.string().optional().describe('Only clicks with this referrer, or direct for none'),
@@ -27,7 +28,7 @@ export const GetCampaignStatsQueryParams = zod.object({
 export const GetCampaignStatsResponse = zod.object({
 	data: zod
 		.object({
-			by_hour: zod.array(zod.int()).optional().describe('ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).'),
+			by_hour: zod.array(zod.int()).optional().describe('ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).'),
 			by_weekday: zod.array(zod.int()).optional(),
 			campaign_id: zod.int().optional(),
 			channels: zod
@@ -81,7 +82,7 @@ export const GetCampaignStatsResponse = zod.object({
 });
 
 /**
- * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a link
  */
 export const GetLinkStatsParams = zod.object({
@@ -90,8 +91,9 @@ export const GetLinkStatsParams = zod.object({
 });
 
 export const GetLinkStatsQueryParams = zod.object({
-	from: zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
-	to: zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)'),
+	from: zod.string().optional().describe('First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)'),
+	to: zod.string().optional().describe('Last day, YYYY-MM-DD, a day of tz'),
+	tz: zod.string().optional().describe('IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted'),
 	country: zod.string().optional().describe('Only clicks from this country (ISO 3166-1 alpha-2), or unknown'),
 	device: zod.string().optional().describe('Only clicks from this device (mobile, tablet, desktop, bot), or unknown'),
 	referrer: zod.string().optional().describe('Only clicks with this referrer, or direct for none'),
@@ -100,7 +102,7 @@ export const GetLinkStatsQueryParams = zod.object({
 export const GetLinkStatsResponse = zod.object({
 	data: zod
 		.object({
-			by_hour: zod.array(zod.int()).optional().describe('ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).'),
+			by_hour: zod.array(zod.int()).optional().describe('ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).'),
 			by_weekday: zod.array(zod.int()).optional(),
 			countries: zod
 				.array(

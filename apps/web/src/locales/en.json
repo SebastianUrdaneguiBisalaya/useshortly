@@ -195,7 +195,7 @@
 			"charts": {
 				"daily": {
 					"title": "Clicks over time",
-					"description": "Clicks per day (UTC).",
+					"description": "Clicks per day in your time zone.",
 					"series": "Clicks"
 				},
 				"devices": {
@@ -219,11 +219,11 @@
 				},
 				"hours": {
 					"title": "Clicks by hour",
-					"description": "Hour of the day (Lima)."
+					"description": "Hour of the day in your time zone."
 				},
 				"weekdays": {
 					"title": "Clicks by weekday",
-					"description": "Day of the week (UTC)."
+					"description": "Day of the week in your time zone."
 				}
 			}
 		},

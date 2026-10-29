@@ -43,12 +43,12 @@ interface QRStyle {
 
 interface LinkStats {
   link_id: number;
-  from: string; // YYYY-MM-DD (UTC)
+  from: string; // YYYY-MM-DD, a day of tz (UTC when omitted)
   to: string;
   total: number;
   previous_total: number; // same length, right before "from"
   daily: { date: string; clicks: number }[];
-  by_hour: number[]; // 24 entries, UTC hour 0..23
+  by_hour: number[]; // 24 entries, hour 0..23 of tz
   by_weekday: number[]; // 7 entries, 0 is Sunday
   countries: ClickCount[]; // ISO 3166-1 alpha-2, or "unknown"
   devices: ClickCount[]; // mobile | tablet | desktop | bot | unknown

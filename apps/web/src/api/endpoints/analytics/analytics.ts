@@ -41,7 +41,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
- * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a campaign
  */
 export const getCampaignStats = (orgID: number, campaignID: number, params?: GetCampaignStatsParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {
@@ -122,7 +122,7 @@ export function useGetCampaignStats<TData = Awaited<ReturnType<typeof getCampaig
 }
 
 /**
- * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a link
  */
 export const getLinkStats = (orgID: number, linkID: number, params?: GetLinkStatsParams, options?: SecondParameter<typeof customInstance>, signal?: AbortSignal) => {

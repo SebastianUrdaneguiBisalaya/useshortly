@@ -24,12 +24,12 @@ function DashboardContent({ orgID }: { orgID: number }) {
 	const rows = links.data?.data ?? [];
 	const linkID = query.link !== null && rows.some(link => link.id === query.link) ? query.link : (rows[0]?.id ?? null);
 
-	const { days, hasFilters, range } = resolveStatsQuery(query);
+	const { days, hasFilters, range, requestRange } = resolveStatsQuery(query);
 
-	const params: GetLinkStatsParams = statsParams(range, query);
+	const params: GetLinkStatsParams = statsParams(requestRange, query);
 	const stats = useGetLinkStats(orgID, linkID ?? 0, params, { query: { enabled: linkID !== null, placeholderData: keepPreviousData } });
 	// The filter menus must keep offering every value while one is applied, so they read the unfiltered numbers.
-	const unfiltered = useGetLinkStats(orgID, linkID ?? 0, range, { query: { enabled: linkID !== null && hasFilters, placeholderData: keepPreviousData } });
+	const unfiltered = useGetLinkStats(orgID, linkID ?? 0, requestRange, { query: { enabled: linkID !== null && hasFilters, placeholderData: keepPreviousData } });
 	const optionsSource = (hasFilters ? unfiltered.data : stats.data)?.data;
 
 	if (links.isLoading) return <ApplicationState.LoadingState className='h-full' />;

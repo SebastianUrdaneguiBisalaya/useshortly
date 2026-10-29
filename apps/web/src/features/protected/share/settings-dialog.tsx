@@ -1,12 +1,16 @@
+import * as flags from 'country-flag-icons/react/3x2';
 import { SlidersHorizontal, User } from 'lucide-react';
 import { SwitchTheme } from '~/components/ui/actions-controls/switch-theme/switch-theme';
+import { CountrySelect } from '~/components/ui/forms-inputs/country-select/country-select';
 import { Select } from '~/components/ui/forms-inputs/select/select';
 import { Layout } from '~/components/ui/layout/layout/layout';
 import { SettingsDialog as SettingsDialogUi } from '~/components/ui/overlays-feedback/settings-dialog/settings-dialog';
 import { useLanguage } from '~/hooks/use-language';
 import { useTheme } from '~/hooks/use-theme';
+import { useTimeZone } from '~/hooks/use-time-zone';
 import { useTranslate } from '~/hooks/use-translate';
 import type { LanguagePreference } from '~/i18n';
+import { TIME_ZONE_COUNTRIES } from '~/lib/time-zones';
 import { AccountSettings } from './account-settings';
 
 /** Account settings: `General` (theme and language) and `Account` (profile and danger zone). */
@@ -14,6 +18,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 	const t = useTranslate();
 	const theme = useTheme();
 	const language = useLanguage();
+	const timeZone = useTimeZone();
 
 	return (
 		<SettingsDialogUi.Root
@@ -71,6 +76,16 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 												</Select.ItemList>
 											</Select.Content>
 										</Select.Root>
+									</SettingsDialogUi.Row>
+								</SettingsDialogUi.Section>
+							</Layout.Section>
+							<Layout.Section className='py-0'>
+								<SettingsDialogUi.Section title={t('protected.settings.region')}>
+									<SettingsDialogUi.Row label={t('protected.settings.country')}>
+										<CountrySelect.Root countries={TIME_ZONE_COUNTRIES} flags={flags} locale={language.locale} onChange={timeZone.setCountry} value={timeZone.country}>
+											<CountrySelect.Trigger aria-label={t('protected.settings.country')} className='w-60' />
+											<CountrySelect.Content />
+										</CountrySelect.Root>
 									</SettingsDialogUi.Row>
 								</SettingsDialogUi.Section>
 							</Layout.Section>

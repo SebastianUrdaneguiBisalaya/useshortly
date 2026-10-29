@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { Icon } from '~/components/ui/foundations/icon/icon';
 import { SidebarFloat } from '~/components/ui/navigation/sidebar-float/sidebar-float';
 import { cn } from '~/components/ui/utils/tailwind/cn';
+import { useTimeZone } from '~/hooks/use-time-zone';
 import { useTranslate } from '~/hooks/use-translate';
 import { Button } from '../../components/ui/actions-controls/button/button';
 import { Layout } from '../../components/ui/layout/layout/layout';
@@ -36,6 +37,7 @@ export default function ProtectedLayout() {
 
 function ProtectedShell() {
 	const t = useTranslate();
+	const { timeZone } = useTimeZone();
 	const toOrganization = useOrganizationTo();
 	const { pathname } = useLocation();
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,7 +90,8 @@ function ProtectedShell() {
 					</Button>
 				</Layout.HStack>
 				<main className='min-h-0 flex-1'>
-					<Outlet />
+					{/* Dates are formatted when rendered, so a new display time zone remounts the page to show it. */}
+					<Outlet key={timeZone} />
 				</main>
 			</div>
 		</div>

@@ -219,7 +219,7 @@
 				},
 				"hours": {
 					"title": "Clics por hora",
-					"description": "Hora del día (UTC)."
+					"description": "Hora del día (Lima)."
 				},
 				"weekdays": {
 					"title": "Clics por día de la semana",
@@ -289,7 +289,9 @@
 			"search": "Buscar",
 			"noResults": "Sin resultados",
 			"close": "Cerrar",
-			"appearance": "Apariencia"
+			"appearance": "Apariencia",
+			"region": "Región",
+			"country": "País y zona horaria"
 		},
 		"sidebar": {
 			"closeMenu": "Cerrar menú",

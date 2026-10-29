@@ -219,7 +219,7 @@
 				},
 				"hours": {
 					"title": "Clicks by hour",
-					"description": "Hour of the day (UTC)."
+					"description": "Hour of the day (Lima)."
 				},
 				"weekdays": {
 					"title": "Clicks by weekday",
@@ -289,7 +289,9 @@
 			"search": "Search",
 			"noResults": "No results",
 			"close": "Close",
-			"appearance": "Appearance"
+			"appearance": "Appearance",
+			"region": "Region",
+			"country": "Country and time zone"
 		},
 		"sidebar": {
 			"closeMenu": "Close menu",

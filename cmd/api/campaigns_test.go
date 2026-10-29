@@ -147,6 +147,19 @@ func TestCampaignsFromCreationToExport(t *testing.T) {
 		assert.Contains(t, lines[1], ",Instagram,3,")
 		assert.Contains(t, lines[2], ",Email,1,")
 		assert.Equal(t, "invalid_range", e.do("GET", campaign+"/export?from=yesterday", ana, nil).errCode())
+		assert.Equal(t, "invalid_timezone", e.do("GET", campaign+"/export?tz=Mars/Olympus", ana, nil).errCode())
+	})
+
+	t.Run("the export counts the days of tz", func(t *testing.T) {
+		lima, err := time.LoadLocation("America/Lima")
+		require.NoError(t, err)
+		today := time.Now().In(lima).Format("2006-01-02")
+		req := httptest.NewRequest("GET", campaign+"/export?tz=America/Lima&from="+today+"&to="+today, nil)
+		req.Header.Set("Authorization", "Bearer "+ana)
+		rec := httptest.NewRecorder()
+		e.app.handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.Contains(t, rec.Body.String(), ",Instagram,3,", "today in Lima holds the clicks that were just made")
 	})
 
 	t.Run("a link moves to another channel and out of the campaign", func(t *testing.T) {

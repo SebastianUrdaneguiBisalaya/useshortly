@@ -373,14 +373,15 @@ var exportHeader = []string{"link_id", "short_url", "origin_url", "channel", "cl
 // Export answers the links of a campaign with their clicks as a CSV file.
 //
 //	@Summary		Export a campaign
-//	@Description	A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, UTC, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
+//	@Description	A CSV file with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to (YYYY-MM-DD, days of tz, both included); without them it counts every click. Needs a JWT or an API key with the read scope.
 //	@Tags			campaigns
 //	@Produce		text/csv
 //	@Security		BearerAuth
 //	@Param			orgID		path		int		true	"Organization id"
 //	@Param			campaignID	path		int		true	"Campaign id"
-//	@Param			from		query		string	false	"First day, YYYY-MM-DD (UTC)"
-//	@Param			to			query		string	false	"Last day, YYYY-MM-DD (UTC)"
+//	@Param			from		query		string	false	"First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)"
+//	@Param			to			query		string	false	"Last day, YYYY-MM-DD, a day of tz"
+//	@Param			tz			query		string	false	"IANA time zone the days are counted in, e.g. America/Lima. UTC when omitted"
 //	@Success		200			{file}		file
 //	@Failure		400			{object}	ErrorResponse
 //	@Failure		401			{object}	ErrorResponse
@@ -406,7 +407,11 @@ func (h *CampaignHandler) Export(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.campaigns.Export(r.Context(), tenant.ID, id, from, to)
+	loc, ok := timeZoneParam(w, r)
+	if !ok {
+		return
+	}
+	rows, err := h.campaigns.Export(r.Context(), tenant.ID, id, from, to, loc)
 	if err != nil {
 		WriteError(w, r, err)
 		return

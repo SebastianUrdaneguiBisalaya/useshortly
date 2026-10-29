@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,6 +120,16 @@ func TestCampaignsFromCreationToExport(t *testing.T) {
 		assert.Equal(t, "Email", second["name"])
 		assert.EqualValues(t, 1, second["clicks"])
 		assert.Equal(t, "invalid_range", e.do("GET", campaign+"/stats?from=2026-03-05&to=2026-03-01", ana, nil).errCode())
+	})
+
+	t.Run("stats take a time zone", func(t *testing.T) {
+		lima, err := time.LoadLocation("America/Lima")
+		require.NoError(t, err)
+		res := e.do("GET", campaign+"/stats?tz=America/Lima", ana, nil)
+		require.Equal(t, http.StatusOK, res.status, res.raw)
+		assert.EqualValues(t, 4, res.body["total"])
+		assert.Equal(t, time.Now().In(lima).Format("2006-01-02"), res.body["to"])
+		assert.Equal(t, "invalid_timezone", e.do("GET", campaign+"/stats?tz=Mars/Olympus", ana, nil).errCode())
 	})
 
 	t.Run("the export is a CSV with a row per link", func(t *testing.T) {

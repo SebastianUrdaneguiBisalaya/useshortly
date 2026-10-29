@@ -191,7 +191,7 @@
             "CampaignStats": {
                 "properties": {
                     "by_hour": {
-                        "description": "ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).",
+                        "description": "ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).",
                         "items": {
                             "type": "integer"
                         },
@@ -636,7 +636,7 @@
             "LinkStats": {
                 "properties": {
                     "by_hour": {
-                        "description": "ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).",
+                        "description": "ByHour has 24 entries (hour 0..23 of the tz time zone, UTC by default) and ByWeekday 7 (0 is Sunday).",
                         "items": {
                             "type": "integer"
                         },
@@ -3379,7 +3379,7 @@
         },
         "/orgs/{orgID}/campaigns/{campaignID}/stats": {
             "get": {
-                "description": "Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "description": "Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
                 "operationId": "getCampaignStats",
                 "parameters": [
                     {
@@ -3401,7 +3401,7 @@
                         }
                     },
                     {
-                        "description": "First day, YYYY-MM-DD (UTC)",
+                        "description": "First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)",
                         "in": "query",
                         "name": "from",
                         "schema": {
@@ -3409,9 +3409,17 @@
                         }
                     },
                     {
-                        "description": "Last day, YYYY-MM-DD (UTC)",
+                        "description": "Last day, YYYY-MM-DD, a day of tz",
                         "in": "query",
                         "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted",
+                        "in": "query",
+                        "name": "tz",
                         "schema": {
                             "type": "string"
                         }
@@ -4943,7 +4951,7 @@
         },
         "/orgs/{orgID}/links/{linkID}/stats": {
             "get": {
-                "description": "Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
+                "description": "Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Days, hours and weekdays are counted in the tz time zone (UTC by default), daylight saving included. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.",
                 "operationId": "getLinkStats",
                 "parameters": [
                     {
@@ -4965,7 +4973,7 @@
                         }
                     },
                     {
-                        "description": "First day, YYYY-MM-DD (UTC)",
+                        "description": "First day, YYYY-MM-DD, a day of tz (UTC when tz is omitted)",
                         "in": "query",
                         "name": "from",
                         "schema": {
@@ -4973,9 +4981,17 @@
                         }
                     },
                     {
-                        "description": "Last day, YYYY-MM-DD (UTC)",
+                        "description": "Last day, YYYY-MM-DD, a day of tz",
                         "in": "query",
                         "name": "to",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "IANA time zone the days, hours and weekdays are counted in, e.g. America/Lima. UTC when omitted",
+                        "in": "query",
+                        "name": "tz",
                         "schema": {
                             "type": "string"
                         }

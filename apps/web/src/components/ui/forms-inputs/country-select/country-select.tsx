@@ -191,7 +191,7 @@ function CountryMark({ option, parts, flags }: CountryMarkProps) {
 	return (
 		<span className='flex min-w-0 items-center gap-2'>
 			{Flag && (
-				<span className='flex h-3.5 w-5 shrink-0 overflow-hidden rounded-[2px] border border-border [&>svg]:size-full'>
+				<span className='flex h-3.5 w-5 shrink-0 overflow-hidden rounded-xs border border-border [&>svg]:size-full'>
 					<Flag title={option.name} />
 				</span>
 			)}
@@ -247,7 +247,7 @@ function CountrySelectContent({ searchPlaceholder, emptyMessage, width }: Countr
 	return (
 		<Select.Content width={width}>
 			<Select.Search placeholder={searchPlaceholder ?? texts.searchPlaceholder} />
-			<Select.ItemList className='space-y-0.5'>
+			<Select.ItemList>
 				{options.map(option => (
 					<Select.Item key={option.code} label={`${option.name} ${option.code}`} value={option.code}>
 						<CountryMark flags={flags} option={option} parts={display} />

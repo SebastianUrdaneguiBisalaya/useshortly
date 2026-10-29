@@ -98,7 +98,7 @@ export function CreateApiKeyDialog({ orgID, open, onOpenChange }: { orgID: numbe
 														<Select.Value />
 													</Select.Trigger>
 													<Select.Content>
-														<Select.ItemList className='space-y-0.5'>
+														<Select.ItemList>
 															<Select.Item value='read'>{t('protected.apiKeys.scopes.read')}</Select.Item>
 															<Select.Item value='write'>{t('protected.apiKeys.scopes.write')}</Select.Item>
 														</Select.ItemList>

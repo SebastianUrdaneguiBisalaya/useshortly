@@ -514,7 +514,7 @@ function Content({ children, width }: SelectContentProps) {
 }
 
 function ItemList({ children, className }: { children: React.ReactNode; className?: string }) {
-	return <div className={cn('flex-1 overflow-y-auto p-1 scrollbar-quiet', className)}>{children}</div>;
+	return <div className={cn('flex-1 overflow-y-auto p-1 scrollbar-quiet space-y-0.5', className)}>{children}</div>;
 }
 
 function Search({ placeholder = 'Buscar…' }: { placeholder?: string }) {

@@ -63,13 +63,11 @@ export function LinkDrawer({
 								<Row label={t('protected.links.drawer.maxClicks')}>{link.max_clicks ?? t('protected.links.noLimit')}</Row>
 								<Row label={t('protected.links.drawer.expires')}>{formatDateTime(link.expires_at, locale, t('protected.links.never'))}</Row>
 								<Row label={t('protected.links.drawer.created')}>{formatDateTime(link.created_at, locale)}</Row>
-								{link.protected && (
-									<Row label={t('protected.links.columns.access')}>
-										<Badge variant='warning'>
-											<Badge.Text>{t('protected.links.badges.protected')}</Badge.Text>
-										</Badge>
-									</Row>
-								)}
+								<Row label={t('protected.links.columns.access')}>
+									<Badge variant={link.protected ? 'warning' : 'outline'}>
+										<Badge.Text>{link.protected ? t('protected.links.badges.private') : t('protected.links.badges.public')}</Badge.Text>
+									</Badge>
+								</Row>
 							</dl>
 							<Separator />
 							<CampaignSection link={link} onChange={() => onChangeChannel(link)} />
@@ -146,7 +144,7 @@ function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 /** The campaign and channel a link was shared in, with the button to change them. */
 function CampaignSection({ link, onChange }: { link: Link; onChange: () => void }) {
 	const t = useTranslate();
-	const inCampaign = link.campaign_id !== undefined && link.channel_id !== undefined;
+	const inCampaign = link.campaign_id != null && link.channel_id != null;
 
 	return (
 		<section className='flex flex-col gap-3'>

@@ -23,16 +23,16 @@ export function LinkActions({ onDownloadQr, onChangeChannel, onDelete }: { onDow
 						<Button.Icon icon={Ellipsis} />
 					</Button>
 				</Popover.Trigger>
-				<Popover.Content align='end' className='flex w-48 flex-col gap-1 p-1'>
-					<Button className='justify-start' onClick={run(onDownloadQr)} variant='ghost'>
+				<Popover.Content align='end' className='flex w-56 flex-col gap-1 p-1'>
+					<Button className='w-full justify-start' onClick={run(onDownloadQr)} variant='ghost'>
 						<Button.Icon icon={Download} />
 						<Button.Text>{t('protected.links.actions.downloadQr')}</Button.Text>
 					</Button>
-					<Button className='justify-start' onClick={run(onChangeChannel)} variant='ghost'>
+					<Button className='w-full justify-start' onClick={run(onChangeChannel)} variant='ghost'>
 						<Button.Icon icon={Megaphone} />
 						<Button.Text>{t('protected.links.actions.changeChannel')}</Button.Text>
 					</Button>
-					<Button className='justify-start text-destructive' onClick={run(onDelete)} variant='ghost'>
+					<Button className='w-full justify-start text-destructive' onClick={run(onDelete)} variant='ghost'>
 						<Button.Icon icon={Trash2} />
 						<Button.Text>{t('protected.links.actions.delete')}</Button.Text>
 					</Button>

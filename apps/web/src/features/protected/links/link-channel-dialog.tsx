@@ -33,16 +33,16 @@ function LinkChannelForm({ orgID, link, onOpenChange }: { orgID: number; link: L
 	const titleId = useId();
 	const queryClient = useQueryClient();
 	const setChannel = useSetLinkChannel();
-	const [campaignID, setCampaignID] = useState(link.campaign_id);
-	const [channelID, setChannelID] = useState(link.channel_id);
+	const [campaignID, setCampaignID] = useState(link.campaign_id ?? undefined);
+	const [channelID, setChannelID] = useState(link.channel_id ?? undefined);
 	const campaigns = useAllCampaigns(orgID);
 	const channels = useListCampaignChannels(orgID, campaignID ?? 0, { limit: CHANNEL_LIMIT }, { query: { enabled: campaignID !== undefined } });
 
 	const campaignName = campaigns.campaigns.find(campaign => campaign.id === campaignID)?.name;
 	const channelName = channels.data?.data?.find(channel => channel.id === channelID)?.name;
-	const unchanged = channelID === link.channel_id;
+	const unchanged = channelID === (link.channel_id ?? undefined);
 	const incomplete = campaignID !== undefined && channelID === undefined;
-	const leaving = campaignID === undefined && link.channel_id !== undefined;
+	const leaving = campaignID === undefined && link.channel_id != null;
 	const destination = campaignName && channelName ? withUtm(link.origin_url ?? '', campaignName, channelName) : undefined;
 	const tooLong = destination !== undefined && destination.length > MAX_DESTINATION_LENGTH;
 

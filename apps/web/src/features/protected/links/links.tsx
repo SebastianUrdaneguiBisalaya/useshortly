@@ -91,8 +91,8 @@ function LinksContent({ orgID }: { orgID: number }) {
 			},
 			{
 				cell: ({ row }) =>
-					row.original.campaign_id === undefined || row.original.channel_id === undefined ? (
-						<span className='text-muted-foreground'>—</span>
+					row.original.campaign_id == null || row.original.channel_id == null ? (
+						<span className='text-muted-foreground'>{t('protected.links.noCampaign')}</span>
 					) : (
 						<Badge variant='outline'>
 							<Badge.Text>
@@ -109,11 +109,9 @@ function LinksContent({ orgID }: { orgID: number }) {
 					const expired = row.original.expires_at ? new Date(row.original.expires_at).getTime() < Date.now() : false;
 					return (
 						<div className='flex gap-1.5'>
-							{row.original.protected && (
-								<Badge variant='warning'>
-									<Badge.Text>{t('protected.links.badges.protected')}</Badge.Text>
-								</Badge>
-							)}
+							<Badge variant={row.original.protected ? 'warning' : 'outline'}>
+								<Badge.Text>{row.original.protected ? t('protected.links.badges.private') : t('protected.links.badges.public')}</Badge.Text>
+							</Badge>
 							{expired && (
 								<Badge variant='destructive'>
 									<Badge.Text>{t('protected.links.badges.expired')}</Badge.Text>

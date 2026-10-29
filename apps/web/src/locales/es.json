@@ -411,6 +411,7 @@
 			"empty": "Aún no hay links. Crea el primero.",
 			"never": "Nunca",
 			"noLimit": "Sin límite",
+			"noCampaign": "Sin campaña asignada",
 			"open": "Abrir detalle",
 			"columns": {
 				"shortUrl": "Link corto",
@@ -423,6 +424,8 @@
 			},
 			"badges": {
 				"protected": "Contraseña",
+				"public": "Público",
+				"private": "Privado",
 				"expired": "Expirado"
 			},
 			"create": {

@@ -86,9 +86,53 @@ type StatsRepository interface {
 	Total(ctx context.Context, tenantID, linkID int64, from, to time.Time, f Filter) (int64, error)
 }
 
+// ChannelCount is how many clicks one channel of a campaign brought.
+type ChannelCount struct {
+	ID     int64
+	Name   string
+	Clicks int64
+}
+
+// CampaignStats summarizes the clicks of every link of a campaign between two days, both included.
+// The embedded Stats has no LinkID; Channels lists every channel of the campaign, most clicks
+// first, the ones without clicks included.
+type CampaignStats struct {
+	Stats
+	CampaignID int64
+	Channels   []ChannelCount
+}
+
+// CampaignQuery selects a campaign of a tenant and a window, with the same meaning as in StatsQuery.
+type CampaignQuery struct {
+	TenantID   int64
+	CampaignID int64
+	From       time.Time
+	To         time.Time
+	Country    string
+	Device     string
+	Referrer   string
+}
+
+// CampaignStatsRepository answers the questions Service.CampaignStats asks about stored clicks.
+type CampaignStatsRepository interface {
+	// CampaignStats aggregates the clicks of every link in a channel of the campaign, like
+	// StatsRepository.Stats does for one link, and counts them per channel of the campaign.
+	// Returns ErrCampaignNotFound if the campaign does not exist in that tenant.
+	CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f Filter) (Stats, []ChannelCount, error)
+	// CampaignTotal counts the clicks of the campaign with from <= at < to that pass the filter.
+	CampaignTotal(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f Filter) (int64, error)
+}
+
 type Service struct {
-	repo StatsRepository
-	now  func() time.Time
+	repo      StatsRepository
+	campaigns CampaignStatsRepository
+	now       func() time.Time
+}
+
+// WithCampaigns enables CampaignStats.
+func (s *Service) WithCampaigns(r CampaignStatsRepository) *Service {
+	s.campaigns = r
+	return s
 }
 
 func NewService(repo StatsRepository) *Service {
@@ -113,6 +157,37 @@ func (s *Service) Stats(ctx context.Context, q StatsQuery) (Stats, error) {
 		return Stats{}, err
 	}
 	st.LinkID = q.LinkID
+	return finish(st, from, to), nil
+}
+
+// CampaignStats returns the clicks of every link of a campaign of the tenant over the window.
+func (s *Service) CampaignStats(ctx context.Context, q CampaignQuery) (CampaignStats, error) {
+	if s.campaigns == nil {
+		return CampaignStats{}, ErrCampaignsDisabled
+	}
+	from, to, err := s.window(q.From, q.To)
+	if err != nil {
+		return CampaignStats{}, err
+	}
+	f := filter(StatsQuery{Country: q.Country, Device: q.Device, Referrer: q.Referrer})
+	end := to.AddDate(0, 0, 1)
+	st, channels, err := s.campaigns.CampaignStats(ctx, q.TenantID, q.CampaignID, from, end, f)
+	if err != nil {
+		return CampaignStats{}, err
+	}
+	span := end.Sub(from)
+	if st.PreviousTotal, err = s.campaigns.CampaignTotal(ctx, q.TenantID, q.CampaignID, from.Add(-span), from, f); err != nil {
+		return CampaignStats{}, err
+	}
+	if channels == nil {
+		channels = []ChannelCount{}
+	}
+	return CampaignStats{Stats: finish(st, from, to), CampaignID: q.CampaignID, Channels: channels}, nil
+}
+
+// finish completes what a repository returned: the window it covers, every day, hour and weekday
+// present, and a label for the clicks that came without a value.
+func finish(st Stats, from, to time.Time) Stats {
 	st.From, st.To = from.Format(dateLayout), to.Format(dateLayout)
 	st.Daily = fillDays(st.Daily, from, to)
 	st.ByHour = pad(st.ByHour, 24)
@@ -120,7 +195,7 @@ func (s *Service) Stats(ctx context.Context, q StatsQuery) (Stats, error) {
 	st.Referrers = label(st.Referrers, labelDirect)
 	st.Countries = label(st.Countries, labelUnknown)
 	st.Devices = label(st.Devices, labelUnknown)
-	return st, nil
+	return st
 }
 
 // window resolves the optional days into from <= to, both at midnight UTC.

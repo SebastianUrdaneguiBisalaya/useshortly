@@ -37,10 +37,13 @@ func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, fro
 	if err := r.checkLink(ctx, tenantID, linkID); err != nil {
 		return analytics.Stats{}, err
 	}
-
-	var st analytics.Stats
 	window, args := clickWindow(linkID, from, to, f)
+	return r.aggregate(ctx, window, args)
+}
 
+// aggregate summarizes the clicks a WHERE clause selects.
+func (r *ClickRepository) aggregate(ctx context.Context, window string, args []any) (analytics.Stats, error) {
+	var st analytics.Stats
 	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM clicks WHERE `+window, args...).Scan(&st.Total); err != nil {
 		return analytics.Stats{}, fmt.Errorf("click repo: total: %w", err)
 	}
@@ -65,6 +68,84 @@ func (r *ClickRepository) Stats(ctx context.Context, tenantID, linkID int64, fro
 		return analytics.Stats{}, err
 	}
 	return st, nil
+}
+
+// CampaignStats implements analytics.CampaignStatsRepository.
+func (r *ClickRepository) CampaignStats(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f analytics.Filter) (analytics.Stats, []analytics.ChannelCount, error) {
+	if err := r.checkCampaign(ctx, tenantID, campaignID); err != nil {
+		return analytics.Stats{}, nil, err
+	}
+	window, args := scopedWindow(campaignClicks, []any{campaignID}, from, to, f)
+	st, err := r.aggregate(ctx, window, args)
+	if err != nil {
+		return analytics.Stats{}, nil, err
+	}
+	channels, err := r.channelCounts(ctx, campaignID, from, to, f)
+	if err != nil {
+		return analytics.Stats{}, nil, err
+	}
+	return st, channels, nil
+}
+
+// CampaignTotal implements analytics.CampaignStatsRepository.
+func (r *ClickRepository) CampaignTotal(ctx context.Context, tenantID, campaignID int64, from, to time.Time, f analytics.Filter) (int64, error) {
+	if err := r.checkCampaign(ctx, tenantID, campaignID); err != nil {
+		return 0, err
+	}
+	window, args := scopedWindow(campaignClicks, []any{campaignID}, from, to, f)
+	var n int64
+	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM clicks WHERE `+window, args...).Scan(&n); err != nil {
+		return 0, fmt.Errorf("click repo: campaign total: %w", err)
+	}
+	return n, nil
+}
+
+// channelCounts counts the clicks per channel of a campaign, the channels without clicks included.
+func (r *ClickRepository) channelCounts(ctx context.Context, campaignID int64, from, to time.Time, f analytics.Filter) ([]analytics.ChannelCount, error) {
+	on := `k.link_id = l.id AND k.clicked_at >= ? AND k.clicked_at < ?`
+	args := []any{formatTime(from), formatTime(to)}
+	for _, c := range []struct {
+		column string
+		value  *string
+	}{{"country", f.Country}, {"device", f.Device}, {"referrer", f.Referrer}} {
+		if c.value != nil {
+			on += ` AND k.` + c.column + ` = ?`
+			args = append(args, *c.value)
+		}
+	}
+	args = append(args, campaignID)
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT ch.id, ch.name, count(k.id) AS n
+		 FROM channels ch
+		 LEFT JOIN links l ON l.channel_id = ch.id
+		 LEFT JOIN clicks k ON `+on+`
+		 WHERE ch.campaign_id = ?
+		 GROUP BY ch.id, ch.name ORDER BY n DESC, ch.id`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("click repo: channels: %w", err)
+	}
+	defer rows.Close()
+	var out []analytics.ChannelCount
+	for rows.Next() {
+		var c analytics.ChannelCount
+		if err := rows.Scan(&c.ID, &c.Name, &c.Clicks); err != nil {
+			return nil, fmt.Errorf("click repo: channels: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *ClickRepository) checkCampaign(ctx context.Context, tenantID, campaignID int64) error {
+	var one int
+	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM campaigns WHERE id = ? AND tenant_id = ?`, campaignID, tenantID).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return analytics.ErrCampaignNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("click repo: campaign: %w", err)
+	}
+	return nil
 }
 
 // Total implements analytics.StatsRepository.
@@ -95,8 +176,17 @@ func (r *ClickRepository) checkLink(ctx context.Context, tenantID, linkID int64)
 // clickWindow is the WHERE clause (and its arguments) of the clicks of a link between from and to
 // that pass the filter. Only fixed column names are written into it; values travel as arguments.
 func clickWindow(linkID int64, from, to time.Time, f analytics.Filter) (string, []any) {
-	where := `link_id = ? AND clicked_at >= ? AND clicked_at < ?`
-	args := []any{linkID, formatTime(from), formatTime(to)}
+	return scopedWindow(`link_id = ?`, []any{linkID}, from, to, f)
+}
+
+// campaignClicks selects the clicks of every link in a channel of one campaign.
+const campaignClicks = `link_id IN (SELECT l.id FROM links l JOIN channels ch ON ch.id = l.channel_id WHERE ch.campaign_id = ?)`
+
+// scopedWindow is clickWindow for any scope condition (one of this file's own constants, never user
+// input) with its arguments.
+func scopedWindow(scope string, scopeArgs []any, from, to time.Time, f analytics.Filter) (string, []any) {
+	where := scope + ` AND clicked_at >= ? AND clicked_at < ?`
+	args := append(scopeArgs[:len(scopeArgs):len(scopeArgs)], formatTime(from), formatTime(to))
 	for _, c := range []struct {
 		column string
 		value  *string

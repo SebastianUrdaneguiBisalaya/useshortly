@@ -3,6 +3,7 @@ import * as z from 'zod';
 import { segment } from '../../api/client.js';
 import { link } from '../../api/schemas.js';
 import { guard, ok, type ToolContext } from './helpers.js';
+import { structuredLink } from './links.js';
 import { oneLine } from './text.js';
 
 const organizationId = z.number().int().positive().describe('Organization id, from list_organizations.');
@@ -19,7 +20,7 @@ export function registerCreateLink(server: McpServer, { api }: ToolContext) {
 		{
 			title: 'Create a short link',
 			description:
-				'Shortens a URL in an organization and returns the short link. Optional settings: a custom alias, an expiration, a click limit, a password, or a custom domain. If you set a password it is visible in this conversation: only do it when the user asked for one and gave it.',
+				'Shortens a URL in an organization and returns the short link. Optional settings: a custom alias, an expiration, a click limit, a password, a custom domain, or a campaign channel (its utm_source, utm_medium and utm_campaign are then added to the destination, which with them must fit in 255 characters). If you set a password it is visible in this conversation: only do it when the user asked for one and gave it.',
 			inputSchema: z.object({
 				organization_id: organizationId,
 				url: destination,
@@ -32,31 +33,23 @@ export function registerCreateLink(server: McpServer, { api }: ToolContext) {
 				max_clicks: z.number().int().min(1).optional().describe('The link stops working after this many clicks.'),
 				password: z.string().min(4).max(64).optional().describe('Visitors must enter this password: 4 to 64 characters.'),
 				domain_id: z.number().int().positive().optional().describe('Id of a verified custom domain of the organization, from list_domains.'),
+				channel_id: z.number().int().positive().optional().describe('Id of a campaign channel, from list_campaign_channels, to share the link in that campaign.'),
 			}),
 			annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
 		},
-		({ organization_id, url, alias, expires_at, max_clicks, password, domain_id }) =>
+		({ organization_id, url, alias, expires_at, max_clicks, password, domain_id, channel_id }) =>
 			guard(async () => {
 				const { data } = await api.post(`/orgs/${segment(organization_id)}/links`, link, {
-					body: { url, alias, expires_at, max_clicks, password, domain_id },
+					body: { url, alias, expires_at, max_clicks, password, domain_id, channel_id },
 				});
 				const notes = [
+					data.channel_id !== null ? `campaign ${JSON.stringify(oneLine(data.campaign_name, 60))}, channel ${JSON.stringify(oneLine(data.channel_name, 40))}` : null,
 					data.protected ? 'password protected' : null,
 					data.expires_at ? `expires ${data.expires_at}` : null,
 					data.max_clicks !== null ? `max ${data.max_clicks} clicks` : null,
 				].filter(Boolean);
 				return ok(`Created ${data.short_url} -> ${oneLine(data.origin_url)} (link id ${data.id}${notes.length ? `, ${notes.join(', ')}` : ''}).`, {
-					link: {
-						id: data.id,
-						code: data.code,
-						short_url: data.short_url,
-						origin_url: data.origin_url,
-						domain_id: data.domain_id,
-						expires_at: data.expires_at,
-						max_clicks: data.max_clicks,
-						password_protected: data.protected,
-						created_at: data.created_at,
-					},
+					link: structuredLink(data),
 				});
 			})
 	);

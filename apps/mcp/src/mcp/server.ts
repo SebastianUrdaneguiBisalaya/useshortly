@@ -8,6 +8,7 @@ import { registerAddDomain, registerListDomains, registerVerifyDomain } from './
 import { registerGetLink, registerListLinks } from './tools/links.js';
 import { registerListOrganizations } from './tools/organizations.js';
 import { registerWhoami } from './tools/whoami.js';
+import { registerAddCampaignChannel, registerCreateCampaign, registerDeleteCampaign, registerDeleteCampaignChannel, registerSetLinkChannel, registerUpdateCampaign } from './tools/write-campaigns.js';
 import { registerCreateLink, registerDeleteLink } from './tools/write-links.js';
 
 const instructions = `useshortly is a URL shortener. These tools act on the signed-in user's account.
@@ -37,6 +38,12 @@ export function createMcpServer(api: UserApi): McpServer {
 	if (api.principal.scope === 'write') {
 		registerCreateLink(server, context);
 		registerDeleteLink(server, context);
+		registerCreateCampaign(server, context);
+		registerUpdateCampaign(server, context);
+		registerDeleteCampaign(server, context);
+		registerAddCampaignChannel(server, context);
+		registerDeleteCampaignChannel(server, context);
+		registerSetLinkChannel(server, context);
 		registerAddDomain(server, context);
 		registerVerifyDomain(server, context);
 		registerShortenUrlPrompt(server);

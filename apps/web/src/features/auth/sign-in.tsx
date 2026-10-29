@@ -57,7 +57,7 @@ export default function SignInPage() {
 						<Field name='email'>
 							{field => (
 								<Input errorMessage={field.error}>
-									<Input.Label>{t('auth.common.email.label')}</Input.Label>
+									<Input.Label required>{t('auth.common.email.label')}</Input.Label>
 									<Input.Field autoComplete='off' autoFocus placeholder={t('auth.common.email.placeholder')} {...field.inputProps} />
 								</Input>
 							)}
@@ -65,7 +65,7 @@ export default function SignInPage() {
 						<Field name='password'>
 							{field => (
 								<Input errorMessage={field.error}>
-									<Input.Label>{t('auth.common.password.label')}</Input.Label>
+									<Input.Label required>{t('auth.common.password.label')}</Input.Label>
 									<Input.Field autoComplete='off' placeholder={t('auth.common.password.placeholder')} type='password' {...field.inputProps} />
 									<Input.PasswordToggle hideLabel={t('auth.common.password.hide')} showLabel={t('auth.common.password.show')} />
 								</Input>

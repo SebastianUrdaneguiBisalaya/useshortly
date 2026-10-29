@@ -85,7 +85,7 @@ export function CreateApiKeyDialog({ orgID, open, onOpenChange }: { orgID: numbe
 										<Field name='name'>
 											{field => (
 												<Input errorMessage={field.error}>
-													<Input.Label>{t('protected.apiKeys.columns.name')}</Input.Label>
+													<Input.Label required>{t('protected.apiKeys.columns.name')}</Input.Label>
 													<Input.Field autoComplete='off' autoFocus placeholder={t('protected.apiKeys.create.namePlaceholder')} {...field.inputProps} />
 												</Input>
 											)}
@@ -93,12 +93,12 @@ export function CreateApiKeyDialog({ orgID, open, onOpenChange }: { orgID: numbe
 										<Field name='scope'>
 											{field => (
 												<Select.Root {...field.changeProps}>
-													<Select.Label>{t('protected.apiKeys.columns.scope')}</Select.Label>
+													<Select.Label required>{t('protected.apiKeys.columns.scope')}</Select.Label>
 													<Select.Trigger>
 														<Select.Value />
 													</Select.Trigger>
 													<Select.Content>
-														<Select.ItemList>
+														<Select.ItemList className='space-y-0.5'>
 															<Select.Item value='read'>{t('protected.apiKeys.scopes.read')}</Select.Item>
 															<Select.Item value='write'>{t('protected.apiKeys.scopes.write')}</Select.Item>
 														</Select.ItemList>

@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
 						<Field name='email'>
 							{field => (
 								<Input errorMessage={field.error}>
-									<Input.Label>{t('auth.common.email.label')}</Input.Label>
+									<Input.Label required>{t('auth.common.email.label')}</Input.Label>
 									<Input.Field autoComplete='off' autoFocus placeholder={t('auth.common.email.placeholder')} {...field.inputProps} />
 								</Input>
 							)}

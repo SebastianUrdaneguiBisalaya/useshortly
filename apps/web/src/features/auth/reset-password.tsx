@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
 						<Field name='new_password'>
 							{field => (
 								<Input errorMessage={field.error}>
-									<Input.Label>{t('auth.resetPassword.newPassword.label')}</Input.Label>
+									<Input.Label required>{t('auth.resetPassword.newPassword.label')}</Input.Label>
 									<Input.Field autoComplete='off' placeholder={t('auth.resetPassword.newPassword.placeholder')} type='password' {...field.inputProps} />
 									<Input.PasswordToggle hideLabel={t('auth.common.password.hide')} showLabel={t('auth.common.password.show')} />
 								</Input>
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
 						<Field name='confirm_password'>
 							{field => (
 								<Input errorMessage={field.error}>
-									<Input.Label>{t('auth.resetPassword.confirmPassword.label')}</Input.Label>
+									<Input.Label required>{t('auth.resetPassword.confirmPassword.label')}</Input.Label>
 									<Input.Field autoComplete='off' placeholder={t('auth.resetPassword.confirmPassword.placeholder')} type='password' {...field.inputProps} />
 									<Input.PasswordToggle hideLabel={t('auth.common.password.hide')} showLabel={t('auth.common.password.show')} />
 								</Input>

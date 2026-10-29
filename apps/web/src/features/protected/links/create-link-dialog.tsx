@@ -79,7 +79,7 @@ export function CreateLinkDialog({ orgID, open, onOpenChange }: { orgID: number;
 										<Field name='url'>
 											{field => (
 												<Input errorMessage={field.error}>
-													<Input.Label>{t('protected.links.create.url.label')}</Input.Label>
+													<Input.Label required>{t('protected.links.create.url.label')}</Input.Label>
 													<Input.Field autoComplete='off' autoFocus inputMode='url' placeholder={t('protected.links.create.url.placeholder')} {...field.inputProps} />
 												</Input>
 											)}

@@ -54,7 +54,7 @@ export function InviteMemberDialog({ orgID, open, onOpenChange }: { orgID: numbe
 								<Field name='email'>
 									{field => (
 										<Input errorMessage={field.error}>
-											<Input.Label>{t('protected.users.invite.email')}</Input.Label>
+											<Input.Label required>{t('protected.users.invite.email')}</Input.Label>
 											<Input.Field autoComplete='off' autoFocus placeholder='name@company.com' type='email' {...field.inputProps} />
 										</Input>
 									)}

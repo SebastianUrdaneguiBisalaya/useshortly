@@ -93,7 +93,7 @@ export function OrganizationDialog({ open, onOpenChange, organization }: { open:
 									<Field name='name'>
 										{field => (
 											<Input errorMessage={field.error}>
-												<Input.Label>{t('protected.organization.create.name.label')}</Input.Label>
+												<Input.Label required>{t('protected.organization.create.name.label')}</Input.Label>
 												<Input.Field autoComplete='off' autoFocus placeholder={t('protected.organization.create.name.placeholder')} {...field.inputProps} />
 											</Input>
 										)}

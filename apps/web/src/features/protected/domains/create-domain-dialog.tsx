@@ -84,7 +84,7 @@ export function CreateDomainDialog({ orgID, open, onOpenChange }: { orgID: numbe
 									<Field name='host'>
 										{field => (
 											<Input errorMessage={field.error}>
-												<Input.Label>{t('protected.domains.create.host.label')}</Input.Label>
+												<Input.Label required>{t('protected.domains.create.host.label')}</Input.Label>
 												<Input.Field autoComplete='off' autoFocus placeholder={t('protected.domains.create.host.placeholder')} {...field.inputProps} />
 											</Input>
 										)}

@@ -57,8 +57,8 @@ function DocsContent({ orgID }: { orgID: number }) {
 					</Prose>
 					<BlockCode.Root
 						code={`BASE_URL=${base}
-						ORG_ID=${orgID}
-						USHORTLY_API_KEY=usl_…   # created in the next section`}
+ORG_ID=${orgID}
+USHORTLY_API_KEY=usl_…   # created in the next section`}
 						language='bash'
 					>
 						<BlockCode.Header>

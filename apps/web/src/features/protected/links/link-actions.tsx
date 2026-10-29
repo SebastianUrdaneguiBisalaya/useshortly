@@ -1,11 +1,11 @@
-import { Download, Ellipsis, Trash2 } from 'lucide-react';
+import { Download, Ellipsis, Megaphone, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '~/components/ui/actions-controls/button/button';
 import { Popover } from '~/components/ui/overlays-feedback/popover/popover';
 import { useTranslate } from '~/hooks/use-translate';
 
-/** The "⋯" menu of a link row: download its QR or ask to delete it. Clicks never reach the row, so the drawer doesn't open. */
-export function LinkActions({ onDownloadQr, onDelete }: { onDownloadQr: () => void; onDelete: () => void }) {
+/** The "⋯" menu of a link row: download its QR, change its campaign channel or ask to delete it. Clicks never reach the row, so the drawer doesn't open. */
+export function LinkActions({ onDownloadQr, onChangeChannel, onDelete }: { onDownloadQr: () => void; onChangeChannel: () => void; onDelete: () => void }) {
 	const t = useTranslate();
 	const [open, setOpen] = useState(false);
 
@@ -27,6 +27,10 @@ export function LinkActions({ onDownloadQr, onDelete }: { onDownloadQr: () => vo
 					<Button className='justify-start' onClick={run(onDownloadQr)} variant='ghost'>
 						<Button.Icon icon={Download} />
 						<Button.Text>{t('protected.links.actions.downloadQr')}</Button.Text>
+					</Button>
+					<Button className='justify-start' onClick={run(onChangeChannel)} variant='ghost'>
+						<Button.Icon icon={Megaphone} />
+						<Button.Text>{t('protected.links.actions.changeChannel')}</Button.Text>
 					</Button>
 					<Button className='justify-start text-destructive' onClick={run(onDelete)} variant='ghost'>
 						<Button.Icon icon={Trash2} />

@@ -1,6 +1,7 @@
-import { Code, Download, Trash2, X } from 'lucide-react';
+import { Code, Download, Megaphone, Trash2, X } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
+import { useGetCampaign, useListCampaignChannels } from '~/api/endpoints/campaigns/campaigns';
 import { useGetLinkUnlockPage } from '~/api/endpoints/unlock-page/unlock-page';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -16,7 +17,19 @@ import { QrImage } from '../share/qr-image';
 import { UnlockPageDialog } from './unlock-page-dialog';
 
 /** Side panel with everything about one link: short URL, settings, QR code and (for protected links) the unlock page. */
-export function LinkDrawer({ orgID, link, onClose, onDelete }: { orgID: number; link: Link | undefined; onClose: () => void; onDelete: (link: Link) => void }) {
+export function LinkDrawer({
+	orgID,
+	link,
+	onClose,
+	onDelete,
+	onChangeChannel,
+}: {
+	orgID: number;
+	link: Link | undefined;
+	onClose: () => void;
+	onDelete: (link: Link) => void;
+	onChangeChannel: (link: Link) => void;
+}) {
 	const t = useTranslate();
 	const downloadQr = useDownloadQr();
 	const { locale } = useLanguage();
@@ -59,6 +72,8 @@ export function LinkDrawer({ orgID, link, onClose, onDelete }: { orgID: number; 
 									</Row>
 								)}
 							</dl>
+							<Separator />
+							<CampaignSection link={link} onChange={() => onChangeChannel(link)} orgID={orgID} />
 							<Separator />
 							<section aria-label={t('protected.links.drawer.qr.title')} className='flex flex-col gap-3'>
 								<h3 className='font-primary text-sm font-semibold'>{t('protected.links.drawer.qr.title')}</h3>
@@ -125,6 +140,32 @@ function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 					{editing && <UnlockPageDialog link={link} onOpenChange={setEditing} open orgID={orgID} saved={saved} />}
 				</>
 			)}
+		</section>
+	);
+}
+
+/** The campaign and channel a link was shared in, with the button to change them. */
+function CampaignSection({ orgID, link, onChange }: { orgID: number; link: Link; onChange: () => void }) {
+	const t = useTranslate();
+	const inCampaign = link.campaign_id !== undefined && link.channel_id !== undefined;
+	const campaign = useGetCampaign(orgID, link.campaign_id ?? 0, { query: { enabled: inCampaign, retry: false } });
+	const channels = useListCampaignChannels(orgID, link.campaign_id ?? 0, { limit: 100 }, { query: { enabled: inCampaign } });
+	const channel = channels.data?.data?.find(item => item.id === link.channel_id);
+
+	return (
+		<section className='flex flex-col gap-3'>
+			<div>
+				<h3 className='font-primary text-sm font-semibold'>{t('protected.links.drawer.campaign.title')}</h3>
+				<p className='font-primary text-sm text-muted-foreground'>
+					{inCampaign ? t('protected.links.drawer.campaign.in', { campaign: campaign.data?.data?.name ?? '…', channel: channel?.name ?? '…' }) : t('protected.links.drawer.campaign.none')}
+				</p>
+			</div>
+			<div>
+				<Button onClick={onChange} variant='secondary'>
+					<Button.Icon icon={Megaphone} />
+					<Button.Text>{t('protected.links.drawer.campaign.change')}</Button.Text>
+				</Button>
+			</div>
 		</section>
 	);
 }

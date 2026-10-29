@@ -20,6 +20,7 @@ import { OrganizationGate } from '../share/organization-gate';
 import { QrImage, resolveQrStyle } from '../share/qr-image';
 import { CreateLinkDialog } from './create-link-dialog';
 import { LinkActions } from './link-actions';
+import { LinkChannelDialog } from './link-channel-dialog';
 import { LinkDrawer } from './link-drawer';
 
 const PAGE_SIZE = 25;
@@ -38,6 +39,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 	// The open link lives in the URL (`?link=12`) so the drawer can be shared and the back button closes it.
 	const [selectedID, setSelectedID] = useQueryState('link', parseAsInteger.withOptions({ history: 'push' }));
 	const [deleting, setDeleting] = useState<Link>();
+	const [changingChannel, setChangingChannel] = useState<Link>();
 	const links = useListLinks(orgID, {
 		limit: PAGE_SIZE,
 		offset: (page - 1) * PAGE_SIZE,
@@ -125,6 +127,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 			{
 				cell: ({ row }) => (
 					<LinkActions
+						onChangeChannel={() => setChangingChannel(row.original)}
 						onDelete={() => setDeleting(row.original)}
 						onDownloadQr={() => row.original.short_url && void downloadQr(row.original.short_url, row.original.code ?? 'qr', row.original.qr_style)}
 					/>
@@ -174,7 +177,8 @@ function LinksContent({ orgID }: { orgID: number }) {
 				/>
 			</Page.Body>
 			<CreateLinkDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
-			<LinkDrawer link={selected} onClose={() => void setSelectedID(null)} onDelete={setDeleting} orgID={orgID} />
+			<LinkDrawer link={selected} onChangeChannel={setChangingChannel} onClose={() => void setSelectedID(null)} onDelete={setDeleting} orgID={orgID} />
+			<LinkChannelDialog link={changingChannel} onOpenChange={open => !open && setChangingChannel(undefined)} orgID={orgID} />
 			<ConfirmDialog.Root
 				lang={{ cancel: t('protected.confirm.cancel'), confirm: t('protected.confirm.delete') }}
 				onConfirm={async () => {

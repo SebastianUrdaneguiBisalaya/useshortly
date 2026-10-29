@@ -479,7 +479,8 @@
 			"actions": {
 				"label": "Link actions",
 				"downloadQr": "Download QR",
-				"delete": "Delete link"
+				"delete": "Delete link",
+				"changeChannel": "Change campaign"
 			},
 			"delete": {
 				"label": "Delete link",
@@ -521,7 +522,19 @@
 						"mobile": "Mobile"
 					}
 				},
-				"close": "Close"
+				"close": "Close",
+				"campaign": {
+					"title": "Campaign",
+					"in": "In {{campaign}}, channel {{channel}}.",
+					"none": "Not in a campaign.",
+					"change": "Change campaign"
+				}
+			},
+			"channelDialog": {
+				"title": "Change campaign",
+				"description": "Putting the link in a channel adds utm_source, utm_medium and utm_campaign to its destination. The short link and its QR code don't change.",
+				"leaving": "Taking the link out of its campaign removes utm_source, utm_medium and utm_campaign from its destination. Values the link had for them before it joined the campaign aren't restored.",
+				"submit": "Save changes"
 			}
 		},
 		"domains": {
@@ -679,7 +692,8 @@
 			"campaignUpdated": "Campaign updated",
 			"campaignDeleted": "Campaign deleted",
 			"channelCreated": "Channel added",
-			"channelDeleted": "Channel deleted"
+			"channelDeleted": "Channel deleted",
+			"linkChannelUpdated": "Link updated"
 		},
 		"qr": {
 			"title": "QR Codes",

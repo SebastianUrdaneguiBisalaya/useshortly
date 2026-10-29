@@ -4,6 +4,8 @@ import { getI18n, type TranslationKey } from '~/i18n';
 
 /** Backend error codes (`error.code`) that have their own translated message. */
 const errorKeys = {
+	campaign_url_too_long: 'errors.campaignUrlTooLong',
+	channel_not_found: 'errors.channelNotFound',
 	code_too_soon: 'errors.codeTooSoon',
 	email_taken: 'errors.emailTaken',
 	google_email_not_verified: 'errors.googleEmailNotVerified',

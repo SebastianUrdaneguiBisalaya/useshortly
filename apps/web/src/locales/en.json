@@ -459,7 +459,22 @@
 					"placeholder": "Ask for a password to open it"
 				},
 				"submit": "Create link",
-				"submitting": "Creating..."
+				"submitting": "Creating...",
+				"campaign": {
+					"label": "Campaign (optional)",
+					"placeholder": "No campaign",
+					"clear": "Remove campaign"
+				},
+				"channel": {
+					"label": "Channel",
+					"placeholder": "Choose a channel",
+					"clear": "Remove channel",
+					"required": "Choose a channel for this campaign"
+				},
+				"preview": {
+					"label": "Final destination",
+					"tooLong": "This destination is longer than {{max}} characters with the campaign parameters. Shorten the URL or the channel name."
+				}
 			},
 			"actions": {
 				"label": "Link actions",
@@ -701,6 +716,8 @@
 		"nameTaken": "That name is already in use",
 		"invalidName": "Enter a name of up to 100 characters",
 		"invalidDescription": "The description can have up to 500 characters",
-		"tooManyChannels": "A campaign can have up to 100 channels"
+		"tooManyChannels": "A campaign can have up to 100 channels",
+		"campaignUrlTooLong": "The destination with the campaign parameters is longer than 255 characters",
+		"channelNotFound": "That channel no longer exists"
 	}
 }

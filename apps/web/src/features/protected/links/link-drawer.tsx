@@ -1,7 +1,6 @@
 import { Code, Download, Megaphone, Trash2, X } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
-import { useGetCampaign, useListCampaignChannels } from '~/api/endpoints/campaigns/campaigns';
 import { useGetLinkUnlockPage } from '~/api/endpoints/unlock-page/unlock-page';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -73,7 +72,7 @@ export function LinkDrawer({
 								)}
 							</dl>
 							<Separator />
-							<CampaignSection link={link} onChange={() => onChangeChannel(link)} orgID={orgID} />
+							<CampaignSection link={link} onChange={() => onChangeChannel(link)} />
 							<Separator />
 							<section aria-label={t('protected.links.drawer.qr.title')} className='flex flex-col gap-3'>
 								<h3 className='font-primary text-sm font-semibold'>{t('protected.links.drawer.qr.title')}</h3>
@@ -145,19 +144,16 @@ function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 }
 
 /** The campaign and channel a link was shared in, with the button to change them. */
-function CampaignSection({ orgID, link, onChange }: { orgID: number; link: Link; onChange: () => void }) {
+function CampaignSection({ link, onChange }: { link: Link; onChange: () => void }) {
 	const t = useTranslate();
 	const inCampaign = link.campaign_id !== undefined && link.channel_id !== undefined;
-	const campaign = useGetCampaign(orgID, link.campaign_id ?? 0, { query: { enabled: inCampaign, retry: false } });
-	const channels = useListCampaignChannels(orgID, link.campaign_id ?? 0, { limit: 100 }, { query: { enabled: inCampaign } });
-	const channel = channels.data?.data?.find(item => item.id === link.channel_id);
 
 	return (
 		<section className='flex flex-col gap-3'>
 			<div>
 				<h3 className='font-primary text-sm font-semibold'>{t('protected.links.drawer.campaign.title')}</h3>
 				<p className='font-primary text-sm text-muted-foreground'>
-					{inCampaign ? t('protected.links.drawer.campaign.in', { campaign: campaign.data?.data?.name ?? '…', channel: channel?.name ?? '…' }) : t('protected.links.drawer.campaign.none')}
+					{inCampaign ? t('protected.links.drawer.campaign.in', { campaign: link.campaign_name ?? '', channel: link.channel_name ?? '' }) : t('protected.links.drawer.campaign.none')}
 				</p>
 			</div>
 			<div>

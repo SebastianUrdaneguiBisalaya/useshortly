@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
-import { getGetCampaignQueryKey, getListCampaignsQueryKey, useListCampaignChannels, useListCampaigns } from '~/api/endpoints/campaigns/campaigns';
+import { getGetCampaignQueryKey, getListCampaignsQueryKey, useListCampaignChannels } from '~/api/endpoints/campaigns/campaigns';
 import { getGetLinkQueryKey, getListLinksQueryKey, useSetLinkChannel } from '~/api/endpoints/links/links';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -9,10 +9,11 @@ import { Combobox } from '~/components/ui/forms-inputs/combobox/combobox';
 import { Alert } from '~/components/ui/overlays-feedback/alert/alert';
 import { Modal } from '~/components/ui/overlays-feedback/modal/modal';
 import { useTranslate } from '~/hooks/use-translate';
+import { useAllCampaigns } from '../campaigns/use-all-campaigns';
 import { MAX_DESTINATION_LENGTH, withUtm } from '../campaigns/utm';
 
-/** A campaign has at most 100 channels; this many campaigns are offered in the picker. */
-const PICKER_LIMIT = 100;
+/** A campaign has at most 100 channels, so one request lists them all. */
+const CHANNEL_LIMIT = 100;
 
 /**
  * Moves a link to another campaign channel, or takes it out of its campaign. The short code never changes, so the link's
@@ -34,10 +35,10 @@ function LinkChannelForm({ orgID, link, onOpenChange }: { orgID: number; link: L
 	const setChannel = useSetLinkChannel();
 	const [campaignID, setCampaignID] = useState(link.campaign_id);
 	const [channelID, setChannelID] = useState(link.channel_id);
-	const campaigns = useListCampaigns(orgID, { limit: PICKER_LIMIT });
-	const channels = useListCampaignChannels(orgID, campaignID ?? 0, { limit: PICKER_LIMIT }, { query: { enabled: campaignID !== undefined } });
+	const campaigns = useAllCampaigns(orgID);
+	const channels = useListCampaignChannels(orgID, campaignID ?? 0, { limit: CHANNEL_LIMIT }, { query: { enabled: campaignID !== undefined } });
 
-	const campaignName = campaigns.data?.data?.find(campaign => campaign.id === campaignID)?.name;
+	const campaignName = campaigns.campaigns.find(campaign => campaign.id === campaignID)?.name;
 	const channelName = channels.data?.data?.find(channel => channel.id === channelID)?.name;
 	const unchanged = channelID === link.channel_id;
 	const incomplete = campaignID !== undefined && channelID === undefined;
@@ -87,7 +88,7 @@ function LinkChannelForm({ orgID, link, onOpenChange }: { orgID: number; link: L
 						<Combobox.Label>{t('protected.links.create.campaign.label')}</Combobox.Label>
 						<Combobox.Input placeholder={t('protected.links.create.campaign.placeholder')} />
 						<Combobox.Content>
-							{(campaigns.data?.data ?? []).map(campaign => (
+							{campaigns.campaigns.map(campaign => (
 								<Combobox.Item key={campaign.id} value={String(campaign.id)}>
 									{campaign.name}
 								</Combobox.Item>

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useListCampaignChannels, useListCampaigns } from '~/api/endpoints/campaigns/campaigns';
+import { useListCampaignChannels } from '~/api/endpoints/campaigns/campaigns';
 import { getListDomainsQueryKey, useCreateDomain, useListDomains } from '~/api/endpoints/domains/domains';
 import { getListLinksQueryKey, useCreateLink } from '~/api/endpoints/links/links';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -13,12 +13,13 @@ import { NumberInput } from '~/components/ui/forms-inputs/number-input/number-in
 import { Alert } from '~/components/ui/overlays-feedback/alert/alert';
 import { Modal } from '~/components/ui/overlays-feedback/modal/modal';
 import { useTranslate } from '~/hooks/use-translate';
+import { useAllCampaigns } from '../campaigns/use-all-campaigns';
 import { MAX_DESTINATION_LENGTH, withUtm } from '../campaigns/utm';
 import { createLinkSchema } from './links-schemas';
 
 const DOMAIN_LIMIT = 100;
-/** A campaign has at most 100 channels; this many campaigns are offered in the picker. */
-const CAMPAIGN_LIMIT = 100;
+/** A campaign has at most 100 channels, so one request lists them all. */
+const CHANNEL_LIMIT = 100;
 
 /**
  * Wide dialog (the link has many optional settings) that creates a link; the domain can be picked or typed to add a new one
@@ -33,8 +34,8 @@ export function CreateLinkDialog({ orgID, open, onOpenChange }: { orgID: number;
 	const domains = useListDomains(orgID, { limit: DOMAIN_LIMIT });
 	const schema = useMemo(() => createLinkSchema(t), [t]);
 	const [campaignID, setCampaignID] = useState<number>();
-	const campaigns = useListCampaigns(orgID, { limit: CAMPAIGN_LIMIT }, { query: { enabled: open } });
-	const channels = useListCampaignChannels(orgID, campaignID ?? 0, { limit: CAMPAIGN_LIMIT }, { query: { enabled: open && campaignID !== undefined } });
+	const campaigns = useAllCampaigns(orgID, { enabled: open });
+	const channels = useListCampaignChannels(orgID, campaignID ?? 0, { limit: CHANNEL_LIMIT }, { query: { enabled: open && campaignID !== undefined } });
 	const [newDomains, setNewDomains] = useState<{ id: number; host: string }[]>([]);
 
 	const options = [...(domains.data?.data ?? []).flatMap(domain => (domain.id === undefined || !domain.host ? [] : [{ host: domain.host, id: domain.id }])), ...newDomains].filter(
@@ -196,7 +197,7 @@ export function CreateLinkDialog({ orgID, open, onOpenChange }: { orgID: number;
 												<Combobox.Label>{t('protected.links.create.campaign.label')}</Combobox.Label>
 												<Combobox.Input placeholder={t('protected.links.create.campaign.placeholder')} />
 												<Combobox.Content>
-													{(campaigns.data?.data ?? []).map(campaign => (
+													{campaigns.campaigns.map(campaign => (
 														<Combobox.Item key={campaign.id} value={String(campaign.id)}>
 															{campaign.name}
 														</Combobox.Item>
@@ -228,7 +229,7 @@ export function CreateLinkDialog({ orgID, open, onOpenChange }: { orgID: number;
 										)}
 									</Field>
 									<ChannelPreview
-										campaign={campaigns.data?.data?.find(campaign => campaign.id === campaignID)?.name}
+										campaign={campaigns.campaigns.find(campaign => campaign.id === campaignID)?.name}
 										channel={channels.data?.data?.find(channel => channel.id === form.watch('channel_id'))?.name}
 										url={form.watch('url')}
 									/>

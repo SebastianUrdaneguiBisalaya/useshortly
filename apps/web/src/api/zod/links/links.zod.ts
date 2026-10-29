@@ -27,7 +27,9 @@ export const ListLinksResponse = zod.object({
 		.array(
 			zod.object({
 				campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+				campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
 				channel_id: zod.int().optional(),
+				channel_name: zod.string().optional(),
 				code: zod.string().optional(),
 				created_at: zod.string().optional(),
 				domain_id: zod.int().optional(),
@@ -81,7 +83,9 @@ export const CreateLinkResponse = zod.object({
 	data: zod
 		.object({
 			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
 			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),
@@ -127,7 +131,9 @@ export const GetLinkResponse = zod.object({
 	data: zod
 		.object({
 			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
 			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),
@@ -168,7 +174,9 @@ export const SetLinkChannelResponse = zod.object({
 	data: zod
 		.object({
 			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
 			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),
@@ -211,7 +219,9 @@ export const SetLinkQrStyleResponse = zod.object({
 	data: zod
 		.object({
 			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
 			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),

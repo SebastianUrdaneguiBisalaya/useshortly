@@ -10,7 +10,10 @@ import type { QRStyle } from './qRStyle';
 export interface Link {
 	/** CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign. */
 	campaign_id?: number;
+	/** CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign. */
+	campaign_name?: string;
 	channel_id?: number;
+	channel_name?: string;
 	code?: string;
 	created_at?: string;
 	domain_id?: number;

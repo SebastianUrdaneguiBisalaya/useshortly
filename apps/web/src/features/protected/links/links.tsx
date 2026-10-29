@@ -22,7 +22,7 @@ import { CreateLinkDialog } from './create-link-dialog';
 import { LinkActions } from './link-actions';
 import { LinkChannelDialog } from './link-channel-dialog';
 import { LinkDrawer } from './link-drawer';
-import { CampaignFilters, useCampaignNames } from './links-campaign-filters';
+import { CampaignFilters } from './links-campaign-filters';
 
 const PAGE_SIZE = 25;
 
@@ -52,7 +52,6 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const deleteLink = useDeleteLink();
 	const total = links.data?.meta?.total ?? 0;
 	const rows = links.data?.data ?? [];
-	const { campaignNames, channelNames } = useCampaignNames(orgID, rows);
 	// The drawer opens from the loaded page when the link is there; otherwise (a shared URL, another page) it is fetched by id.
 	const inPage = rows.find(link => link.id === selectedID);
 	const fetched = useGetLink(orgID, selectedID ?? 0, { query: { enabled: selectedID !== null && !inPage && !links.isLoading, retry: false } });
@@ -97,7 +96,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 					) : (
 						<Badge variant='outline'>
 							<Badge.Text>
-								{campaignNames.get(row.original.campaign_id) ?? '…'} / {channelNames.get(row.original.channel_id) ?? '…'}
+								{row.original.campaign_name} / {row.original.channel_name}
 							</Badge.Text>
 						</Badge>
 					),
@@ -158,7 +157,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 				size: 64,
 			},
 		],
-		[t, locale, campaignNames, channelNames]
+		[t, locale]
 	);
 
 	return (

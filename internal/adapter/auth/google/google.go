@@ -24,22 +24,33 @@ type validator interface {
 	Validate(ctx context.Context, idToken, audience string) (*idtoken.Payload, error)
 }
 
-type Auth struct {
-	validator    validator
-	client       *http.Client
-	tokenURL     string
-	clientID     string
-	clientSecret string
-	redirectURI  string
+// Client is an OAuth client registered in the Google console.
+type Client struct {
+	ID     string
+	Secret string
 }
 
-// New needs the OAuth client id and secret from the Google console. The secret is only
-// used here, in the server-to-server call that trades the code for tokens; the id token
-// that comes back is then verified with Google's public keys. redirectURI must match what
-// the client used to get the code ("postmessage" for Google's JavaScript popup flow).
-func New(ctx context.Context, clientID, clientSecret, redirectURI string) (*Auth, error) {
-	if clientID == "" || clientSecret == "" {
+type Auth struct {
+	validator   validator
+	client      *http.Client
+	tokenURL    string
+	web         Client
+	redirectURI string
+	// desktop is the "Desktop app" client the desktop app signs in with; zero when not configured.
+	desktop Client
+}
+
+// New needs the OAuth clients from the Google console. The secrets are only used here, in the
+// server-to-server call that trades the code for tokens; the id token that comes back is then
+// verified with Google's public keys. redirectURI must match what the web app used to get the
+// code ("postmessage" for Google's JavaScript popup flow). desktop is optional: it is the
+// "Desktop app" client, which accepts the loopback redirects the desktop app uses.
+func New(ctx context.Context, web Client, redirectURI string, desktop Client) (*Auth, error) {
+	if web.ID == "" || web.Secret == "" {
 		return nil, errors.New("google: client id and client secret are required")
+	}
+	if (desktop.ID == "") != (desktop.Secret == "") {
+		return nil, errors.New("google: desktop client id and client secret must be set together")
 	}
 	v, err := idtoken.NewValidator(ctx)
 	if err != nil {
@@ -47,7 +58,7 @@ func New(ctx context.Context, clientID, clientSecret, redirectURI string) (*Auth
 	}
 	return &Auth{
 		validator: v, client: &http.Client{Timeout: 10 * time.Second}, tokenURL: tokenURL,
-		clientID: clientID, clientSecret: clientSecret, redirectURI: redirectURI,
+		web: web, redirectURI: redirectURI, desktop: desktop,
 	}, nil
 }
 
@@ -62,19 +73,29 @@ type tokenError struct {
 }
 
 // Exchange trades the authorization code for tokens, verifies the id token and returns
-// the user's identity with the scope they granted. A rejected code (expired, reused, issued
-// for another client) is auth.ErrInvalidCredentials; anything else is a real failure.
-func (a *Auth) Exchange(ctx context.Context, code string) (user.GoogleIdentity, error) {
-	if code == "" {
+// the user's identity with the scope they granted. A grant without a redirect URI comes from
+// the web app's popup; one with a loopback redirect URI and a PKCE verifier comes from the
+// desktop app and is exchanged with the desktop client. A rejected grant (expired or reused
+// code, a redirect URI that is not loopback, a missing verifier) is auth.ErrInvalidCredentials;
+// anything else is a real failure.
+func (a *Auth) Exchange(ctx context.Context, grant user.GoogleGrant) (user.GoogleIdentity, error) {
+	if grant.Code == "" {
 		return user.GoogleIdentity{}, auth.ErrInvalidCredentials
 	}
-	form := url.Values{
-		"code":          {code},
-		"client_id":     {a.clientID},
-		"client_secret": {a.clientSecret},
-		"redirect_uri":  {a.redirectURI},
-		"grant_type":    {"authorization_code"},
+	c, form := a.web, url.Values{"redirect_uri": {a.redirectURI}}
+	if grant.RedirectURI != "" {
+		if !loopback(grant.RedirectURI) || !validVerifier(grant.CodeVerifier) {
+			return user.GoogleIdentity{}, auth.ErrInvalidCredentials
+		}
+		if a.desktop.ID == "" {
+			return user.GoogleIdentity{}, errors.New("google: desktop sign-in needs GOOGLE_DESKTOP_CLIENT_ID and GOOGLE_DESKTOP_CLIENT_SECRET")
+		}
+		c, form = a.desktop, url.Values{"redirect_uri": {grant.RedirectURI}, "code_verifier": {grant.CodeVerifier}}
 	}
+	form.Set("code", grant.Code)
+	form.Set("client_id", c.ID)
+	form.Set("client_secret", c.Secret)
+	form.Set("grant_type", "authorization_code")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return user.GoogleIdentity{}, fmt.Errorf("google: token request: %w", err)
@@ -104,7 +125,7 @@ func (a *Auth) Exchange(ctx context.Context, code string) (user.GoogleIdentity, 
 	}
 
 	// The library checks signature, expiry and audience, but not the issuer.
-	p, err := a.validator.Validate(ctx, tr.IDToken, a.clientID)
+	p, err := a.validator.Validate(ctx, tr.IDToken, c.ID)
 	if err != nil {
 		return user.GoogleIdentity{}, auth.ErrInvalidCredentials
 	}
@@ -120,6 +141,30 @@ func (a *Auth) Exchange(ctx context.Context, code string) (user.GoogleIdentity, 
 		PictureURL:    claim(p, "picture"),
 		Scope:         tr.Scope,
 	}, nil
+}
+
+// loopback reports whether uri is an http redirect to the loopback interface, the only kind
+// the desktop app listens on (RFC 8252 section 7.3). localhost is refused on purpose: it can
+// resolve to something else.
+func loopback(uri string) bool {
+	u, err := url.Parse(uri)
+	if err != nil || u.Scheme != "http" || u.Port() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return false
+	}
+	return u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
+}
+
+// validVerifier checks the shape RFC 7636 section 4.1 gives a PKCE code verifier.
+func validVerifier(v string) bool {
+	if len(v) < 43 || len(v) > 128 {
+		return false
+	}
+	for _, r := range v {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)) {
+			return false
+		}
+	}
+	return true
 }
 
 func claim(p *idtoken.Payload, name string) string {

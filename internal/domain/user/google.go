@@ -22,11 +22,21 @@ type GoogleIdentity struct {
 	Scope string
 }
 
+// GoogleGrant is the authorization code a client got from Google, with what the client used
+// to get it. The web app's popup flow sends only the code; the desktop app signs in through
+// the system browser and a loopback redirect, so it also sends that RedirectURI and the PKCE
+// CodeVerifier.
+type GoogleGrant struct {
+	Code         string
+	RedirectURI  string
+	CodeVerifier string
+}
+
 // GoogleAuth exchanges the authorization code the client got from Google for the verified
 // identity of the user. It needs the client secret, which never leaves the server.
-// Returns auth.ErrInvalidCredentials for a code that is not valid.
+// Returns auth.ErrInvalidCredentials for a grant that is not valid.
 type GoogleAuth interface {
-	Exchange(ctx context.Context, code string) (GoogleIdentity, error)
+	Exchange(ctx context.Context, grant GoogleGrant) (GoogleIdentity, error)
 }
 
 type GoogleService struct {
@@ -44,7 +54,7 @@ func NewGoogleService(repo Repository, google GoogleAuth, tokens auth.TokenServi
 	}
 }
 
-// Login signs in with a Google authorization code, creating the user on first use. An email
+// Login signs in with a Google authorization grant, creating the user on first use. An email
 // belongs to exactly one sign-in method: if it is already registered with a password
 // (or with another Google account) the login is refused with ErrProviderMismatch instead
 // of merging the two, which is what stops someone from taking over an address by
@@ -52,8 +62,8 @@ func NewGoogleService(repo Repository, google GoogleAuth, tokens auth.TokenServi
 //
 // The scope Google reports is saved on the Google account and refreshed on every login,
 // since the user can grant more or less access over time.
-func (s *GoogleService) Login(ctx context.Context, code string) (Session, error) {
-	id, err := s.google.Exchange(ctx, code)
+func (s *GoogleService) Login(ctx context.Context, grant GoogleGrant) (Session, error) {
+	id, err := s.google.Exchange(ctx, grant)
 	if err != nil {
 		return Session{}, err
 	}

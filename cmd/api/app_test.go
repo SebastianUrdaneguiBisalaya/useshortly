@@ -92,8 +92,8 @@ func (o *outbox) Send(_ context.Context, m mailing.Message) (mailing.Receipt, er
 
 type fakeGoogle struct{ id *user.GoogleIdentity }
 
-func (f fakeGoogle) Exchange(_ context.Context, code string) (user.GoogleIdentity, error) {
-	if code != "good-code" {
+func (f fakeGoogle) Exchange(_ context.Context, grant user.GoogleGrant) (user.GoogleIdentity, error) {
+	if grant.Code != "good-code" {
 		return user.GoogleIdentity{}, auth.ErrInvalidCredentials
 	}
 	return *f.id, nil

@@ -122,6 +122,11 @@ type LoginRequest struct {
 
 type GoogleLoginRequest struct {
 	Code string `json:"code"`
+	// RedirectURI and CodeVerifier are only sent by the desktop app, which signs in through the
+	// system browser: the loopback redirect URI it used (http://127.0.0.1:<port>/...) and its PKCE
+	// code verifier. The web app's popup flow sends just the code.
+	RedirectURI  string `json:"redirect_uri,omitempty"`
+	CodeVerifier string `json:"code_verifier,omitempty"`
 } // @name GoogleLoginRequest
 
 type ForgotPasswordRequest struct {
@@ -237,7 +242,7 @@ func (h *AuthHandler) Google(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	s, err := h.google.Login(r.Context(), in.Code)
+	s, err := h.google.Login(r.Context(), user.GoogleGrant{Code: in.Code, RedirectURI: in.RedirectURI, CodeVerifier: in.CodeVerifier})
 	if err != nil {
 		WriteError(w, r, err)
 		return

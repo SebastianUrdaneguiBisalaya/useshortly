@@ -26,8 +26,12 @@ type Config struct {
 	GoogleClientID   string
 	GoogleSecret     string
 	GoogleRedirect   string
-	RefreshTTL       time.Duration
-	LinkCacheTTL     time.Duration
+	// GoogleDesktopClientID and GoogleDesktopSecret are the "Desktop app" OAuth client the desktop
+	// app signs in with (system browser + loopback redirect); empty disables Google sign-in there.
+	GoogleDesktopClientID string
+	GoogleDesktopSecret   string
+	RefreshTTL            time.Duration
+	LinkCacheTTL          time.Duration
 	// GeoIPPath is a MaxMind .mmdb database; empty disables the country of clicks.
 	GeoIPPath string
 	// TrustProxy reads the visitor's address from X-Forwarded-For (set it behind a reverse proxy).
@@ -44,23 +48,25 @@ type Config struct {
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 	cfg := &Config{
-		Env:              getEnv("ENVIRONMENT", "development"),
-		Port:             getEnv("PORT", "8080"),
-		DatabasePath:     getEnv("DATABASE_PATH", "useshortly.db"),
-		TursoDatabaseUrl: getEnv("TURSO_DATABASE_URL", ""),
-		TursoAuthToken:   getEnv("TURSO_AUTH_TOKEN", ""),
-		RedisUrl:         getEnv("REDIS_URL", ""),
-		JWTSecret:        getEnv("JWT_SECRET", ""),
-		AppURL:           getEnv("APP_URL", "http://localhost:8080"),
-		ResendAPIKey:     getEnv("RESEND_API_KEY", ""),
-		MailFrom:         getEnv("MAIL_FROM", ""),
-		OTPSecret:        getEnv("OTP_SECRET", ""),
-		GoogleClientID:   getEnv("GOOGLE_CLIENT_ID", ""),
-		GoogleSecret:     getEnv("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRedirect:   getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
-		GeoIPPath:        getEnv("GEOIP_DB_PATH", ""),
-		AbuseEmail:       getEnv("ABUSE_EMAIL", ""),
-		MCPPublicKey:     getEnv("MCP_PUBLIC_KEY", ""),
+		Env:                   getEnv("ENVIRONMENT", "development"),
+		Port:                  getEnv("PORT", "8080"),
+		DatabasePath:          getEnv("DATABASE_PATH", "useshortly.db"),
+		TursoDatabaseUrl:      getEnv("TURSO_DATABASE_URL", ""),
+		TursoAuthToken:        getEnv("TURSO_AUTH_TOKEN", ""),
+		RedisUrl:              getEnv("REDIS_URL", ""),
+		JWTSecret:             getEnv("JWT_SECRET", ""),
+		AppURL:                getEnv("APP_URL", "http://localhost:8080"),
+		ResendAPIKey:          getEnv("RESEND_API_KEY", ""),
+		MailFrom:              getEnv("MAIL_FROM", ""),
+		OTPSecret:             getEnv("OTP_SECRET", ""),
+		GoogleClientID:        getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleSecret:          getEnv("GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirect:        getEnv("GOOGLE_REDIRECT_URI", "postmessage"),
+		GoogleDesktopClientID: getEnv("GOOGLE_DESKTOP_CLIENT_ID", ""),
+		GoogleDesktopSecret:   getEnv("GOOGLE_DESKTOP_CLIENT_SECRET", ""),
+		GeoIPPath:             getEnv("GEOIP_DB_PATH", ""),
+		AbuseEmail:            getEnv("ABUSE_EMAIL", ""),
+		MCPPublicKey:          getEnv("MCP_PUBLIC_KEY", ""),
 	}
 	interval, err := time.ParseDuration(getEnv("SYNC_INTERVAL", "30s"))
 	if err != nil || interval <= 0 {
@@ -115,6 +121,12 @@ func Load() (*Config, error) {
 	}
 	if (cfg.GoogleClientID == "") != (cfg.GoogleSecret == "") {
 		return nil, fmt.Errorf("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together")
+	}
+	if (cfg.GoogleDesktopClientID == "") != (cfg.GoogleDesktopSecret == "") {
+		return nil, fmt.Errorf("GOOGLE_DESKTOP_CLIENT_ID and GOOGLE_DESKTOP_CLIENT_SECRET must be set together")
+	}
+	if cfg.GoogleDesktopClientID != "" && cfg.GoogleClientID == "" {
+		return nil, fmt.Errorf("GOOGLE_DESKTOP_CLIENT_ID needs GOOGLE_CLIENT_ID: Google sign-in is off without it")
 	}
 	if cfg.Env == "production" && cfg.ResendAPIKey == "" {
 		return nil, fmt.Errorf("RESEND_API_KEY is required when ENVIRONMENT is production")

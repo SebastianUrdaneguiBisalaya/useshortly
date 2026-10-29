@@ -427,7 +427,7 @@
 			"create": {
 				"action": "Crear link",
 				"title": "Nuevo link",
-				"description": "Pega una URL larga y, si quieres, define cómo se comporta el link corto.",
+				"description": "Pega una URL larga y, si deseas, define cómo se comporta el link corto.",
 				"url": {
 					"label": "URL de destino",
 					"placeholder": "https://example.com/una/ruta/muy/larga",

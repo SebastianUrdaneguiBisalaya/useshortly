@@ -13,6 +13,7 @@ import { TableToolbar } from '~/components/ui/data-display/table-toolbar/table-t
 import { Page } from '~/components/ui/layout/page/page';
 import { ConfirmDialog } from '~/components/ui/overlays-feedback/confirm-dialog/confirm-dialog';
 import { useLanguage } from '~/hooks/use-language';
+import { useRetained } from '~/hooks/use-retained';
 import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useDownloadQr } from '../share/download-qr';
@@ -42,6 +43,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 	// The campaign and channel filters live in the URL too (`?campaign=3&channel=7`), so a filtered list can be shared and linked to.
 	const [filters, setFilters] = useQueryStates({ campaign: parseAsInteger, channel: parseAsInteger }, { history: 'replace' });
 	const [deleting, setDeleting] = useState<Link>();
+	const retainedDeleting = useRetained(deleting);
 	const [changingChannel, setChangingChannel] = useState<Link>();
 	const links = useListLinks(orgID, {
 		campaign_id: filters.campaign ?? undefined,
@@ -219,8 +221,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 				variant='destructive'
 			>
 				<ConfirmDialog.Content>
-					<ConfirmDialog.Icon />
-					<ConfirmDialog.Title>{t('protected.links.delete.title', { code: deleting?.code ?? '' })}</ConfirmDialog.Title>
+					<ConfirmDialog.Title>{t('protected.links.delete.title', { code: retainedDeleting?.code ?? '' })}</ConfirmDialog.Title>
 					<ConfirmDialog.Description>{t('protected.links.delete.description')}</ConfirmDialog.Description>
 					<ConfirmDialog.Footer>
 						<ConfirmDialog.Cancel />

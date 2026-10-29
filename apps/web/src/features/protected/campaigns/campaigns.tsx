@@ -11,6 +11,7 @@ import { DataTable, type DataTableFeatures } from '~/components/ui/data-display/
 import { TableToolbar } from '~/components/ui/data-display/table-toolbar/table-toolbar';
 import { Page } from '~/components/ui/layout/page/page';
 import { useLanguage } from '~/hooks/use-language';
+import { useRetained } from '~/hooks/use-retained';
 import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useOrganizationTo } from '../organization/use-current-organization';
@@ -33,6 +34,7 @@ function CampaignsContent({ orgID }: { orgID: number }) {
 	const [page, setPage] = useState(1);
 	const [creating, setCreating] = useState(false);
 	const [editing, setEditing] = useState<Campaign>();
+	const retainedEditing = useRetained(editing);
 	const deleteCampaign = useDeleteCampaign();
 	const campaigns = useListCampaigns(orgID, {
 		limit: PAGE_SIZE,
@@ -140,7 +142,7 @@ function CampaignsContent({ orgID }: { orgID: number }) {
 			</Page.Body>
 			<CampaignDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
 			{/* Keyed so the form starts from the campaign being edited every time it opens. */}
-			<CampaignDialog campaign={editing} key={editing?.id} onOpenChange={open => !open && setEditing(undefined)} open={editing !== undefined} orgID={orgID} />
+			<CampaignDialog campaign={retainedEditing} key={retainedEditing?.id} onOpenChange={open => !open && setEditing(undefined)} open={editing !== undefined} orgID={orgID} />
 		</Page.Root>
 	);
 }

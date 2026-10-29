@@ -8,6 +8,7 @@ import { Button } from '~/components/ui/actions-controls/button/button';
 import { Combobox } from '~/components/ui/forms-inputs/combobox/combobox';
 import { Alert } from '~/components/ui/overlays-feedback/alert/alert';
 import { Modal } from '~/components/ui/overlays-feedback/modal/modal';
+import { useRetained } from '~/hooks/use-retained';
 import { useTranslate } from '~/hooks/use-translate';
 import { useAllCampaigns } from '../campaigns/use-all-campaigns';
 import { MAX_DESTINATION_LENGTH, withUtm } from '../campaigns/utm';
@@ -20,10 +21,12 @@ const CHANNEL_LIMIT = 100;
  * QR codes keep working; only its destination is rewritten with the new channel's UTM parameters.
  */
 export function LinkChannelDialog({ orgID, link, onOpenChange }: { orgID: number; link: Link | undefined; onOpenChange: (open: boolean) => void }) {
+	// Kept after closing so the form does not vanish before the exit animation ends.
+	const shown = useRetained(link);
 	return (
 		<Modal.Root onOpenChange={onOpenChange} open={link !== undefined}>
 			{/* Remounted for every link so the pickers start from the campaign and channel it is in. */}
-			{link && <LinkChannelForm key={link.id} link={link} onOpenChange={onOpenChange} orgID={orgID} />}
+			{shown && <LinkChannelForm key={shown.id} link={shown} onOpenChange={onOpenChange} orgID={orgID} />}
 		</Modal.Root>
 	);
 }

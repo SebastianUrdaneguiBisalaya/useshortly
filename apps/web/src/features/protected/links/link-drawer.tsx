@@ -1,6 +1,5 @@
 import { Code, Download, Megaphone, Trash2, X } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
-import { toast } from 'sonner';
 import { useGetLinkUnlockPage } from '~/api/endpoints/unlock-page/unlock-page';
 import type { Link } from '~/api/model';
 import { Button } from '~/components/ui/actions-controls/button/button';
@@ -9,6 +8,7 @@ import { Input } from '~/components/ui/forms-inputs/input/input';
 import { Separator } from '~/components/ui/foundations/separator/separator';
 import { Drawer } from '~/components/ui/overlays-feedback/drawer/drawer';
 import { useLanguage } from '~/hooks/use-language';
+import { useRetained } from '~/hooks/use-retained';
 import { useTranslate } from '~/hooks/use-translate';
 import { formatDateTime } from '~/lib/date-time';
 import { useDownloadQr } from '../share/download-qr';
@@ -18,7 +18,7 @@ import { UnlockPageDialog } from './unlock-page-dialog';
 /** Side panel with everything about one link: short URL, settings, QR code and (for protected links) the unlock page. */
 export function LinkDrawer({
 	orgID,
-	link,
+	link: current,
 	onClose,
 	onDelete,
 	onChangeChannel,
@@ -29,14 +29,16 @@ export function LinkDrawer({
 	onDelete: (link: Link) => void;
 	onChangeChannel: (link: Link) => void;
 }) {
+	// Kept after closing so the panel does not empty before the exit animation ends.
+	const link = useRetained(current);
 	const t = useTranslate();
 	const downloadQr = useDownloadQr();
 	const { locale } = useLanguage();
 	const titleId = useId();
 
 	return (
-		<Drawer.Root onOpenChange={open => !open && onClose()} open={link !== undefined}>
-			<Drawer.Content className='sm:max-w-lg'>
+		<Drawer.Root onOpenChange={open => !open && onClose()} open={current !== undefined}>
+			<Drawer.Content className='sm:max-w-md'>
 				{link && (
 					<>
 						<Drawer.Header>

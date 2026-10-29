@@ -20,16 +20,23 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 	const queryClient = useQueryClient();
 	const [, setOrganizationId] = useOrganizationParam();
 	const deleteOrganization = useDeleteOrganization();
+	const [switcherOpen, setSwitcherOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [editing, setEditing] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	// Editing and deleting act on the selected organization, so they need at least one.
 	const hasOrganization = organization?.id !== undefined;
 
+	// The switcher closes before its dialog opens, so an outside click only has the dialog left to dismiss.
+	const openFromSwitcher = (open: (value: boolean) => void) => {
+		setSwitcherOpen(false);
+		open(true);
+	};
+
 	return (
 		<>
 			<SidebarFloat.Hint label={organization?.name ?? t('protected.organization.none')}>
-				<OrganizationSwitcher onValueChange={value => void select(Number(value))} value={organization?.id === undefined ? undefined : String(organization.id)}>
+				<OrganizationSwitcher onOpenChange={setSwitcherOpen} onValueChange={value => void select(Number(value))} open={switcherOpen} value={organization?.id === undefined ? undefined : String(organization.id)}>
 					<OrganizationSwitcher.Trigger
 						aria-label={t('protected.organization.switch')}
 						className={cn(
@@ -55,15 +62,15 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 							</OrganizationSwitcher.Item>
 						))}
 						<ButtonGroup aria-label={t('protected.organization.actions')} className='w-full p-1'>
-							<Button className='flex-1' onClick={() => setCreating(true)} variant='secondary'>
+							<Button className='flex-1' onClick={() => openFromSwitcher(setCreating)} variant='secondary'>
 								<Button.Icon icon={Plus} />
 								<Button.Text>{t('protected.organization.add')}</Button.Text>
 							</Button>
-							<Button className='flex-1' disabled={!hasOrganization} onClick={() => setEditing(true)} variant='secondary'>
+							<Button className='flex-1' disabled={!hasOrganization} onClick={() => openFromSwitcher(setEditing)} variant='secondary'>
 								<Button.Icon icon={Pencil} />
 								<Button.Text>{t('protected.organization.editAction')}</Button.Text>
 							</Button>
-							<Button className='flex-1' disabled={!hasOrganization} onClick={() => setDeleting(true)} variant='secondary'>
+							<Button className='flex-1' disabled={!hasOrganization} onClick={() => openFromSwitcher(setDeleting)} variant='secondary'>
 								<Button.Icon icon={Trash2} />
 								<Button.Text>{t('protected.organization.deleteAction')}</Button.Text>
 							</Button>

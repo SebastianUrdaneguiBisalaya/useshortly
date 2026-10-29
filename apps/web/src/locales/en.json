@@ -418,7 +418,8 @@
 				"clicks": "Click limit",
 				"expires": "Expires",
 				"createdAt": "Created",
-				"access": "Access"
+				"access": "Access",
+				"campaign": "Campaign"
 			},
 			"badges": {
 				"protected": "Password",
@@ -535,6 +536,14 @@
 				"description": "Putting the link in a channel adds utm_source, utm_medium and utm_campaign to its destination. The short link and its QR code don't change.",
 				"leaving": "Taking the link out of its campaign removes utm_source, utm_medium and utm_campaign from its destination. Values the link had for them before it joined the campaign aren't restored.",
 				"submit": "Save changes"
+			},
+			"emptyFiltered": "No links match these filters.",
+			"filters": {
+				"campaign": "Campaign",
+				"channel": "Channel",
+				"allCampaigns": "All campaigns",
+				"allChannels": "All channels",
+				"clear": "Clear filters"
 			}
 		},
 		"domains": {
@@ -656,7 +665,8 @@
 						"link": "Short link",
 						"channel": "Channel",
 						"createdAt": "Created"
-					}
+					},
+					"viewAll": "View in links"
 				}
 			},
 			"channelForm": {

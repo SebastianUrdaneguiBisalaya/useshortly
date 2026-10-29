@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
-import { parseAsInteger, useQueryState } from 'nuqs';
+import { parseAsInteger, useQueryState, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getListLinksQueryKey, useDeleteLink, useGetLink, useListLinks } from '~/api/endpoints/links/links';
@@ -22,6 +22,7 @@ import { CreateLinkDialog } from './create-link-dialog';
 import { LinkActions } from './link-actions';
 import { LinkChannelDialog } from './link-channel-dialog';
 import { LinkDrawer } from './link-drawer';
+import { CampaignFilters, useCampaignNames } from './links-campaign-filters';
 
 const PAGE_SIZE = 25;
 
@@ -38,15 +39,20 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const [creating, setCreating] = useState(false);
 	// The open link lives in the URL (`?link=12`) so the drawer can be shared and the back button closes it.
 	const [selectedID, setSelectedID] = useQueryState('link', parseAsInteger.withOptions({ history: 'push' }));
+	// The campaign and channel filters live in the URL too (`?campaign=3&channel=7`), so a filtered list can be shared and linked to.
+	const [filters, setFilters] = useQueryStates({ campaign: parseAsInteger, channel: parseAsInteger }, { history: 'replace' });
 	const [deleting, setDeleting] = useState<Link>();
 	const [changingChannel, setChangingChannel] = useState<Link>();
 	const links = useListLinks(orgID, {
+		campaign_id: filters.campaign ?? undefined,
+		channel_id: filters.channel ?? undefined,
 		limit: PAGE_SIZE,
 		offset: (page - 1) * PAGE_SIZE,
 	});
 	const deleteLink = useDeleteLink();
 	const total = links.data?.meta?.total ?? 0;
 	const rows = links.data?.data ?? [];
+	const { campaignNames, channelNames } = useCampaignNames(orgID, rows);
 	// The drawer opens from the loaded page when the link is there; otherwise (a shared URL, another page) it is fetched by id.
 	const inPage = rows.find(link => link.id === selectedID);
 	const fetched = useGetLink(orgID, selectedID ?? 0, { query: { enabled: selectedID !== null && !inPage && !links.isLoading, retry: false } });
@@ -83,6 +89,21 @@ function LinksContent({ orgID }: { orgID: number }) {
 				header: t('protected.links.columns.shortUrl'),
 				id: 'shortUrl',
 				size: 380,
+			},
+			{
+				cell: ({ row }) =>
+					row.original.campaign_id === undefined || row.original.channel_id === undefined ? (
+						<span className='text-muted-foreground'>—</span>
+					) : (
+						<Badge variant='outline'>
+							<Badge.Text>
+								{campaignNames.get(row.original.campaign_id) ?? '…'} / {channelNames.get(row.original.channel_id) ?? '…'}
+							</Badge.Text>
+						</Badge>
+					),
+				header: t('protected.links.columns.campaign'),
+				id: 'campaign',
+				size: 220,
 			},
 			{
 				cell: ({ row }) => {
@@ -137,7 +158,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 				size: 64,
 			},
 		],
-		[t, locale]
+		[t, locale, campaignNames, channelNames]
 	);
 
 	return (
@@ -158,7 +179,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 				<DataTable
 					columns={columns}
 					data={rows}
-					emptyMessage={t('protected.links.empty')}
+					emptyMessage={filters.campaign !== null || filters.channel !== null ? t('protected.links.emptyFiltered') : t('protected.links.empty')}
 					isLoading={links.isLoading}
 					onRowClick={link => void setSelectedID(link.id ?? null)}
 					pagination={{
@@ -170,7 +191,15 @@ function LinksContent({ orgID }: { orgID: number }) {
 					}}
 					toolbar={
 						<TableToolbar>
-							<span />
+							<CampaignFilters
+								campaignID={filters.campaign}
+								channelID={filters.channel}
+								onChange={next => {
+									setPage(1);
+									void setFilters(next);
+								}}
+								orgID={orgID}
+							/>
 							<TableToolbar.RefreshButton isRefreshing={links.isFetching} label={t('protected.table.refresh')} onRefresh={() => void links.refetch()} />
 						</TableToolbar>
 					}

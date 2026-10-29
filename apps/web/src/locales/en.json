@@ -597,6 +597,49 @@
 				"label": "Delete campaign",
 				"title": "Delete {{name}}?",
 				"description": "Its channels are removed. Its links stay and keep working, but are no longer part of a campaign. It can't be undone."
+			},
+			"detail": {
+				"back": "Back to campaigns",
+				"loading": "Loading campaign...",
+				"notFound": {
+					"title": "Campaign not found",
+					"description": "It may have been deleted, or it belongs to another organization."
+				},
+				"channels": {
+					"title": "Channels",
+					"description": "A channel is a place you share this campaign, such as Instagram or email. Its name is added to each link's destination as utm_source.",
+					"add": "Add channel",
+					"empty": "No channels yet. Add the first one to start putting links in this campaign.",
+					"columns": {
+						"name": "Channel",
+						"createdAt": "Added"
+					},
+					"delete": {
+						"label": "Delete channel",
+						"title": "Delete {{name}}?",
+						"description": "Its links stay and keep working, but are no longer part of this campaign. It can't be undone."
+					}
+				},
+				"links": {
+					"title": "Links",
+					"description": "Links shared in this campaign, with the channel each one was put in.",
+					"empty": "No links in this campaign yet.",
+					"columns": {
+						"link": "Short link",
+						"channel": "Channel",
+						"createdAt": "Created"
+					}
+				}
+			},
+			"channelForm": {
+				"title": "Add a channel",
+				"description": "Name the place you will share this campaign. The name becomes the utm_source of its links.",
+				"name": {
+					"label": "Name",
+					"placeholder": "Instagram"
+				},
+				"submit": "Add channel",
+				"submitting": "Adding..."
 			}
 		},
 		"toast": {
@@ -619,7 +662,9 @@
 			"qrStyleSaved": "QR style saved",
 			"campaignCreated": "Campaign created",
 			"campaignUpdated": "Campaign updated",
-			"campaignDeleted": "Campaign deleted"
+			"campaignDeleted": "Campaign deleted",
+			"channelCreated": "Channel added",
+			"channelDeleted": "Channel deleted"
 		},
 		"qr": {
 			"title": "QR Codes",
@@ -655,6 +700,7 @@
 		"googleEmailNotVerified": "The Google email is not verified",
 		"nameTaken": "That name is already in use",
 		"invalidName": "Enter a name of up to 100 characters",
-		"invalidDescription": "The description can have up to 500 characters"
+		"invalidDescription": "The description can have up to 500 characters",
+		"tooManyChannels": "A campaign can have up to 100 channels"
 	}
 }

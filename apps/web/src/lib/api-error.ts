@@ -14,6 +14,7 @@ const errorKeys = {
 	name_taken: 'errors.nameTaken',
 	provider_mismatch: 'errors.providerMismatch',
 	too_many_attempts: 'errors.tooManyAttempts',
+	too_many_channels: 'errors.tooManyChannels',
 } satisfies Record<string, TranslationKey>;
 
 function isKnownCode(code: string | undefined): code is keyof typeof errorKeys {

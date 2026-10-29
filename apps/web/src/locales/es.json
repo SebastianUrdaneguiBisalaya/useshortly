@@ -597,6 +597,49 @@
 				"label": "Eliminar campaña",
 				"title": "¿Eliminar {{name}}?",
 				"description": "Se eliminan sus canales. Sus links se conservan y siguen funcionando, pero dejan de ser parte de una campaña. No se puede deshacer."
+			},
+			"detail": {
+				"back": "Volver a campañas",
+				"loading": "Cargando campaña...",
+				"notFound": {
+					"title": "Campaña no encontrada",
+					"description": "Puede que se haya eliminado o que pertenezca a otra organización."
+				},
+				"channels": {
+					"title": "Canales",
+					"description": "Un canal es un lugar donde compartes esta campaña, como Instagram o el correo. Su nombre se añade al destino de cada link como utm_source.",
+					"add": "Añadir canal",
+					"empty": "Aún no hay canales. Añade el primero para empezar a poner links en esta campaña.",
+					"columns": {
+						"name": "Canal",
+						"createdAt": "Añadido"
+					},
+					"delete": {
+						"label": "Eliminar canal",
+						"title": "¿Eliminar {{name}}?",
+						"description": "Sus links se conservan y siguen funcionando, pero dejan de ser parte de esta campaña. No se puede deshacer."
+					}
+				},
+				"links": {
+					"title": "Links",
+					"description": "Links compartidos en esta campaña, con el canal en el que se puso cada uno.",
+					"empty": "Aún no hay links en esta campaña.",
+					"columns": {
+						"link": "Link corto",
+						"channel": "Canal",
+						"createdAt": "Creado"
+					}
+				}
+			},
+			"channelForm": {
+				"title": "Añadir un canal",
+				"description": "Nombra el lugar donde compartirás esta campaña. El nombre se convierte en el utm_source de sus links.",
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Instagram"
+				},
+				"submit": "Añadir canal",
+				"submitting": "Añadiendo..."
 			}
 		},
 		"toast": {
@@ -619,7 +662,9 @@
 			"qrStyleSaved": "Estilo del QR guardado",
 			"campaignCreated": "Campaña creada",
 			"campaignUpdated": "Campaña actualizada",
-			"campaignDeleted": "Campaña eliminada"
+			"campaignDeleted": "Campaña eliminada",
+			"channelCreated": "Canal añadido",
+			"channelDeleted": "Canal eliminado"
 		},
 		"qr": {
 			"title": "Códigos QR",
@@ -655,6 +700,7 @@
 		"googleEmailNotVerified": "El correo de Google no está verificado",
 		"nameTaken": "Ese nombre ya está en uso",
 		"invalidName": "Ingresa un nombre de hasta 100 caracteres",
-		"invalidDescription": "La descripción puede tener hasta 500 caracteres"
+		"invalidDescription": "La descripción puede tener hasta 500 caracteres",
+		"tooManyChannels": "Una campaña puede tener hasta 100 canales"
 	}
 }

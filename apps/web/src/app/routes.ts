@@ -6,6 +6,7 @@ export default [
 		route('links', '../features/protected/links/links.tsx'),
 		route('qr-code', '../features/protected/qr-code/qr-code.tsx'),
 		route('campaigns', '../features/protected/campaigns/campaigns.tsx'),
+		route('campaigns/:campaignID', '../features/protected/campaigns/campaign-detail.tsx'),
 		route('domains', '../features/protected/domains/domains.tsx'),
 		route('users', '../features/protected/users/users.tsx'),
 		route('api-keys', '../features/protected/api-keys/api-keys.tsx'),

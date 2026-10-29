@@ -22,6 +22,10 @@ interface Link {
   code: string;
   short_url: string;
   domain_id: number | null;
+  campaign_id: number | null; // the campaign of its channel
+  channel_id: number | null; // the channel it was shared in
+  campaign_name: string; // "" when it is in no campaign
+  channel_name: string;
   origin_url: string;
   expires_at: string | null; // RFC 3339, UTC
   max_clicks: number | null;
@@ -49,6 +53,39 @@ interface LinkStats {
   countries: ClickCount[]; // ISO 3166-1 alpha-2, or "unknown"
   devices: ClickCount[]; // mobile | tablet | desktop | bot | unknown
   referrers: ClickCount[]; // a URL, or "direct"
+}
+
+interface Campaign {
+  id: number;
+  name: string;
+  description: string;
+  channel_count: number;
+  link_count: number;
+  created_at: string;
+  updated_at: string | null;
+}
+
+interface CampaignChannel {
+  id: number;
+  campaign_id: number;
+  name: string; // becomes the utm_source of the links in it
+  created_at: string;
+}
+
+// Like LinkStats, but for every link of the campaign and with the clicks of each channel.
+interface CampaignStats {
+  campaign_id: number;
+  from: string;
+  to: string;
+  total: number;
+  previous_total: number;
+  daily: { date: string; clicks: number }[];
+  by_hour: number[];
+  by_weekday: number[];
+  countries: ClickCount[];
+  devices: ClickCount[];
+  referrers: ClickCount[];
+  channels: { id: number; name: string; clicks: number }[]; // most clicks first, quiet channels included
 }
 
 interface ClickCount {

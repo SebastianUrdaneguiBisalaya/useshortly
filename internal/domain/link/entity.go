@@ -19,6 +19,9 @@ type Link struct {
 	ChannelID *int64
 	// CampaignID is the campaign of that channel; the repository fills it on reads, it is ignored on Create.
 	CampaignID *int64
+	// CampaignName and ChannelName name that campaign and channel; the repository fills them on reads, they are ignored on Create.
+	CampaignName string
+	ChannelName  string
 	// PasswordHash is set for a password-protected link; it never leaves the server.
 	PasswordHash string
 	// QRStyle is how the link's QR code is drawn; the zero value is the default.

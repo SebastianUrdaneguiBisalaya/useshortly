@@ -566,8 +566,15 @@
                         "description": "CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.",
                         "type": "integer"
                     },
+                    "campaign_name": {
+                        "description": "CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.",
+                        "type": "string"
+                    },
                     "channel_id": {
                         "type": "integer"
+                    },
+                    "channel_name": {
+                        "type": "string"
                     },
                     "code": {
                         "type": "string"

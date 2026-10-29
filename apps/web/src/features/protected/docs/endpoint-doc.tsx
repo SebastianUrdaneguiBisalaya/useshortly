@@ -7,15 +7,20 @@ import type { Endpoint } from './api-endpoints';
 const STATUS_TEXT: Record<number, string> = { 200: 'OK', 201: 'Created', 204: 'No Content' };
 
 /** Path parameters are the same for every endpoint of a kind, so they are derived from the path itself. */
+/** Endpoints that answer a file, not JSON: curl saves it under this name. */
+const OUTPUT_FILES: Record<string, string> = { 'export-campaign': 'campaign.csv', 'get-qr': 'qr.png' };
+
 function pathParams(path: string) {
 	const rows = [{ description: 'The organization the API key belongs to.', name: 'orgID', required: true, type: 'number' }];
 	if (path.includes('{linkID}')) rows.push({ description: 'The link’s id, from the create or list responses.', name: 'linkID', required: true, type: 'number' });
 	if (path.includes('{domainID}')) rows.push({ description: 'The domain’s id, from the create or list responses.', name: 'domainID', required: true, type: 'number' });
+	if (path.includes('{campaignID}')) rows.push({ description: 'The campaign’s id, from the create or list responses.', name: 'campaignID', required: true, type: 'number' });
+	if (path.includes('{channelID}')) rows.push({ description: 'The channel’s id, from the create or list responses.', name: 'channelID', required: true, type: 'number' });
 	return rows;
 }
 
 function curl(endpoint: Endpoint, accept?: string) {
-	const url = `$BASE_URL/orgs/$ORG_ID${endpoint.path.replace('{linkID}', '$LINK_ID').replace('{domainID}', '$DOMAIN_ID')}${endpoint.queryExample ? `?${endpoint.queryExample}` : ''}`;
+	const url = `$BASE_URL/orgs/$ORG_ID${endpoint.path.replace('{linkID}', '$LINK_ID').replace('{domainID}', '$DOMAIN_ID').replace('{campaignID}', '$CAMPAIGN_ID').replace('{channelID}', '$CHANNEL_ID')}${endpoint.queryExample ? `?${endpoint.queryExample}` : ''}`;
 	const lines = [`curl -X ${endpoint.method} "${url}" \\`, '  -H "Authorization: Bearer $USHORTLY_API_KEY"'];
 	if (endpoint.bodyExample) {
 		lines[1] += ' \\';
@@ -44,7 +49,7 @@ function ScopeBadge({ scope }: { scope: 'read' | 'write' }) {
 export function EndpointDoc({ endpoint }: { endpoint: Endpoint }) {
 	const params = pathParams(endpoint.path);
 	const returns = endpoint.status === 204 ? `// ${endpoint.status} ${STATUS_TEXT[204]}, empty body` : `// ${endpoint.status} ${STATUS_TEXT[endpoint.status] ?? ''}\n${endpoint.returns}`;
-	const isImage = endpoint.id === 'get-qr';
+	const outputFile = OUTPUT_FILES[endpoint.id];
 
 	return (
 		<article className='flex flex-col gap-4 border-t border-border pt-8 first:border-t-0 first:pt-0' id={endpoint.id}>
@@ -73,7 +78,7 @@ export function EndpointDoc({ endpoint }: { endpoint: Endpoint }) {
 			/>
 
 			<Typography.H4 className='text-base'>Request</Typography.H4>
-			<BlockCode.Root code={curl(endpoint, isImage ? 'qr.png' : undefined)} language='bash'>
+			<BlockCode.Root code={curl(endpoint, outputFile)} language='bash'>
 				<BlockCode.Header>
 					<span>curl</span>
 					<BlockCode.CopyButton />

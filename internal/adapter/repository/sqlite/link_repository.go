@@ -40,7 +40,9 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 	}
 	if l.ChannelID != nil {
 		var campaignID int64
-		if err := r.db.QueryRowContext(ctx, `SELECT campaign_id FROM channels WHERE id = ?`, *l.ChannelID).Scan(&campaignID); err != nil {
+		if err := r.db.QueryRowContext(ctx,
+			`SELECT ch.campaign_id, ca.name, ch.name FROM channels ch JOIN campaigns ca ON ca.id = ch.campaign_id WHERE ch.id = ?`,
+			*l.ChannelID).Scan(&campaignID, &l.CampaignName, &l.ChannelName); err != nil {
 			return link.Link{}, fmt.Errorf("link repo: campaign: %w", err)
 		}
 		l.CampaignID = &campaignID
@@ -50,10 +52,11 @@ func (r *LinkRepository) Create(ctx context.Context, l link.Link) (link.Link, er
 
 // linkSelect reads a link with the host of its domain and the campaign of its channel, if it has them.
 const linkSelect = `SELECT l.id, l.code, l.origin_url, l.expires_at, l.max_clicks, l.click_count, l.password_hash,
-	l.tenant_id, l.domain_id, d.host, l.channel_id, ch.campaign_id, l.qr_foreground, l.qr_background, l.qr_logo_url, l.created_by, l.updated_by, l.created_at, l.updated_at
+	l.tenant_id, l.domain_id, d.host, l.channel_id, ch.campaign_id, ca.name, ch.name, l.qr_foreground, l.qr_background, l.qr_logo_url, l.created_by, l.updated_by, l.created_at, l.updated_at
 	FROM links l JOIN organizations o ON o.id = l.tenant_id AND o.deleted_at IS NULL
 	LEFT JOIN domains d ON d.id = l.domain_id
-	LEFT JOIN channels ch ON ch.id = l.channel_id `
+	LEFT JOIN channels ch ON ch.id = l.channel_id
+	LEFT JOIN campaigns ca ON ca.id = ch.campaign_id `
 
 // scanLink reads a row selected with linkColumns from a *sql.Row or *sql.Rows.
 func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
@@ -68,10 +71,12 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 		domainHost         sql.NullString
 		channelID          sql.NullInt64
 		campaignID         sql.NullInt64
+		campaignName       sql.NullString
+		channelName        sql.NullString
 		qrFg, qrBg, qrLogo sql.NullString
 		createdAt          string
 	)
-	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &channelID, &campaignID, &qrFg, &qrBg, &qrLogo, &createdBy, &updatedBy, &createdAt, &updated)
+	err := row.Scan(&l.ID, &l.Code, &l.OriginURL, &expires, &maxClicks, &l.ClickCount, &passwordHash, &l.TenantID, &domainID, &domainHost, &channelID, &campaignID, &campaignName, &channelName, &qrFg, &qrBg, &qrLogo, &createdBy, &updatedBy, &createdAt, &updated)
 	if err != nil {
 		return link.Link{}, err
 	}
@@ -88,6 +93,7 @@ func scanLink(row interface{ Scan(...any) error }) (link.Link, error) {
 	if campaignID.Valid {
 		l.CampaignID = &campaignID.Int64
 	}
+	l.CampaignName, l.ChannelName = campaignName.String, channelName.String
 	l.QRStyle = link.QRStyle{Foreground: qrFg.String, Background: qrBg.String, LogoURL: qrLogo.String}
 	l.CreatedBy = createdBy.Int64 // 0 once the user who created it was deleted
 	l.PasswordHash = passwordHash.String

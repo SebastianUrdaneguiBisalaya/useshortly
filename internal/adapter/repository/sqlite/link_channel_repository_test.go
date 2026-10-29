@@ -39,6 +39,8 @@ func TestLinkRepositoryChannels(t *testing.T) {
 	assert.Equal(t, &insta.ID, l1.ChannelID)
 	require.NotNil(t, l1.CampaignID, "Create fills the campaign of the channel")
 	assert.Equal(t, a.ID, *l1.CampaignID)
+	assert.Equal(t, "A", l1.CampaignName)
+	assert.Equal(t, "Instagram", l1.ChannelName)
 	create("link0002", &mail.ID)
 	create("link0003", &other.ID)
 	l4 := create("link0004", nil)
@@ -49,6 +51,8 @@ func TestLinkRepositoryChannels(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, insta.ID, *got.ChannelID)
 	assert.EqualValues(t, a.ID, *got.CampaignID)
+	assert.Equal(t, "A", got.CampaignName)
+	assert.Equal(t, "Instagram", got.ChannelName)
 	byCode, err := links.FindByCode(ctx, nil, "link0001")
 	require.NoError(t, err)
 	assert.EqualValues(t, a.ID, *byCode.CampaignID)
@@ -56,6 +60,14 @@ func TestLinkRepositoryChannels(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, got.ChannelID)
 	assert.Nil(t, got.CampaignID)
+	assert.Empty(t, got.CampaignName)
+	assert.Empty(t, got.ChannelName)
+
+	listed, _, err := links.ListByTenant(ctx, 1, link.ListFilter{ChannelID: &mail.ID}, page.Params{Limit: 10})
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, "A", listed[0].CampaignName, "a list carries the names too")
+	assert.Equal(t, "Email", listed[0].ChannelName)
 
 	codes := func(f link.ListFilter) ([]string, int) {
 		list, total, err := links.ListByTenant(ctx, 1, f, page.Params{Limit: 10})

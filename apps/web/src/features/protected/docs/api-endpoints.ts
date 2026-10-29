@@ -1,4 +1,4 @@
-export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type Method = 'GET' | 'PATCH' | 'POST' | 'PUT' | 'DELETE';
 
 export interface Field {
 	description: string;
@@ -53,6 +53,10 @@ const LINK_EXAMPLE = `{
     "code": "summer1",
     "short_url": "https://short.example.com/summer1",
     "domain_id": null,
+    "campaign_id": null,
+    "channel_id": null,
+    "campaign_name": "",
+    "channel_name": "",
     "origin_url": "https://example.com/blog/summer-sale",
     "expires_at": null,
     "max_clicks": null,
@@ -61,6 +65,33 @@ const LINK_EXAMPLE = `{
     "created_at": "2026-06-01T12:00:00Z"
   }
 }`;
+
+const CAMPAIGN_EXAMPLE = `{
+  "data": {
+    "id": 3,
+    "name": "Black Friday",
+    "description": "Links for the sale",
+    "channel_count": 2,
+    "link_count": 5,
+    "created_at": "2026-06-01T12:00:00Z",
+    "updated_at": null
+  }
+}`;
+
+const CHANNEL_EXAMPLE = `{
+  "data": {
+    "id": 11,
+    "campaign_id": 3,
+    "name": "Instagram",
+    "created_at": "2026-06-01T12:00:00Z"
+  }
+}`;
+
+const CAMPAIGN_NOT_FOUND: EndpointError = { code: 'not_found', meaning: 'The campaign does not exist or belongs to another organization.', status: 404 };
+const NAME_ERRORS: EndpointError[] = [
+	{ code: 'invalid_name', meaning: 'The name is empty, has control characters or is longer than the limit (100 characters for a campaign, 50 for a channel).', status: 400 },
+	{ code: 'name_taken', meaning: 'The name is already used, ignoring case: by another campaign of the organization, or by another channel of the campaign.', status: 409 },
+];
 
 const DOMAIN_EXAMPLE = `{
   "data": {
@@ -90,6 +121,11 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 					{ description: 'Greater than 0. The link stops working after this many clicks.', name: 'max_clicks', type: 'number' },
 					{ description: '4 to 64 characters. Visitors must type it to open the link.', name: 'password', type: 'string' },
 					{ description: 'A verified custom domain of the organization. The default host when omitted.', name: 'domain_id', type: 'number' },
+					{
+						description: 'A channel of one of the organization’s campaigns. The destination gets utm_source, utm_medium and utm_campaign added (see Using campaigns).',
+						name: 'channel_id',
+						type: 'number',
+					},
 				],
 				bodyExample: `{
   "url": "https://example.com/blog/summer-sale",
@@ -105,6 +141,8 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 					{ code: 'invalid_password', meaning: 'The password is not 4 to 64 characters.', status: 400 },
 					{ code: 'domain_not_verified', meaning: 'The domain is not yours or is not verified yet.', status: 409 },
 					{ code: 'alias_taken', meaning: 'Another link already uses this alias.', status: 409 },
+					{ code: 'channel_not_found', meaning: 'The channel does not exist or belongs to another organization.', status: 404 },
+					{ code: 'campaign_url_too_long', meaning: 'The URL plus the campaign parameters is longer than 255 characters.', status: 400 },
 				],
 				id: 'create-link',
 				method: 'POST',
@@ -117,12 +155,16 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 			},
 			{
 				description: 'One page of the organization’s links, newest first.',
-				errors: [BAD_PAGE],
+				errors: [BAD_PAGE, { code: 'invalid_filter', meaning: 'campaign_id or channel_id is not a positive integer.', status: 400 }],
 				id: 'list-links',
-				queryExample: 'limit=20&offset=0',
+				queryExample: 'limit=20&offset=0&campaign_id=3',
 				method: 'GET',
 				path: '/links',
-				query: PAGINATION,
+				query: [
+					...PAGINATION,
+					{ description: 'Only links in a channel of this campaign.', name: 'campaign_id', type: 'number' },
+					{ description: 'Only links in this channel.', name: 'channel_id', type: 'number' },
+				],
 				returns: 'Page<Link>',
 				scope: 'read',
 				status: 200,
@@ -154,6 +196,186 @@ export const ENDPOINT_GROUPS: EndpointGroup[] = [
 		],
 		id: 'links',
 		title: 'Links',
+	},
+	{
+		description: 'A campaign groups the links you share for one initiative, split into channels such as Instagram or email. See Using campaigns for how links get their UTM parameters.',
+		endpoints: [
+			{
+				body: [
+					{ description: '1 to 100 characters. Unique in the organization, ignoring case.', name: 'name', required: true, type: 'string' },
+					{ description: 'Up to 500 characters.', name: 'description', type: 'string' },
+				],
+				bodyExample: `{
+  "name": "Black Friday",
+  "description": "Links for the sale"
+}`,
+				description: 'Creates a campaign. It starts with no channels.',
+				errors: [...NAME_ERRORS, { code: 'invalid_description', meaning: 'The description is longer than 500 characters.', status: 400 }],
+				id: 'create-campaign',
+				method: 'POST',
+				path: '/campaigns',
+				responseExample: CAMPAIGN_EXAMPLE,
+				returns: 'Envelope<Campaign>',
+				scope: 'write',
+				status: 201,
+				title: 'Create a campaign',
+			},
+			{
+				description: 'One page of the organization’s campaigns, newest first, with how many channels and links each has.',
+				errors: [BAD_PAGE],
+				id: 'list-campaigns',
+				method: 'GET',
+				path: '/campaigns',
+				query: PAGINATION,
+				queryExample: 'limit=20&offset=0',
+				returns: 'Page<Campaign>',
+				scope: 'read',
+				status: 200,
+				title: 'List campaigns',
+			},
+			{
+				description: 'One campaign of the organization.',
+				errors: [CAMPAIGN_NOT_FOUND],
+				id: 'get-campaign',
+				method: 'GET',
+				path: '/campaigns/{campaignID}',
+				responseExample: CAMPAIGN_EXAMPLE,
+				returns: 'Envelope<Campaign>',
+				scope: 'read',
+				status: 200,
+				title: 'Get a campaign',
+			},
+			{
+				body: [
+					{ description: '1 to 100 characters. Unique in the organization, ignoring case.', name: 'name', type: 'string' },
+					{ description: 'Up to 500 characters. Send an empty string to clear it.', name: 'description', type: 'string' },
+				],
+				bodyExample: `{
+  "name": "BF 2026"
+}`,
+				description:
+					'Changes the name and/or the description; a field you leave out stays as it is. Links already in the campaign keep the utm_campaign they were given, so a new name only reaches the links you put in its channels afterwards.',
+				errors: [CAMPAIGN_NOT_FOUND, ...NAME_ERRORS, { code: 'invalid_description', meaning: 'The description is longer than 500 characters.', status: 400 }],
+				id: 'update-campaign',
+				method: 'PATCH',
+				path: '/campaigns/{campaignID}',
+				responseExample: CAMPAIGN_EXAMPLE,
+				returns: 'Envelope<Campaign>',
+				scope: 'write',
+				status: 200,
+				title: 'Update a campaign',
+			},
+			{
+				description: 'Deletes the campaign and its channels. Its links stay and keep working, outside any campaign, and keep the UTM parameters they already have.',
+				errors: [CAMPAIGN_NOT_FOUND],
+				id: 'delete-campaign',
+				method: 'DELETE',
+				path: '/campaigns/{campaignID}',
+				returns: 'void // 204, empty body',
+				scope: 'write',
+				status: 204,
+				title: 'Delete a campaign',
+			},
+			{
+				body: [{ description: '1 to 50 characters. Unique in the campaign, ignoring case. Becomes the utm_source of the links in the channel.', name: 'name', required: true, type: 'string' }],
+				bodyExample: `{
+  "name": "Instagram"
+}`,
+				description: 'Adds a channel to the campaign. A campaign has at most 100 channels.',
+				errors: [CAMPAIGN_NOT_FOUND, ...NAME_ERRORS, { code: 'too_many_channels', meaning: 'The campaign already has 100 channels.', status: 409 }],
+				id: 'create-channel',
+				method: 'POST',
+				path: '/campaigns/{campaignID}/channels',
+				responseExample: CHANNEL_EXAMPLE,
+				returns: 'Envelope<CampaignChannel>',
+				scope: 'write',
+				status: 201,
+				title: 'Add a channel',
+			},
+			{
+				description: 'One page of the campaign’s channels, oldest first.',
+				errors: [BAD_PAGE, CAMPAIGN_NOT_FOUND],
+				id: 'list-channels',
+				method: 'GET',
+				path: '/campaigns/{campaignID}/channels',
+				query: PAGINATION,
+				queryExample: 'limit=100',
+				returns: 'Page<CampaignChannel>',
+				scope: 'read',
+				status: 200,
+				title: 'List channels',
+			},
+			{
+				description: 'Deletes the channel. Its links stay and keep working, outside any campaign, and keep the UTM parameters they already have.',
+				errors: [{ code: 'channel_not_found', meaning: 'The channel does not exist in this campaign.', status: 404 }],
+				id: 'delete-channel',
+				method: 'DELETE',
+				path: '/campaigns/{campaignID}/channels/{channelID}',
+				returns: 'void // 204, empty body',
+				scope: 'write',
+				status: 204,
+				title: 'Delete a channel',
+			},
+			{
+				body: [{ description: 'The channel to put the link in. Leave it out, or send null, to take the link out of its campaign.', name: 'channel_id', type: 'number | null' }],
+				bodyExample: `{
+  "channel_id": 11
+}`,
+				description:
+					'Puts a link in a channel, or moves it to another one: its destination is rewritten with the channel’s UTM parameters. Without a channel_id it takes the link out of its campaign and removes utm_source, utm_medium and utm_campaign from the destination; a value the link had for them before it joined the campaign is not restored. The short code never changes, so the QR code keeps working.',
+				errors: [
+					{ code: 'not_found', meaning: 'The link does not exist or belongs to another organization.', status: 404 },
+					{ code: 'channel_not_found', meaning: 'The channel does not exist or belongs to another organization.', status: 404 },
+					{ code: 'campaign_url_too_long', meaning: 'The destination plus the campaign parameters is longer than 255 characters.', status: 400 },
+				],
+				id: 'set-link-channel',
+				method: 'PUT',
+				path: '/links/{linkID}/channel',
+				returns: 'Envelope<Link>',
+				scope: 'write',
+				status: 200,
+				title: 'Put a link in a channel',
+			},
+			{
+				description:
+					'Clicks on every link in the campaign’s channels, per day, hour, weekday, country, device and referrer, the total of the previous period of the same length, and the clicks of each channel. Without from and to it covers the last 30 days; the longest period is 366 days.',
+				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from is after to, or the period is longer than 366 days.', status: 400 }],
+				id: 'get-campaign-stats',
+				method: 'GET',
+				path: '/campaigns/{campaignID}/stats',
+				query: [
+					{ description: 'First day, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
+					{ description: 'Last day, YYYY-MM-DD (UTC).', name: 'to', type: 'string' },
+					{ description: 'Only clicks from this country (ISO 3166-1 alpha-2), or unknown.', name: 'country', type: 'string' },
+					{ description: 'mobile, tablet, desktop, bot or unknown.', name: 'device', type: 'string' },
+					{ description: 'A referrer URL, or direct for none.', name: 'referrer', type: 'string' },
+				],
+				queryExample: 'from=2026-06-01&to=2026-06-30',
+				returns: 'Envelope<CampaignStats>',
+				scope: 'read',
+				status: 200,
+				title: 'Get campaign statistics',
+			},
+			{
+				description:
+					'A CSV file, not JSON, with one row per link of the campaign: link_id, short_url, origin_url, channel, clicks and created_at. clicks counts the clicks between from and to; without them it counts every click.',
+				errors: [CAMPAIGN_NOT_FOUND, { code: 'invalid_range', meaning: 'from or to is not a date, or from is after to.', status: 400 }],
+				id: 'export-campaign',
+				method: 'GET',
+				path: '/campaigns/{campaignID}/export',
+				query: [
+					{ description: 'First day, YYYY-MM-DD (UTC).', name: 'from', type: 'string' },
+					{ description: 'Last day, YYYY-MM-DD (UTC).', name: 'to', type: 'string' },
+				],
+				queryExample: 'from=2026-06-01&to=2026-06-30',
+				returns: 'Blob // text/csv',
+				scope: 'read',
+				status: 200,
+				title: 'Export a campaign',
+			},
+		],
+		id: 'campaigns',
+		title: 'Campaigns',
 	},
 	{
 		description: 'Every link has a QR code of its short URL. Read the image, or change how it is drawn.',

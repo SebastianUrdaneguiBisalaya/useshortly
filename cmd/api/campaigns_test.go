@@ -65,6 +65,8 @@ func TestCampaignsFromCreationToExport(t *testing.T) {
 	assert.Equal(t, "https://example.com/sale?ref=1&utm_source=Instagram&utm_medium=useshortly&utm_campaign=Black+Friday", res.str("origin_url"))
 	assert.Equal(t, campaignID, idStr(res.body["campaign_id"]))
 	assert.Equal(t, insta, idStr(res.body["channel_id"]))
+	assert.Equal(t, "Black Friday", res.str("campaign_name"))
+	assert.Equal(t, "Instagram", res.str("channel_name"))
 
 	redirect := e.do("GET", "/bf-insta", "", nil)
 	assert.Equal(t, http.StatusFound, redirect.status)
@@ -84,6 +86,8 @@ func TestCampaignsFromCreationToExport(t *testing.T) {
 		assert.Contains(t, res.raw, "bf-insta")
 		assert.Contains(t, res.raw, "bf-email")
 		assert.NotContains(t, res.raw, "no-campaign")
+		assert.Contains(t, res.raw, `"campaign_name":"Black Friday"`, "a list names the campaign and channel of each link")
+		assert.Contains(t, res.raw, `"channel_name":"Instagram"`)
 		res = e.do("GET", org+"/links?channel_id="+mail, ana, nil)
 		assert.NotContains(t, res.raw, "bf-insta")
 		assert.Contains(t, res.raw, "bf-email")

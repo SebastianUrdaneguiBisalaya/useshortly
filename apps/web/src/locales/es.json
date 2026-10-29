@@ -418,7 +418,8 @@
 				"clicks": "Límite de clics",
 				"expires": "Expira",
 				"createdAt": "Creado",
-				"access": "Acceso"
+				"access": "Acceso",
+				"campaign": "Campaña"
 			},
 			"badges": {
 				"protected": "Contraseña",
@@ -459,12 +460,28 @@
 					"placeholder": "Pedir contraseña para abrirlo"
 				},
 				"submit": "Crear link",
-				"submitting": "Creando..."
+				"submitting": "Creando...",
+				"campaign": {
+					"label": "Campaña (opcional)",
+					"placeholder": "Sin campaña",
+					"clear": "Quitar campaña"
+				},
+				"channel": {
+					"label": "Canal",
+					"placeholder": "Elige un canal",
+					"clear": "Quitar canal",
+					"required": "Elige un canal para esta campaña"
+				},
+				"preview": {
+					"label": "Destino final",
+					"tooLong": "Este destino supera los {{max}} caracteres con los parámetros de la campaña. Acorta la URL o el nombre del canal."
+				}
 			},
 			"actions": {
 				"label": "Acciones del link",
 				"downloadQr": "Descargar QR",
-				"delete": "Eliminar link"
+				"delete": "Eliminar link",
+				"changeChannel": "Cambiar de campaña"
 			},
 			"delete": {
 				"label": "Eliminar link",
@@ -506,7 +523,27 @@
 						"mobile": "Móvil"
 					}
 				},
-				"close": "Cerrar"
+				"close": "Cerrar",
+				"campaign": {
+					"title": "Campaña",
+					"in": "En {{campaign}}, canal {{channel}}.",
+					"none": "No está en una campaña.",
+					"change": "Cambiar de campaña"
+				}
+			},
+			"channelDialog": {
+				"title": "Cambiar de campaña",
+				"description": "Poner el link en un canal añade utm_source, utm_medium y utm_campaign a su destino. El link corto y su código QR no cambian.",
+				"leaving": "Sacar el link de su campaña quita utm_source, utm_medium y utm_campaign de su destino. Los valores que el link tenía para ellos antes de entrar en la campaña no se restauran.",
+				"submit": "Guardar cambios"
+			},
+			"emptyFiltered": "Ningún link coincide con estos filtros.",
+			"filters": {
+				"campaign": "Campaña",
+				"channel": "Canal",
+				"allCampaigns": "Todas las campañas",
+				"allChannels": "Todos los canales",
+				"clear": "Quitar filtros"
 			}
 		},
 		"domains": {
@@ -555,6 +592,108 @@
 				"description": "Los links que usan este dominio dejarán de funcionar. No se puede deshacer."
 			}
 		},
+		"campaigns": {
+			"title": "Campañas",
+			"description": "Agrupa links por iniciativa y compara el rendimiento de cada canal.",
+			"empty": "Aún no hay campañas.",
+			"columns": {
+				"name": "Campaña",
+				"channels": "Canales",
+				"links": "Links",
+				"createdAt": "Creada"
+			},
+			"create": {
+				"action": "Nueva campaña",
+				"title": "Nueva campaña",
+				"description": "Una campaña agrupa los links que compartes para una misma iniciativa. Después añade canales.",
+				"submit": "Crear campaña",
+				"submitting": "Creando..."
+			},
+			"edit": {
+				"label": "Editar campaña",
+				"title": "Editar campaña",
+				"description": "Los links que ya están en esta campaña conservan el nombre que tenía. Un nombre nuevo solo se aplica a los links que pongas en sus canales desde ahora.",
+				"submit": "Guardar cambios",
+				"submitting": "Guardando..."
+			},
+			"form": {
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Black Friday"
+				},
+				"description": {
+					"label": "Descripción (opcional)",
+					"placeholder": "¿Para qué es esta campaña?"
+				}
+			},
+			"validation": {
+				"nameRequired": "Ingresa un nombre",
+				"tooLong": "Usa como máximo {{max}} caracteres"
+			},
+			"delete": {
+				"label": "Eliminar campaña",
+				"title": "¿Eliminar {{name}}?",
+				"description": "Se eliminan sus canales. Sus links se conservan y siguen funcionando, pero dejan de ser parte de una campaña. No se puede deshacer."
+			},
+			"detail": {
+				"back": "Volver a campañas",
+				"loading": "Cargando campaña...",
+				"notFound": {
+					"title": "Campaña no encontrada",
+					"description": "Puede que se haya eliminado o que pertenezca a otra organización."
+				},
+				"channels": {
+					"title": "Canales",
+					"description": "Un canal es un lugar donde compartes esta campaña, como Instagram o el correo. Su nombre se añade al destino de cada link como utm_source.",
+					"add": "Añadir canal",
+					"empty": "Aún no hay canales. Añade el primero para empezar a poner links en esta campaña.",
+					"columns": {
+						"name": "Canal",
+						"createdAt": "Añadido"
+					},
+					"delete": {
+						"label": "Eliminar canal",
+						"title": "¿Eliminar {{name}}?",
+						"description": "Sus links se conservan y siguen funcionando, pero dejan de ser parte de esta campaña. No se puede deshacer."
+					}
+				},
+				"links": {
+					"title": "Links",
+					"description": "Links compartidos en esta campaña, con el canal en el que se puso cada uno.",
+					"empty": "Aún no hay links en esta campaña.",
+					"columns": {
+						"link": "Link corto",
+						"channel": "Canal",
+						"createdAt": "Creado"
+					},
+					"viewAll": "Ver en links"
+				},
+				"stats": {
+					"title": "Estadísticas",
+					"description": "Clics en todos los links de esta campaña. Compara el rendimiento de cada canal.",
+					"channels": {
+						"title": "Clics por canal",
+						"empty": "Esta campaña aún no tiene canales.",
+						"more": "Y {{count}} canales más con menos clics."
+					}
+				},
+				"export": {
+					"action": "Exportar CSV",
+					"period": "Periodo seleccionado",
+					"allTime": "Todo el tiempo"
+				}
+			},
+			"channelForm": {
+				"title": "Añadir un canal",
+				"description": "Nombra el lugar donde compartirás esta campaña. El nombre se convierte en el utm_source de sus links.",
+				"name": {
+					"label": "Nombre",
+					"placeholder": "Instagram"
+				},
+				"submit": "Añadir canal",
+				"submitting": "Añadiendo..."
+			}
+		},
 		"toast": {
 			"organizationCreated": "Organización creada",
 			"organizationUpdated": "Organización actualizada",
@@ -572,7 +711,15 @@
 			"apiKeyDeleted": "Clave de API eliminada",
 			"memberRemoved": "Miembro eliminado",
 			"accountDeleted": "Cuenta eliminada",
-			"qrStyleSaved": "Estilo del QR guardado"
+			"qrStyleSaved": "Estilo del QR guardado",
+			"campaignCreated": "Campaña creada",
+			"campaignUpdated": "Campaña actualizada",
+			"campaignDeleted": "Campaña eliminada",
+			"channelCreated": "Canal añadido",
+			"channelDeleted": "Canal eliminado",
+			"linkChannelUpdated": "Link actualizado",
+			"campaignExported": "Campaña exportada",
+			"campaignExportFailed": "No se pudo exportar la campaña"
 		},
 		"qr": {
 			"title": "Códigos QR",
@@ -605,6 +752,15 @@
 		"invalidCode": "El código es incorrecto o expiró",
 		"tooManyAttempts": "Demasiados códigos incorrectos. Solicita uno nuevo.",
 		"codeTooSoon": "Se pidió un código hace muy poco. Espera un minuto.",
-		"googleEmailNotVerified": "El correo de Google no está verificado"
+		"googleEmailNotVerified": "El correo de Google no está verificado",
+		"nameTaken": "Ese nombre ya está en uso",
+		"invalidName": "Ingresa un nombre de hasta 100 caracteres",
+		"invalidDescription": "La descripción puede tener hasta 500 caracteres",
+		"tooManyChannels": "Una campaña puede tener hasta 100 canales",
+		"campaignUrlTooLong": "El destino con los parámetros de la campaña supera los 255 caracteres",
+		"channelNotFound": "Ese canal ya no existe",
+		"campaignsDisabled": "Las campañas no están activadas en este servidor",
+		"invalidFilter": "Ese filtro no es válido",
+		"invalidRange": "Elige un periodo de hasta 366 días que termine después de empezar"
 	}
 }

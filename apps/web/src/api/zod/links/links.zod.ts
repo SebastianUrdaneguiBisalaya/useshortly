@@ -8,7 +8,7 @@
 import * as zod from 'zod';
 
 /**
- * Needs a JWT or an API key with the read scope.
+ * Needs a JWT or an API key with the read scope. campaign_id and channel_id keep only the links of that campaign or channel.
  * @summary List links
  */
 export const ListLinksParams = zod.object({
@@ -18,12 +18,18 @@ export const ListLinksParams = zod.object({
 export const ListLinksQueryParams = zod.object({
 	limit: zod.int().optional().describe('Page size'),
 	offset: zod.int().optional().describe('Items to skip'),
+	campaign_id: zod.int().optional().describe('Only links in a channel of this campaign'),
+	channel_id: zod.int().optional().describe('Only links in this channel'),
 });
 
 export const ListLinksResponse = zod.object({
 	data: zod
 		.array(
 			zod.object({
+				campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+				campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
+				channel_id: zod.int().optional(),
+				channel_name: zod.string().optional(),
 				code: zod.string().optional(),
 				created_at: zod.string().optional(),
 				domain_id: zod.int().optional(),
@@ -54,7 +60,7 @@ export const ListLinksResponse = zod.object({
 });
 
 /**
- * Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password and domain_id are optional.
+ * Needs a JWT or an API key with the write scope. alias, expires_at, max_clicks, password, domain_id and channel_id are optional. With a channel_id the destination gets utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign), replacing those parameters if it already had them.
  * @summary Create a short link
  */
 export const CreateLinkParams = zod.object({
@@ -64,6 +70,7 @@ export const CreateLinkParams = zod.object({
 export const CreateLinkBody = zod
 	.object({
 		alias: zod.string().optional(),
+		channel_id: zod.int().optional().describe('ChannelID shares the link in a campaign channel: the destination gets its utm_source, utm_medium and utm_campaign.'),
 		domain_id: zod.int().optional(),
 		expires_at: zod.string().optional(),
 		max_clicks: zod.int().optional(),
@@ -75,6 +82,10 @@ export const CreateLinkBody = zod
 export const CreateLinkResponse = zod.object({
 	data: zod
 		.object({
+			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
+			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),
@@ -119,6 +130,53 @@ export const GetLinkParams = zod.object({
 export const GetLinkResponse = zod.object({
 	data: zod
 		.object({
+			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
+			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
+			code: zod.string().optional(),
+			created_at: zod.string().optional(),
+			domain_id: zod.int().optional(),
+			expires_at: zod.string().optional(),
+			id: zod.int().optional(),
+			max_clicks: zod.int().optional(),
+			origin_url: zod.string().optional(),
+			protected: zod.boolean().optional(),
+			qr_style: zod
+				.object({
+					background: zod.string().optional(),
+					foreground: zod.string().optional(),
+					logo_url: zod.string().optional(),
+				})
+				.optional()
+				.describe("QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo)."),
+			short_url: zod.string().optional(),
+		})
+		.optional(),
+});
+
+/**
+ * Rewrites the destination with the utm_source (the channel), utm_medium=useshortly and utm_campaign (the campaign) of the channel, replacing those parameters if the link already had them. A missing or null channel_id takes the link out of its campaign and removes those three parameters from the destination. Needs a JWT or an API key with the write scope.
+ * @summary Put a link in a campaign channel
+ */
+export const SetLinkChannelParams = zod.object({
+	orgID: zod.int().describe('Organization id'),
+	linkID: zod.int().describe('Link id'),
+});
+
+export const SetLinkChannelBody = zod
+	.object({
+		channel_id: zod.int().optional(),
+	})
+	.describe('Channel');
+
+export const SetLinkChannelResponse = zod.object({
+	data: zod
+		.object({
+			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
+			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),
@@ -160,6 +218,10 @@ export const SetLinkQrStyleBody = zod
 export const SetLinkQrStyleResponse = zod.object({
 	data: zod
 		.object({
+			campaign_id: zod.int().optional().describe('CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.'),
+			campaign_name: zod.string().optional().describe('CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.'),
+			channel_id: zod.int().optional(),
+			channel_name: zod.string().optional(),
 			code: zod.string().optional(),
 			created_at: zod.string().optional(),
 			domain_id: zod.int().optional(),

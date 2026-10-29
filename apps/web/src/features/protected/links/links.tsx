@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
-import { parseAsInteger, useQueryState } from 'nuqs';
+import { parseAsInteger, useQueryState, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getListLinksQueryKey, useDeleteLink, useGetLink, useListLinks } from '~/api/endpoints/links/links';
@@ -20,7 +20,9 @@ import { OrganizationGate } from '../share/organization-gate';
 import { QrImage, resolveQrStyle } from '../share/qr-image';
 import { CreateLinkDialog } from './create-link-dialog';
 import { LinkActions } from './link-actions';
+import { LinkChannelDialog } from './link-channel-dialog';
 import { LinkDrawer } from './link-drawer';
+import { CampaignFilters } from './links-campaign-filters';
 
 const PAGE_SIZE = 25;
 
@@ -37,8 +39,13 @@ function LinksContent({ orgID }: { orgID: number }) {
 	const [creating, setCreating] = useState(false);
 	// The open link lives in the URL (`?link=12`) so the drawer can be shared and the back button closes it.
 	const [selectedID, setSelectedID] = useQueryState('link', parseAsInteger.withOptions({ history: 'push' }));
+	// The campaign and channel filters live in the URL too (`?campaign=3&channel=7`), so a filtered list can be shared and linked to.
+	const [filters, setFilters] = useQueryStates({ campaign: parseAsInteger, channel: parseAsInteger }, { history: 'replace' });
 	const [deleting, setDeleting] = useState<Link>();
+	const [changingChannel, setChangingChannel] = useState<Link>();
 	const links = useListLinks(orgID, {
+		campaign_id: filters.campaign ?? undefined,
+		channel_id: filters.channel ?? undefined,
 		limit: PAGE_SIZE,
 		offset: (page - 1) * PAGE_SIZE,
 	});
@@ -83,6 +90,21 @@ function LinksContent({ orgID }: { orgID: number }) {
 				size: 380,
 			},
 			{
+				cell: ({ row }) =>
+					row.original.campaign_id === undefined || row.original.channel_id === undefined ? (
+						<span className='text-muted-foreground'>—</span>
+					) : (
+						<Badge variant='outline'>
+							<Badge.Text>
+								{row.original.campaign_name} / {row.original.channel_name}
+							</Badge.Text>
+						</Badge>
+					),
+				header: t('protected.links.columns.campaign'),
+				id: 'campaign',
+				size: 220,
+			},
+			{
 				cell: ({ row }) => {
 					const expired = row.original.expires_at ? new Date(row.original.expires_at).getTime() < Date.now() : false;
 					return (
@@ -125,6 +147,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 			{
 				cell: ({ row }) => (
 					<LinkActions
+						onChangeChannel={() => setChangingChannel(row.original)}
 						onDelete={() => setDeleting(row.original)}
 						onDownloadQr={() => row.original.short_url && void downloadQr(row.original.short_url, row.original.code ?? 'qr', row.original.qr_style)}
 					/>
@@ -155,7 +178,7 @@ function LinksContent({ orgID }: { orgID: number }) {
 				<DataTable
 					columns={columns}
 					data={rows}
-					emptyMessage={t('protected.links.empty')}
+					emptyMessage={filters.campaign !== null || filters.channel !== null ? t('protected.links.emptyFiltered') : t('protected.links.empty')}
 					isLoading={links.isLoading}
 					onRowClick={link => void setSelectedID(link.id ?? null)}
 					pagination={{
@@ -167,14 +190,23 @@ function LinksContent({ orgID }: { orgID: number }) {
 					}}
 					toolbar={
 						<TableToolbar>
-							<span />
+							<CampaignFilters
+								campaignID={filters.campaign}
+								channelID={filters.channel}
+								onChange={next => {
+									setPage(1);
+									void setFilters(next);
+								}}
+								orgID={orgID}
+							/>
 							<TableToolbar.RefreshButton isRefreshing={links.isFetching} label={t('protected.table.refresh')} onRefresh={() => void links.refetch()} />
 						</TableToolbar>
 					}
 				/>
 			</Page.Body>
 			<CreateLinkDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
-			<LinkDrawer link={selected} onClose={() => void setSelectedID(null)} onDelete={setDeleting} orgID={orgID} />
+			<LinkDrawer link={selected} onChangeChannel={setChangingChannel} onClose={() => void setSelectedID(null)} onDelete={setDeleting} orgID={orgID} />
+			<LinkChannelDialog link={changingChannel} onOpenChange={open => !open && setChangingChannel(undefined)} orgID={orgID} />
 			<ConfirmDialog.Root
 				lang={{ cancel: t('protected.confirm.cancel'), confirm: t('protected.confirm.delete') }}
 				onConfirm={async () => {

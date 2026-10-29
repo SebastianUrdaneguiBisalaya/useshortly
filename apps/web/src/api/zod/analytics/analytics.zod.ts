@@ -8,6 +8,79 @@
 import * as zod from 'zod';
 
 /**
+ * Clicks of all the links in the campaign's channels per day, hour, weekday, referrer, country and device, plus the clicks of each channel, between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
+ * @summary Click statistics of a campaign
+ */
+export const GetCampaignStatsParams = zod.object({
+	orgID: zod.int().describe('Organization id'),
+	campaignID: zod.int().describe('Campaign id'),
+});
+
+export const GetCampaignStatsQueryParams = zod.object({
+	from: zod.string().optional().describe('First day, YYYY-MM-DD (UTC)'),
+	to: zod.string().optional().describe('Last day, YYYY-MM-DD (UTC)'),
+	country: zod.string().optional().describe('Only clicks from this country (ISO 3166-1 alpha-2), or unknown'),
+	device: zod.string().optional().describe('Only clicks from this device (mobile, tablet, desktop, bot), or unknown'),
+	referrer: zod.string().optional().describe('Only clicks with this referrer, or direct for none'),
+});
+
+export const GetCampaignStatsResponse = zod.object({
+	data: zod
+		.object({
+			by_hour: zod.array(zod.int()).optional().describe('ByHour has 24 entries (UTC hour 0..23) and ByWeekday 7 (0 is Sunday).'),
+			by_weekday: zod.array(zod.int()).optional(),
+			campaign_id: zod.int().optional(),
+			channels: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						id: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional()
+				.describe('Channels lists every channel of the campaign, most clicks first, the ones without clicks included.'),
+			countries: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			daily: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						date: zod.string().optional(),
+					})
+				)
+				.optional(),
+			devices: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			from: zod.string().optional(),
+			previous_total: zod.int().optional().describe('PreviousTotal is the clicks of the window right before this one, as long as it.'),
+			referrers: zod
+				.array(
+					zod.object({
+						clicks: zod.int().optional(),
+						name: zod.string().optional(),
+					})
+				)
+				.optional(),
+			to: zod.string().optional(),
+			total: zod.int().optional(),
+		})
+		.optional(),
+});
+
+/**
  * Clicks per day, hour, weekday, referrer, country and device between from and to, the total of the previous period of the same length, optionally narrowed to one country, device or referrer. Without dates it covers the last 30 days. Needs a JWT or an API key with the read scope.
  * @summary Click statistics of a link
  */

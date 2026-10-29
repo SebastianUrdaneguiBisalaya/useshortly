@@ -4,13 +4,22 @@ import { getI18n, type TranslationKey } from '~/i18n';
 
 /** Backend error codes (`error.code`) that have their own translated message. */
 const errorKeys = {
+	campaign_url_too_long: 'errors.campaignUrlTooLong',
+	campaigns_disabled: 'errors.campaignsDisabled',
+	channel_not_found: 'errors.channelNotFound',
 	code_too_soon: 'errors.codeTooSoon',
 	email_taken: 'errors.emailTaken',
 	google_email_not_verified: 'errors.googleEmailNotVerified',
 	invalid_code: 'errors.invalidCode',
 	invalid_credentials: 'errors.invalidCredentials',
+	invalid_description: 'errors.invalidDescription',
+	invalid_filter: 'errors.invalidFilter',
+	invalid_name: 'errors.invalidName',
+	invalid_range: 'errors.invalidRange',
+	name_taken: 'errors.nameTaken',
 	provider_mismatch: 'errors.providerMismatch',
 	too_many_attempts: 'errors.tooManyAttempts',
+	too_many_channels: 'errors.tooManyChannels',
 } satisfies Record<string, TranslationKey>;
 
 function isKnownCode(code: string | undefined): code is keyof typeof errorKeys {

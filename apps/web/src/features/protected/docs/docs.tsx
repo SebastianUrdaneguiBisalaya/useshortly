@@ -19,6 +19,7 @@ const SECTIONS = [
 	{ id: 'conventions', title: 'Requests and responses' },
 	{ id: 'errors', title: 'Errors' },
 	{ id: 'types', title: 'Types' },
+	{ id: 'campaigns-guide', title: 'Using campaigns' },
 	...ENDPOINT_GROUPS.map(group => ({ id: group.id, title: group.title })),
 ];
 
@@ -203,6 +204,76 @@ USHORTLY_API_KEY=usl_…   # created in the next section`}
 						</BlockCode.Header>
 						<BlockCode.Content />
 					</BlockCode.Root>
+				</Page.Section>
+
+				<Page.Section className='scroll-mt-8' id='campaigns-guide'>
+					<H2>Using campaigns</H2>
+					<Prose>
+						<Typography.P>
+							A campaign groups the links you share for one initiative. It is split into channels, the places you share it, such as Instagram or email. The same destination gets a
+							separate short link per channel, so each one has its own statistics and you can compare them.
+						</Typography.P>
+						<Typography.P>
+							A link put in a channel gets three parameters added to its destination: <Code>utm_source</Code> is the channel, <Code>utm_medium</Code> is always <Code>useshortly</Code>{' '}
+							and <Code>utm_campaign</Code> is the campaign. If the URL already had them they are replaced; every other parameter and the fragment stay. For{' '}
+							<Code>https://example.com/sale?ref=1</Code> in the channel <Code>Instagram</Code> of <Code>Black Friday</Code>, the link goes to:
+						</Typography.P>
+					</Prose>
+					<BlockCode.Root code='https://example.com/sale?ref=1&utm_source=Instagram&utm_medium=useshortly&utm_campaign=Black+Friday' language='bash'>
+						<BlockCode.Header>
+							<span>Final destination</span>
+							<BlockCode.CopyButton />
+						</BlockCode.Header>
+						<BlockCode.Content />
+					</BlockCode.Root>
+					<Prose>
+						<Typography.P>
+							The destination, with the parameters, can be at most 255 characters; otherwise the API answers <Code>campaign_url_too_long</Code>. A campaign has at most 100 channels. The
+							short code and the QR code of a link do not change when you move it to another channel.
+						</Typography.P>
+						<Typography.P>Five calls take you from nothing to a report. Run them in order, filling in the ids the previous answers give you:</Typography.P>
+					</Prose>
+					<BlockCode.Root
+						code={`# 1. Create the campaign. Note the id in the answer.
+curl -X POST "$BASE_URL/orgs/$ORG_ID/campaigns" \\
+  -H "Authorization: Bearer $USHORTLY_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "name": "Black Friday" }'
+
+# 2. Add a channel to it. Note its id too.
+curl -X POST "$BASE_URL/orgs/$ORG_ID/campaigns/$CAMPAIGN_ID/channels" \\
+  -H "Authorization: Bearer $USHORTLY_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "name": "Instagram" }'
+
+# 3. Create a link in the channel.
+curl -X POST "$BASE_URL/orgs/$ORG_ID/links" \\
+  -H "Authorization: Bearer $USHORTLY_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "url": "https://example.com/sale", "channel_id": '"$CHANNEL_ID"' }'
+
+# 4. Read the campaign's statistics, with the clicks of each channel.
+curl "$BASE_URL/orgs/$ORG_ID/campaigns/$CAMPAIGN_ID/stats" \\
+  -H "Authorization: Bearer $USHORTLY_API_KEY"
+
+# 5. Download the links and their clicks as a CSV file.
+curl "$BASE_URL/orgs/$ORG_ID/campaigns/$CAMPAIGN_ID/export" \\
+  -H "Authorization: Bearer $USHORTLY_API_KEY" \\
+  -o campaign.csv`}
+						language='bash'
+					>
+						<BlockCode.Header>
+							<span>From a new campaign to a report</span>
+							<BlockCode.CopyButton />
+						</BlockCode.Header>
+						<BlockCode.Content />
+					</BlockCode.Root>
+					<Prose>
+						<Typography.P>
+							To list only the links of a campaign or a channel, use <Code>campaign_id</Code> or <Code>channel_id</Code> in <Code>GET /links</Code>. The calls above are described one by
+							one in the Campaigns section below.
+						</Typography.P>
+					</Prose>
 				</Page.Section>
 
 				{ENDPOINT_GROUPS.map(group => (

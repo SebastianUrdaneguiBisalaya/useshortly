@@ -3,8 +3,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 const target = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080';
-/** First path segment of every page of the web app: they are never short links. */
-const APP_PAGES = ['auth', 'links', 'qr-code', 'campaigns', 'domains', 'users', 'api-keys', 'docs', 'mcp'];
+/** First path segment of every page of the web app, and `__manifest` (React Router's route discovery): they are never short links. */
+const APP_PAGES = ['__manifest', 'auth', 'links', 'qr-code', 'campaigns', 'domains', 'users', 'api-keys', 'docs', 'mcp'];
 
 export default defineConfig({
 	plugins: [tailwindcss(), reactRouter()],

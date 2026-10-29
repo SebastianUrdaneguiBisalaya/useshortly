@@ -9,21 +9,22 @@ const (
 )
 
 // reservedAliases are the paths served at the root, next to GET /{code}: the API and, when the web app shares the
-// host, its pages (keep them in sync with apps/web/src/app/routes.ts and the proxy in apps/web/vite.config.ts).
+// host, its pages and route discovery (keep them in sync with apps/web/src/app/routes.ts and the proxy in apps/web/vite.config.ts).
 var reservedAliases = map[string]struct{}{
-	"api":       {},
-	"v1":        {},
-	"health":    {},
-	"admin":     {},
-	"auth":      {},
-	"links":     {},
-	"qr-code":   {},
-	"campaigns": {},
-	"domains":   {},
-	"users":     {},
-	"api-keys":  {},
-	"docs":      {},
-	"mcp":       {},
+	"api":        {},
+	"v1":         {},
+	"health":     {},
+	"admin":      {},
+	"auth":       {},
+	"links":      {},
+	"qr-code":    {},
+	"campaigns":  {},
+	"domains":    {},
+	"users":      {},
+	"api-keys":   {},
+	"docs":       {},
+	"mcp":        {},
+	"__manifest": {},
 }
 
 func validateAlias(alias string) error {

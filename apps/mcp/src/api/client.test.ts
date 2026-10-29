@@ -56,6 +56,18 @@ describe('ApiClient', () => {
 		expect((calls[0]!.init.headers as Record<string, string>)['content-type']).toBe('application/json');
 	});
 
+	it.each([
+		['put', 'PUT'],
+		['patch', 'PATCH'],
+	] as const)('sends %s as JSON and returns the validated data', async (call, method) => {
+		const { api, calls } = setup(() => json({ data: { id: 4 } }));
+		const res = await api[call]('/orgs/3/links/4/channel', z.object({ id: z.number() }), { body: { channel_id: 11 } });
+		expect(res.data).toEqual({ id: 4 });
+		expect(calls[0]!.init.method).toBe(method);
+		expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ channel_id: 11 });
+		expect((calls[0]!.init.headers as Record<string, string>)['content-type']).toBe('application/json');
+	});
+
 	it('deletes with no body in the answer', async () => {
 		const { api, calls } = setup(() => new Response(null, { status: 204 }));
 		await expect(api.delete('/orgs/3/links/4')).resolves.toBeUndefined();

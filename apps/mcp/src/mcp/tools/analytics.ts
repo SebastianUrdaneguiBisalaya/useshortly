@@ -13,7 +13,16 @@ const isDay = (value: string) => {
 	const date = new Date(`${value}T00:00:00Z`);
 	return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 };
-const day = z.string().refine(isDay, 'must be a real date as YYYY-MM-DD');
+export const day = z.string().refine(isDay, 'must be a real date as YYYY-MM-DD');
+
+/** The five items with the most clicks, as "name (clicks), …". Names come from visitors, so they go on one line and are cut short. */
+export function topCounts(items: { name: string; clicks: number }[]): string {
+	return [...items]
+		.sort((a, b) => b.clicks - a.clicks)
+		.slice(0, 5)
+		.map(i => `${oneLine(i.name, 80) || '(unknown)'} (${i.clicks})`)
+		.join(', ');
+}
 
 export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 	server.registerTool(
@@ -40,13 +49,6 @@ export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 				const { data } = await api.get(`/orgs/${segment(organization_id)}/links/${segment(link_id)}/stats`, linkStats, {
 					query: { from, to, country, device, referrer },
 				});
-				const top = (items: { name: string; clicks: number }[]) =>
-					[...items]
-						.sort((a, b) => b.clicks - a.clicks)
-						.slice(0, 5)
-						.map(i => `${oneLine(i.name, 80) || '(unknown)'} (${i.clicks})`)
-						.join(', ');
-
 				const filters = Object.entries({ country, device, referrer }).flatMap(([k, v]) => (v ? [`${k}=${oneLine(v, 80)}`] : []));
 				const period = `from ${data.from} to ${data.to}`;
 				const busiest = data.daily.reduce<{ date: string; clicks: number } | null>((best, d) => (d.clicks > (best?.clicks ?? 0) ? d : best), null);
@@ -55,9 +57,9 @@ export function registerLinkStats(server: McpServer, { api }: ToolContext) {
 							`Link ${data.link_id}: ${data.total} clicks ${period}${data.previous_total ? ` (${data.previous_total} in the previous period)` : ''}.`,
 							filters.length ? `Filtered by ${filters.join(', ')}.` : null,
 							busiest ? `Busiest day: ${busiest.date} (${busiest.clicks}).` : null,
-							data.referrers.length ? `Top referrers: ${top(data.referrers)}.` : null,
-							data.countries.length ? `Top countries: ${top(data.countries)}.` : null,
-							data.devices.length ? `Top devices: ${top(data.devices)}.` : null,
+							data.referrers.length ? `Top referrers: ${topCounts(data.referrers)}.` : null,
+							data.countries.length ? `Top countries: ${topCounts(data.countries)}.` : null,
+							data.devices.length ? `Top devices: ${topCounts(data.devices)}.` : null,
 						]
 					: [`Link ${data.link_id} has no clicks ${period}.`];
 				return ok(lines.filter(Boolean).join('\n'), {

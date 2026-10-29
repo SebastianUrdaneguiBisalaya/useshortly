@@ -87,6 +87,12 @@ export class UserApi {
 	async post<T extends z.ZodType>(path: string, data: T, options: Options = {}) {
 		return this.#envelope('POST', path, data, options);
 	}
+	async put<T extends z.ZodType>(path: string, data: T, options: Options = {}) {
+		return this.#envelope('PUT', path, data, options);
+	}
+	async patch<T extends z.ZodType>(path: string, data: T, options: Options = {}) {
+		return this.#envelope('PATCH', path, data, options);
+	}
 	/** DELETE, which answers 204 with no body. */
 	async delete(path: string, options: Options = {}): Promise<void> {
 		await this.client.send(this.principal, 'DELETE', path, options);

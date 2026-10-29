@@ -247,7 +247,7 @@ function CountrySelectContent({ searchPlaceholder, emptyMessage, width }: Countr
 	return (
 		<Select.Content width={width}>
 			<Select.Search placeholder={searchPlaceholder ?? texts.searchPlaceholder} />
-			<Select.ItemList>
+			<Select.ItemList className='space-y-0.5'>
 				{options.map(option => (
 					<Select.Item key={option.code} label={`${option.name} ${option.code}`} value={option.code}>
 						<CountryMark flags={flags} option={option} parts={display} />

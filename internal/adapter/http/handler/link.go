@@ -87,12 +87,15 @@ type linkBody struct {
 	ShortURL string `json:"short_url"`
 	DomainID *int64 `json:"domain_id"`
 	// CampaignID and ChannelID place the link in a campaign channel; null is a link outside every campaign.
-	CampaignID *int64  `json:"campaign_id"`
-	ChannelID  *int64  `json:"channel_id"`
-	OriginURL  string  `json:"origin_url"`
-	ExpiresAt  *string `json:"expires_at"`
-	MaxClicks  *int64  `json:"max_clicks"`
-	Protected  bool    `json:"protected"`
+	CampaignID *int64 `json:"campaign_id"`
+	ChannelID  *int64 `json:"channel_id"`
+	// CampaignName and ChannelName name them, so a list of links needs no other request; empty when the link is outside every campaign.
+	CampaignName string  `json:"campaign_name"`
+	ChannelName  string  `json:"channel_name"`
+	OriginURL    string  `json:"origin_url"`
+	ExpiresAt    *string `json:"expires_at"`
+	MaxClicks    *int64  `json:"max_clicks"`
+	Protected    bool    `json:"protected"`
 	// QRStyle is how the link's QR code is drawn; null fields are the default (black, white, no logo).
 	QRStyle   qrStyleBody `json:"qr_style"`
 	CreatedAt string      `json:"created_at"`
@@ -167,7 +170,7 @@ func qrStyleOf(s link.QRStyle) qrStyleBody {
 
 func (h *LinkHandler) body(l link.Link) linkBody {
 	return linkBody{
-		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, CampaignID: l.CampaignID, ChannelID: l.ChannelID, OriginURL: l.OriginURL,
+		ID: l.ID, Code: l.Code, ShortURL: shortURL(h.baseURL, l), DomainID: l.DomainID, CampaignID: l.CampaignID, ChannelID: l.ChannelID, CampaignName: l.CampaignName, ChannelName: l.ChannelName, OriginURL: l.OriginURL,
 		ExpiresAt: formatTimePtr(l.ExpiresAt), MaxClicks: l.MaxClicks, Protected: l.Protected(), QRStyle: qrStyleOf(l.QRStyle), CreatedAt: formatTime(l.CreatedAt),
 	}
 }

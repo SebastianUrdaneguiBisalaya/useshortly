@@ -40,8 +40,8 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 					<OrganizationSwitcher.Trigger
 						aria-label={t('protected.organization.switch')}
 						className={cn(
-							'w-full border border-border',
-							collapsed && ['md:justify-center md:px-0', organization ? 'md:[&>:not(:first-child)]:hidden' : 'md:*:last:ml-0 md:[&>:not(:last-child)]:hidden']
+							'w-full',
+							collapsed ? ['md:justify-center md:px-0', organization ? 'md:[&>:not(:first-child)]:hidden' : 'md:*:last:ml-0 md:[&>:not(:last-child)]:hidden'] : 'border border-border'
 						)}
 						wrapperClassName='w-full'
 					>
@@ -102,7 +102,6 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 				variant='destructive'
 			>
 				<ConfirmDialog.Content>
-					<ConfirmDialog.Icon />
 					<ConfirmDialog.Title>{t('protected.organization.delete.title', { name: organization?.name ?? '' })}</ConfirmDialog.Title>
 					<ConfirmDialog.Description>{t('protected.organization.delete.description')}</ConfirmDialog.Description>
 					<ConfirmDialog.Footer>

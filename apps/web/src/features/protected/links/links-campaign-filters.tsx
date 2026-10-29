@@ -27,7 +27,7 @@ export function CampaignFilters({
 
 	return (
 		<div className='flex flex-wrap items-center gap-2'>
-			<div className='w-44'>
+			<div className='max-w-56'>
 				{/* Another campaign has other channels, so the channel filter starts over with it. */}
 				<Select.Root<string> onChange={value => onChange({ campaign: value === ALL ? null : Number(value), channel: null })} value={campaignID === null ? ALL : String(campaignID)}>
 					<Select.Trigger aria-label={t('protected.links.filters.campaign')}>
@@ -47,7 +47,7 @@ export function CampaignFilters({
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div className='w-44'>
+			<div className='max-w-56'>
 				<Select.Root<string> onChange={value => onChange({ campaign: campaignID, channel: value === ALL ? null : Number(value) })} value={channelID === null ? ALL : String(channelID)}>
 					<Select.Trigger aria-label={t('protected.links.filters.channel')} disabled={campaignID === null}>
 						<Select.Value />

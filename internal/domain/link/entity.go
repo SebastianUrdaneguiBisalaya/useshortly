@@ -15,6 +15,10 @@ type Link struct {
 	DomainHost string
 	MaxClicks  *int64
 	ClickCount int64
+	// ChannelID is the campaign channel the link was shared in; nil is a link outside every campaign.
+	ChannelID *int64
+	// CampaignID is the campaign of that channel; the repository fills it on reads, it is ignored on Create.
+	CampaignID *int64
 	// PasswordHash is set for a password-protected link; it never leaves the server.
 	PasswordHash string
 	// QRStyle is how the link's QR code is drawn; the zero value is the default.

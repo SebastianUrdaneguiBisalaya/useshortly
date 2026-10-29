@@ -21,6 +21,7 @@ import (
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/analytics"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/apikey"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/auth"
+	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/campaign"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/domain"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/mailing"
@@ -108,7 +109,8 @@ func newApp(cfg *config.Config, db *sql.DB, a adapters) *app {
 	orgs := org.NewService(orgRepo, mail).WithPurger(purger)
 	keys := apikey.NewService(keyRepo)
 	domains := domain.NewService(sqlite.NewDomainRepository(db), a.dns, cfg.JWTSecret, appHost(cfg.AppURL))
-	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains)
+	campaigns := campaign.NewService(sqlite.NewCampaignRepository(db))
+	links := link.NewService(linkRepo, codegen.NewBase62(), passwords, a.attempts).WithDomains(domains).WithChannels(campaigns)
 	clickRepo := sqlite.NewClickRepository(db)
 	clicks := analytics.NewRecorder(clickRepo, analytics.NewEnrichment(useragent.New(), a.countries), clickBuffer)
 	stats := analytics.NewService(clickRepo)

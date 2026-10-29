@@ -257,14 +257,14 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	_, err := repo.Create(ctx, link.Link{Code: "zzzzzzz", OriginURL: "https://example.com/z", TenantID: 2, CreatedBy: u.ID, CreatedAt: now})
 	require.NoError(t, err)
 
-	list, total, err := repo.ListByTenant(ctx, 1, page.Params{Limit: 2})
+	list, total, err := repo.ListByTenant(ctx, 1, link.ListFilter{}, page.Params{Limit: 2})
 	require.NoError(t, err)
 	assert.Equal(t, 3, total, "total ignores the window and the other tenant")
 	require.Len(t, list, 2)
 	assert.Equal(t, "ccccccc", list[0].Code, "newest first")
 	assert.Equal(t, "bbbbbbb", list[1].Code)
 
-	list, _, err = repo.ListByTenant(ctx, 1, page.Params{Limit: 2, Offset: 2})
+	list, _, err = repo.ListByTenant(ctx, 1, link.ListFilter{}, page.Params{Limit: 2, Offset: 2})
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, "aaaaaaa", list[0].Code)
@@ -278,7 +278,7 @@ func TestLinkRepositoryListAndDelete(t *testing.T) {
 	_, err = repo.FindByID(ctx, 1, 9999)
 	assert.ErrorIs(t, err, link.ErrNotFound)
 
-	list, total, err = repo.ListByTenant(ctx, 3, page.Params{Limit: 10})
+	list, total, err = repo.ListByTenant(ctx, 3, link.ListFilter{}, page.Params{Limit: 10})
 	require.NoError(t, err)
 	assert.Empty(t, list)
 	assert.Zero(t, total)
@@ -430,7 +430,7 @@ func TestLinkRepositoryPasswordHash(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, open.Protected())
 
-	list, _, err := repo.ListByTenant(ctx, 1, page.Params{Limit: 10})
+	list, _, err := repo.ListByTenant(ctx, 1, link.ListFilter{}, page.Params{Limit: 10})
 	require.NoError(t, err)
 	require.Len(t, list, 2)
 	assert.True(t, list[1].Protected(), "lists carry the flag too")

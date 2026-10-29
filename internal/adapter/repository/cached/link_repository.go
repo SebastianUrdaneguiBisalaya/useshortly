@@ -135,8 +135,21 @@ func (r *LinkRepository) FindByID(ctx context.Context, tenantID, id int64) (link
 	return r.next.FindByID(ctx, tenantID, id)
 }
 
-func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, p page.Params) ([]link.Link, int, error) {
-	return r.next.ListByTenant(ctx, tenantID, p)
+func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, f link.ListFilter, p page.Params) ([]link.Link, int, error) {
+	return r.next.ListByTenant(ctx, tenantID, f, p)
+}
+
+// SetChannel rewrites the destination, which redirects read from the cache, so the cached copy is
+// dropped once the change is stored. If the cache cannot be cleared the link keeps redirecting to
+// its old destination until its entry expires after ttl.
+func (r *LinkRepository) SetChannel(ctx context.Context, tenantID, id int64, channelID *int64, originURL string, updatedBy int64, at time.Time) error {
+	if err := r.next.SetChannel(ctx, tenantID, id, channelID, originURL, updatedBy, at); err != nil {
+		return err
+	}
+	if err := r.Evict(ctx, []int64{id}); err != nil {
+		slog.Warn("link cache: stale entry after channel change", "link_id", id, "error", err)
+	}
+	return nil
 }
 
 // SetQRStyle is not cached: redirects never read the style.

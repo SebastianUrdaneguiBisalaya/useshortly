@@ -83,8 +83,19 @@ func (r *countingRepo) FindByID(_ context.Context, tenantID, id int64) (link.Lin
 	return link.Link{}, link.ErrNotFound
 }
 
-func (r *countingRepo) ListByTenant(context.Context, int64, page.Params) ([]link.Link, int, error) {
+func (r *countingRepo) ListByTenant(context.Context, int64, link.ListFilter, page.Params) ([]link.Link, int, error) {
 	return nil, 7, nil
+}
+
+func (r *countingRepo) SetChannel(_ context.Context, tenantID, id int64, channelID *int64, originURL string, _ int64, _ time.Time) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			l.ChannelID, l.OriginURL = channelID, originURL
+			r.links[code] = l
+			return nil
+		}
+	}
+	return link.ErrNotFound
 }
 
 func (r *countingRepo) Delete(_ context.Context, tenantID, id int64) error {
@@ -222,12 +233,39 @@ func TestDeleteSucceedsEvenIfTheCacheCannotBeCleared(t *testing.T) {
 	assert.NotContains(t, next.links, "abc1234", "the database row is gone")
 }
 
+func TestSetChannelDropsTheCacheEntry(t *testing.T) {
+	repo, next, store, _ := fixture()
+	_, err := repo.FindByCode(ctx, nil, "abc1234")
+	require.NoError(t, err)
+	require.Contains(t, store.data, "link:code:abc1234")
+
+	channel := int64(3)
+	assert.ErrorIs(t, repo.SetChannel(ctx, 2, 4, &channel, "https://example.com/other", 9, time.Now()), link.ErrNotFound)
+	assert.Contains(t, store.data, "link:code:abc1234", "a failed change keeps the entry")
+
+	require.NoError(t, repo.SetChannel(ctx, 1, 4, &channel, "https://example.com/a?utm_source=x", 9, time.Now()))
+	assert.Empty(t, store.data, "the old destination is no longer served")
+	got, err := repo.FindByCode(ctx, nil, "abc1234")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/a?utm_source=x", got.OriginURL, "the redirect reads the new destination")
+	assert.Equal(t, 2, next.finds)
+}
+
+func TestSetChannelSucceedsEvenIfTheCacheCannotBeCleared(t *testing.T) {
+	repo, next, store, _ := fixture()
+	_, err := repo.FindByCode(ctx, nil, "abc1234")
+	require.NoError(t, err)
+	store.failGet = true
+	require.NoError(t, repo.SetChannel(ctx, 1, 4, nil, "https://example.com/b", 9, time.Now()))
+	assert.Equal(t, "https://example.com/b", next.links["abc1234"].OriginURL)
+}
+
 func TestOtherCallsPassThrough(t *testing.T) {
 	repo, next, store, _ := fixture()
 	require.NoError(t, repo.ConsumeClick(ctx, 4))
 	assert.Equal(t, 1, next.consumes, "ConsumeClick always reaches the database, it enforces max_clicks")
 
-	_, total, err := repo.ListByTenant(ctx, 1, page.Params{})
+	_, total, err := repo.ListByTenant(ctx, 1, link.ListFilter{}, page.Params{})
 	require.NoError(t, err)
 	assert.Equal(t, 7, total)
 

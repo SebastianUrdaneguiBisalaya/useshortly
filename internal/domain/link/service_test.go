@@ -56,12 +56,19 @@ func (r *fakeRepo) FindByID(_ context.Context, tenantID, id int64) (Link, error)
 	return Link{}, ErrNotFound
 }
 
-func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, p page.Params) ([]Link, int, error) {
+func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, f ListFilter, p page.Params) ([]Link, int, error) {
 	var all []Link
 	for _, l := range r.links {
-		if l.TenantID == tenantID {
-			all = append(all, l)
+		if l.TenantID != tenantID {
+			continue
 		}
+		if f.ChannelID != nil && (l.ChannelID == nil || *l.ChannelID != *f.ChannelID) {
+			continue
+		}
+		if f.CampaignID != nil && (l.CampaignID == nil || *l.CampaignID != *f.CampaignID) {
+			continue
+		}
+		all = append(all, l)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
 	lo := min(p.Offset, len(all))
@@ -83,6 +90,17 @@ func (r *fakeRepo) SetQRStyle(_ context.Context, tenantID, id int64, style QRSty
 	for code, l := range r.links {
 		if l.ID == id && l.TenantID == tenantID {
 			l.QRStyle = style
+			r.links[code] = l
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
+func (r *fakeRepo) SetChannel(_ context.Context, tenantID, id int64, channelID *int64, originURL string, updatedBy int64, at time.Time) error {
+	for code, l := range r.links {
+		if l.ID == id && l.TenantID == tenantID {
+			l.ChannelID, l.OriginURL, l.UpdatedBy, l.UpdatedAt = channelID, originURL, &updatedBy, &at
 			r.links[code] = l
 			return nil
 		}
@@ -485,21 +503,21 @@ func TestListAndDeleteAreScopedToTenant(t *testing.T) {
 	}
 
 	t.Run("lists one page, newest first, with the tenant's total", func(t *testing.T) {
-		list, total, err := s.List(ctx, 1, page.Params{Limit: 2})
+		list, total, err := s.List(ctx, 1, ListFilter{}, page.Params{Limit: 2})
 		require.NoError(t, err)
 		assert.Equal(t, 3, total)
 		require.Len(t, list, 2)
 		assert.Equal(t, mine[2].Code, list[0].Code)
 		assert.Equal(t, mine[1].Code, list[1].Code)
 
-		list, _, err = s.List(ctx, 1, page.Params{Limit: 2, Offset: 2})
+		list, _, err = s.List(ctx, 1, ListFilter{}, page.Params{Limit: 2, Offset: 2})
 		require.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, mine[0].Code, list[0].Code)
 	})
 
 	t.Run("an empty window falls back to the default limit", func(t *testing.T) {
-		list, _, err := s.List(ctx, 1, page.Params{})
+		list, _, err := s.List(ctx, 1, ListFilter{}, page.Params{})
 		require.NoError(t, err)
 		assert.Len(t, list, 3)
 	})
@@ -794,3 +812,140 @@ func TestSetQRStyle(t *testing.T) {
 		assert.ErrorIs(t, err, ErrNotFound)
 	})
 }
+
+// fakeChannels resolves a few channels by id; any other id is unknown.
+type fakeChannels map[int64]struct{ campaign, channel string }
+
+func (c fakeChannels) Resolve(_ context.Context, _, channelID int64) (string, string, error) {
+	ch, ok := c[channelID]
+	if !ok {
+		return "", "", errNoChannel
+	}
+	return ch.campaign, ch.channel, nil
+}
+
+var errNoChannel = errors.New("fake: no such channel")
+
+func newCampaignSvc(repo Repository) *Service {
+	return newSvc(repo, &fakeGen{codes: []string{"abc1234", "def5678"}}).WithChannels(fakeChannels{
+		1: {"Black Friday", "Instagram"},
+		2: {"Black Friday", "Email"},
+	})
+}
+
+func TestShortenInChannel(t *testing.T) {
+	ctx := context.Background()
+	channel := func(id int64) *int64 { return &id }
+
+	t.Run("tags the destination with the UTM parameters", func(t *testing.T) {
+		s := newCampaignSvc(newFakeRepo())
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/a?b=1", ChannelID: channel(1)})
+		require.NoError(t, err)
+		assert.Equal(t, "https://example.com/a?b=1&utm_source=Instagram&utm_medium=useshortly&utm_campaign=Black+Friday", l.OriginURL)
+		assert.Equal(t, channel(1), l.ChannelID)
+	})
+
+	t.Run("the same destination in two channels gives two links", func(t *testing.T) {
+		s := newCampaignSvc(newFakeRepo())
+		a, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/", ChannelID: channel(1)})
+		require.NoError(t, err)
+		b, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/", ChannelID: channel(2)})
+		require.NoError(t, err)
+		assert.NotEqual(t, a.Code, b.Code)
+		assert.NotEqual(t, a.OriginURL, b.OriginURL)
+	})
+
+	t.Run("a link without a channel is left alone", func(t *testing.T) {
+		s := newCampaignSvc(newFakeRepo())
+		l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/"})
+		require.NoError(t, err)
+		assert.Equal(t, "https://example.com/", l.OriginURL)
+		assert.Nil(t, l.ChannelID)
+	})
+
+	t.Run("an unknown channel is refused and stores nothing", func(t *testing.T) {
+		repo := newFakeRepo()
+		_, err := newCampaignSvc(repo).Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/", ChannelID: channel(99)})
+		assert.ErrorIs(t, err, errNoChannel)
+		assert.Zero(t, repo.calls)
+	})
+
+	t.Run("refused when campaigns are not enabled", func(t *testing.T) {
+		s := newSvc(newFakeRepo(), &fakeGen{codes: []string{"abc1234"}})
+		_, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/", ChannelID: channel(1)})
+		assert.ErrorIs(t, err, ErrCampaignsDisabled)
+	})
+
+	t.Run("refuses a destination that no longer fits with the parameters", func(t *testing.T) {
+		long := "https://example.com/" + strings.Repeat("a", 200)
+		_, err := newCampaignSvc(newFakeRepo()).Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: long, ChannelID: channel(1)})
+		assert.ErrorIs(t, err, ErrCampaignURLTooLong)
+	})
+}
+
+func TestSetChannel(t *testing.T) {
+	ctx := context.Background()
+	channel := func(id int64) *int64 { return &id }
+	repo := newFakeRepo()
+	s := newCampaignSvc(repo)
+	l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/a?b=1"})
+	require.NoError(t, err)
+
+	got, err := s.SetChannel(ctx, 1, 8, l.ID, channel(1))
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/a?b=1&utm_source=Instagram&utm_medium=useshortly&utm_campaign=Black+Friday", got.OriginURL)
+	assert.Equal(t, channel(1), got.ChannelID)
+	require.NotNil(t, got.UpdatedBy)
+	assert.EqualValues(t, 8, *got.UpdatedBy)
+
+	got, err = s.SetChannel(ctx, 1, 8, l.ID, channel(2))
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/a?b=1&utm_source=Email&utm_medium=useshortly&utm_campaign=Black+Friday", got.OriginURL, "moving replaces the parameters")
+
+	got, err = s.SetChannel(ctx, 1, 8, l.ID, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/a?b=1", got.OriginURL, "taking it out removes them")
+	assert.Nil(t, got.ChannelID)
+
+	_, err = s.SetChannel(ctx, 1, 8, l.ID, channel(99))
+	assert.ErrorIs(t, err, errNoChannel)
+	_, err = s.SetChannel(ctx, 2, 8, l.ID, channel(1))
+	assert.ErrorIs(t, err, ErrNotFound, "another tenant's link looks unknown")
+}
+
+func TestSetChannelOutsideACampaignKeepsTheUsersOwnUTM(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	s := newCampaignSvc(repo)
+	l, err := s.Shorten(ctx, ShortenInput{TenantID: 1, UserID: 7, URL: "https://example.com/?utm_source=mine"})
+	require.NoError(t, err)
+
+	got, err := s.SetChannel(ctx, 1, 7, l.ID, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/?utm_source=mine", got.OriginURL, "nothing of the campaign to remove")
+}
+
+func TestListFiltersByChannelAndCampaign(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	repo.links["a"] = Link{ID: 1, Code: "a", TenantID: 1, ChannelID: ptr(1), CampaignID: ptr(10)}
+	repo.links["b"] = Link{ID: 2, Code: "b", TenantID: 1, ChannelID: ptr(2), CampaignID: ptr(10)}
+	repo.links["c"] = Link{ID: 3, Code: "c", TenantID: 1}
+	s := newCampaignSvc(repo)
+
+	list, total, err := s.List(ctx, 1, ListFilter{CampaignID: ptr(10)}, page.Params{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, total)
+	assert.Len(t, list, 2)
+
+	list, _, err = s.List(ctx, 1, ListFilter{ChannelID: ptr(2)}, page.Params{})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, "b", list[0].Code)
+
+	_, total, err = s.List(ctx, 1, ListFilter{}, page.Params{})
+	require.NoError(t, err)
+	assert.Equal(t, 3, total)
+}
+
+func ptr(n int64) *int64 { return &n }

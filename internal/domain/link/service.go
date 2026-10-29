@@ -17,12 +17,13 @@ const (
 )
 
 type Service struct {
-	repo    Repository
-	gen     CodeGenerator
-	hasher  PasswordHasher
-	limiter AttemptLimiter
-	domains DomainChecker
-	now     func() time.Time
+	repo     Repository
+	gen      CodeGenerator
+	hasher   PasswordHasher
+	limiter  AttemptLimiter
+	domains  DomainChecker
+	channels ChannelResolver
+	now      func() time.Time
 }
 
 // DomainChecker says whether a tenant may serve links from a custom domain.
@@ -34,6 +35,19 @@ type DomainChecker interface {
 // WithDomains enables links on custom domains; without it ShortenInput.DomainID is refused.
 func (s *Service) WithDomains(d DomainChecker) *Service {
 	s.domains = d
+	return s
+}
+
+// ChannelResolver names the campaign and the channel of a link for its UTM parameters.
+type ChannelResolver interface {
+	// Resolve returns the names of the tenant's channel and of its campaign, or an error if the
+	// tenant has no such channel.
+	Resolve(ctx context.Context, tenantID, channelID int64) (campaignName, channelName string, err error)
+}
+
+// WithChannels enables links in campaign channels; without it ShortenInput.ChannelID is refused.
+func (s *Service) WithChannels(c ChannelResolver) *Service {
+	s.channels = c
 	return s
 }
 
@@ -54,7 +68,10 @@ type ShortenInput struct {
 	UserID   int64
 	URL      string
 	// DomainID serves the link from one of the tenant's verified custom domains; nil is the default host.
-	DomainID  *int64
+	DomainID *int64
+	// ChannelID shares the link in a channel of one of the tenant's campaigns: the destination gets
+	// the utm_source, utm_medium and utm_campaign parameters of the channel. nil is no campaign.
+	ChannelID *int64
 	Alias     string
 	ExpiresAt *time.Time
 	MaxClicks *int64
@@ -83,6 +100,12 @@ func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
 			return Link{}, err
 		}
 	}
+	originURL := in.URL
+	if in.ChannelID != nil {
+		if originURL, err = s.tagged(ctx, in.TenantID, *in.ChannelID, in.URL); err != nil {
+			return Link{}, err
+		}
+	}
 	var passwordHash string
 	if in.Password != "" {
 		if !validPassword(in.Password) {
@@ -94,11 +117,12 @@ func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
 	}
 	link := Link{
 		PasswordHash: passwordHash,
-		OriginURL:    in.URL,
+		OriginURL:    originURL,
 		ExpiresAt:    expiresAt,
 		MaxClicks:    in.MaxClicks,
 		TenantID:     in.TenantID,
 		DomainID:     in.DomainID,
+		ChannelID:    in.ChannelID,
 		CreatedBy:    in.UserID,
 		CreatedAt:    s.now(),
 	}
@@ -128,6 +152,45 @@ func (s *Service) Shorten(ctx context.Context, in ShortenInput) (Link, error) {
 	return Link{}, ErrCodeTaken
 }
 
+// tagged returns rawURL with the UTM parameters of the tenant's channel.
+func (s *Service) tagged(ctx context.Context, tenantID, channelID int64, rawURL string) (string, error) {
+	if s.channels == nil {
+		return "", ErrCampaignsDisabled
+	}
+	campaign, channel, err := s.channels.Resolve(ctx, tenantID, channelID)
+	if err != nil {
+		return "", err
+	}
+	tagged := withUTM(rawURL, campaign, channel)
+	if len(tagged) > maxURLLen {
+		return "", ErrCampaignURLTooLong
+	}
+	return tagged, nil
+}
+
+// SetChannel puts a link of the tenant in a channel, tagging its destination with the channel's UTM
+// parameters, or takes it out of its campaign with a nil channelID, which removes utm_source,
+// utm_medium and utm_campaign from the destination (a utm_* value the link had before it joined
+// the campaign is not restored). A link of another tenant is ErrNotFound.
+func (s *Service) SetChannel(ctx context.Context, tenantID, userID, id int64, channelID *int64) (Link, error) {
+	l, err := s.repo.FindByID(ctx, tenantID, id)
+	if err != nil {
+		return Link{}, err
+	}
+	originURL := l.OriginURL
+	if channelID != nil {
+		if originURL, err = s.tagged(ctx, tenantID, *channelID, originURL); err != nil {
+			return Link{}, err
+		}
+	} else if l.ChannelID != nil {
+		originURL = withoutUTM(originURL)
+	}
+	if err := s.repo.SetChannel(ctx, tenantID, id, channelID, originURL, userID, s.now()); err != nil {
+		return Link{}, err
+	}
+	return s.repo.FindByID(ctx, tenantID, id)
+}
+
 // utc returns t in UTC, so every stored and returned instant uses one zone.
 func utc(t *time.Time) *time.Time {
 	if t == nil {
@@ -137,9 +200,9 @@ func utc(t *time.Time) *time.Time {
 	return &u
 }
 
-// List returns one page of the tenant's links, newest first, and how many it has in total.
-func (s *Service) List(ctx context.Context, tenantID int64, p page.Params) ([]Link, int, error) {
-	return s.repo.ListByTenant(ctx, tenantID, p.Normalize())
+// List returns one page of the tenant's links that pass the filter, newest first, and how many pass it.
+func (s *Service) List(ctx context.Context, tenantID int64, f ListFilter, p page.Params) ([]Link, int, error) {
+	return s.repo.ListByTenant(ctx, tenantID, f, p.Normalize())
 }
 
 // Get returns one link of the tenant; a link of another tenant is ErrNotFound.

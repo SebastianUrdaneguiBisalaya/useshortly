@@ -267,6 +267,9 @@ func (h *LinkHandler) SetChannel(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, h.body(l))
 }
 
+// maxSearchLen caps the text of a search, so a request cannot make the database scan with a huge pattern.
+const maxSearchLen = 100
+
 // List answers one page of the organization's links, newest first.
 //
 //	@Summary		List links
@@ -279,6 +282,7 @@ func (h *LinkHandler) SetChannel(w http.ResponseWriter, r *http.Request) {
 //	@Param			offset		query		int	false	"Items to skip"
 //	@Param			campaign_id	query		int	false	"Only links in a channel of this campaign"
 //	@Param			channel_id	query		int	false	"Only links in this channel"
+//	@Param			q			query		string	false	"Only links whose code or destination contains this text, ignoring case"
 //	@Success		200		{object}	LinkListResponse
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		401		{object}	ErrorResponse
@@ -302,6 +306,10 @@ func (h *LinkHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	if f.ChannelID, ok = queryID(w, r, "channel_id"); !ok {
 		return
+	}
+	f.Query = strings.TrimSpace(r.URL.Query().Get("q"))
+	if runes := []rune(f.Query); len(runes) > maxSearchLen {
+		f.Query = string(runes[:maxSearchLen])
 	}
 	list, total, err := h.links.List(r.Context(), tenant.ID, f, p)
 	if err != nil {

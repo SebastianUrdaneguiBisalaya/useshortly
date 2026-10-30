@@ -38,4 +38,6 @@ type ListFilter struct {
 	CampaignID *int64
 	// ChannelID keeps the links in the channel.
 	ChannelID *int64
+	// Query keeps the links whose code or destination contains the text, ignoring case; empty does not filter.
+	Query string
 }

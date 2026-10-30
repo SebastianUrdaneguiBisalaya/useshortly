@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/SebastianUrdaneguiBisalaya/useshortly/internal/domain/link"
@@ -134,6 +135,9 @@ func (r *LinkRepository) FindByID(ctx context.Context, tenantID, id int64) (link
 	return l, nil
 }
 
+// likeEscaper makes the characters LIKE treats as wildcards match themselves.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
 func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, f link.ListFilter, p page.Params) ([]link.Link, int, error) {
 	where, args := `l.tenant_id = ?`, []any{tenantID}
 	if f.ChannelID != nil {
@@ -143,6 +147,11 @@ func (r *LinkRepository) ListByTenant(ctx context.Context, tenantID int64, f lin
 	if f.CampaignID != nil {
 		where += ` AND ch.campaign_id = ?`
 		args = append(args, *f.CampaignID)
+	}
+	if f.Query != "" {
+		where += ` AND (l.code LIKE ? ESCAPE '\' OR l.origin_url LIKE ? ESCAPE '\')`
+		like := "%" + likeEscaper.Replace(f.Query) + "%"
+		args = append(args, like, like)
 	}
 	var total int
 	if err := r.db.QueryRowContext(ctx,

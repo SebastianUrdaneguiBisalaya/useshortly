@@ -68,6 +68,9 @@ func (r *fakeRepo) ListByTenant(_ context.Context, tenantID int64, f ListFilter,
 		if f.CampaignID != nil && (l.CampaignID == nil || *l.CampaignID != *f.CampaignID) {
 			continue
 		}
+		if f.Query != "" && !strings.Contains(strings.ToLower(l.Code+" "+l.OriginURL), strings.ToLower(f.Query)) {
+			continue
+		}
 		all = append(all, l)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
@@ -948,6 +951,25 @@ func TestListFiltersByChannelAndCampaign(t *testing.T) {
 	_, total, err = s.List(ctx, 1, ListFilter{}, page.Params{})
 	require.NoError(t, err)
 	assert.Equal(t, 3, total)
+}
+
+func TestListFiltersByQuery(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	repo.links["abc"] = Link{ID: 1, Code: "abc", TenantID: 1, OriginURL: "https://example.com/Pricing"}
+	repo.links["xyz"] = Link{ID: 2, Code: "xyz", TenantID: 1, OriginURL: "https://example.com/blog"}
+	s := newCampaignSvc(repo)
+
+	list, total, err := s.List(ctx, 1, ListFilter{Query: "PRICING"}, page.Params{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, total)
+	require.Len(t, list, 1)
+	assert.Equal(t, "abc", list[0].Code)
+
+	list, _, err = s.List(ctx, 1, ListFilter{Query: "xy"}, page.Params{})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, "xyz", list[0].Code)
 }
 
 func ptr(n int64) *int64 { return &n }

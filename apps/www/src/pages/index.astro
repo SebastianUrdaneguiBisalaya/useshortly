@@ -19,6 +19,10 @@ import Navbar from "../features/navbar.astro"
 		<meta name="generator" content={Astro.generator} />
 		<title>useshortly — Open source, self-hosted link shortener</title>
 		<meta name="description" content="An open source alternative to Bitly you run on your own servers. Custom domains, click analytics, QR codes and API keys, with no plans or usage caps." />
+		<!-- Lets the hero hide its elements before first paint and then reveal them; skipped with reduced motion. -->
+		<script is:inline>
+			if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("intro");
+		</script>
 	</head>
 	<body>
 		<Navbar />

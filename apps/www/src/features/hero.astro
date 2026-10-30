@@ -9,12 +9,14 @@ import Typography from "../components/ui/typography.astro";
 	frameClass="grid divide-y divide-dashed divide-black/15 md:grid-cols-[1fr_22rem] md:divide-x md:divide-y-0"
 >
 	<div class="flex items-center px-4 py-20 md:px-12 md:py-32">
-		<Typography as="h1">
-			The link shortener you <br />host yourself.
+		<!-- Each line is scrambled separately on load, so the heading's accessible name is set once here. -->
+		<Typography as="h1" data-intro aria-label="The link shortener you host yourself.">
+			<span data-scramble class="block" aria-hidden="true">The link shortener you</span>
+			<span data-scramble class="block" aria-hidden="true">host yourself.</span>
 		</Typography>
 	</div>
 	<div class="flex items-center px-4 py-10 md:px-12">
-		<Typography class="text-black/60">
+		<Typography data-intro class="text-black/60">
 			An open source alternative to Bitly. Custom domains, click analytics, QR codes and password-protected
 			links, with no plans, usage caps or third party holding your data.
 		</Typography>
@@ -22,8 +24,8 @@ import Typography from "../components/ui/typography.astro";
 </Layout>
 
 <Layout frameClass="flex flex-wrap items-center justify-between gap-6 px-4 py-8 md:px-12">
-	<Typography variant="small" class="text-black/60">Open source. Deploy it with Docker Compose.</Typography>
-	<div class="flex flex-wrap items-center gap-4">
+	<Typography data-intro variant="small" class="text-black/60">Open source. Deploy it with Docker Compose.</Typography>
+	<div data-intro class="flex flex-wrap items-center gap-4">
 		<Button
 			as="a"
 			href="https://github.com/SebastianUrdaneguiBisalaya/useshortly/blob/main/README.md"
@@ -43,3 +45,37 @@ import Typography from "../components/ui/typography.astro";
 		</Button>
 	</div>
 </Layout>
+
+<script>
+	import { gsap } from "gsap";
+	import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
+
+	gsap.registerPlugin(ScrambleTextPlugin);
+
+	// The page's one load sequence. The headline decodes out of base62, the alphabet short codes are made of, then
+	// the rest of the hero settles in. `html.intro` (set in the page head unless reduced motion is on) hides the
+	// `[data-intro]` elements until this runs; without it nothing is hidden and nothing animates.
+	if (document.documentElement.classList.contains("intro")) {
+		const base62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		const intro = gsap.utils.toArray<HTMLElement>("[data-intro]");
+		const [navbar, heading, ...rest] = intro;
+		const lines = gsap.utils.toArray<HTMLElement>("[data-scramble]");
+
+		const timeline = gsap.timeline({ defaults: { ease: "power2.out" } });
+
+		timeline.to(navbar ?? [], { opacity: 1, duration: 0.4 }).set(heading ?? [], { opacity: 1 }, "<0.1");
+
+		lines.forEach((line, i) => {
+			// Scrambling toward its own text keeps the line's full length from the first frame, so the heading never
+			// collapses and shifts the layout.
+			const text = line.textContent ?? "";
+			timeline.to(
+				line,
+				{ duration: 1.1, scrambleText: { text, chars: base62, tweenLength: false, revealDelay: 0.3, speed: 0.5 } },
+				i === 0 ? "<" : "<0.25",
+			);
+		});
+
+		timeline.fromTo(rest, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, "-=0.6");
+	}
+</script>

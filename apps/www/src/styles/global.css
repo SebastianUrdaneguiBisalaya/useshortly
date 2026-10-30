@@ -41,3 +41,18 @@ body {
     background-color: var(--background);
     scroll-behavior: smooth;
 }
+
+/*
+ * Hero load sequence (see features/hero.astro): hidden until GSAP reveals them. The fallback animation shows them
+ * anyway after 3s in case the script never runs, and only kicks in after its delay, so it never fights GSAP.
+ */
+html.intro [data-intro] {
+    opacity: 0;
+    animation: intro-fallback 0s 3s forwards;
+}
+
+@keyframes intro-fallback {
+    to {
+        opacity: 1;
+    }
+}

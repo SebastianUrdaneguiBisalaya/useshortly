@@ -41,7 +41,7 @@ function ProtectedShell() {
 	const toOrganization = useOrganizationTo();
 	const { pathname } = useLocation();
 	const [mobileOpen, setMobileOpen] = useState(false);
-	const [collapsed, setCollapsed] = useState(true);
+	const [collapsed, setCollapsed] = useState(false);
 
 	return (
 		<div className='relative h-full w-full'>

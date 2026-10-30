@@ -36,7 +36,12 @@ export function OrganizationMenu({ collapsed }: { collapsed: boolean }) {
 	return (
 		<>
 			<SidebarFloat.Hint label={organization?.name ?? t('protected.organization.none')}>
-				<OrganizationSwitcher onOpenChange={setSwitcherOpen} onValueChange={value => void select(Number(value))} open={switcherOpen} value={organization?.id === undefined ? undefined : String(organization.id)}>
+				<OrganizationSwitcher
+					onOpenChange={setSwitcherOpen}
+					onValueChange={value => void select(Number(value))}
+					open={switcherOpen}
+					value={organization?.id === undefined ? undefined : String(organization.id)}
+				>
 					<OrganizationSwitcher.Trigger
 						aria-label={t('protected.organization.switch')}
 						className={cn(

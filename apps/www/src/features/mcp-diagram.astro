@@ -1,22 +1,22 @@
 ---
-import { Wrench } from "@lucide/astro";
+import { Wrench } from '@lucide/astro';
 
-import Typography from "../components/ui/typography.astro";
-import ClaudeIcon from "../icons/claude.svg";
-import CodexIcon from "../icons/codex.svg";
-import GeminiIcon from "../icons/gemini.svg";
-import GrokIcon from "../icons/grok.svg";
-import McpIcon from "../icons/mcp.svg";
-import OpenAIIcon from "../icons/openai.svg";
+import Typography from '../components/ui/typography.astro';
+import ClaudeIcon from '../icons/claude.svg';
+import CodexIcon from '../icons/codex.svg';
+import GeminiIcon from '../icons/gemini.svg';
+import GrokIcon from '../icons/grok.svg';
+import McpIcon from '../icons/mcp.svg';
+import OpenAIIcon from '../icons/openai.svg';
 
 // Claude and Gemini keep their brand colors. The rest are single-color marks that ship in white for dark
 // backgrounds, so `monochrome` repaints them black, the color those brands use on light backgrounds.
 const clients = [
-	{ name: "Claude", Icon: ClaudeIcon, monochrome: false },
-	{ name: "ChatGPT", Icon: OpenAIIcon, monochrome: true },
-	{ name: "Gemini", Icon: GeminiIcon, monochrome: false },
-	{ name: "Codex", Icon: CodexIcon, monochrome: true },
-	{ name: "Grok", Icon: GrokIcon, monochrome: true },
+	{ name: 'Claude', Icon: ClaudeIcon, monochrome: false },
+	{ name: 'ChatGPT', Icon: OpenAIIcon, monochrome: true },
+	{ name: 'Gemini', Icon: GeminiIcon, monochrome: false },
+	{ name: 'Codex', Icon: CodexIcon, monochrome: true },
+	{ name: 'Grok', Icon: GrokIcon, monochrome: true },
 ];
 
 // The clients sit in five equal columns, so each wire starts at its column's center (10%, 30%, ...) and bends
@@ -27,7 +27,7 @@ const wires = clients.map((_, i) => {
 });
 
 // Repaints every shape of an SVG in the current text color.
-const monochromeClass = "[&_path]:fill-current [&_rect]:fill-current";
+const monochromeClass = '[&_path]:fill-current [&_rect]:fill-current';
 ---
 
 <figure

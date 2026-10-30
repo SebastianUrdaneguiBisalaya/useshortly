@@ -1,15 +1,15 @@
 ---
-import type { HTMLAttributes } from "astro/types";
+import type { HTMLAttributes } from 'astro/types';
 
-import { cn } from "../lib/tailwind/cn";
+import { cn } from '../lib/tailwind/cn';
 
-type Props = HTMLAttributes<"div"> & {
-	as?: "div" | "section" | "header" | "footer";
+type Props = HTMLAttributes<'div'> & {
+	as?: 'div' | 'section' | 'header' | 'footer';
 	/** Classes for the inner frame (the bordered column), e.g. its grid or dividers. `class` styles the full-width row. */
 	frameClass?: string;
 };
 
-const { as: Tag = "div", class: className, frameClass, ...rest } = Astro.props as Props;
+const { as: Tag = 'div', class: className, frameClass, ...rest } = Astro.props as Props;
 ---
 
 <!--

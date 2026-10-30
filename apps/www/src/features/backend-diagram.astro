@@ -1,17 +1,17 @@
 ---
-import { Database, MousePointerClick, Server, Zap } from "@lucide/astro";
+import { Database, MousePointerClick, Server, Zap } from '@lucide/astro';
 
-import Typography from "../components/ui/typography.astro";
+import Typography from '../components/ui/typography.astro';
 
 // Mirrors the redirect path in the Go API: `LinkHandler.Redirect` resolves the code through the Redis cache
 // (`cached.LinkRepository`), falls back to SQLite on a miss, answers 302, and hands the click to
 // `analytics.Recorder`, whose worker adds country and device and writes it after the response is sent.
 // The click matches the MCP chat and the dashboard: Instagram, Peru, mobile.
 const record = [
-	{ key: "time", value: "14:02 UTC" },
-	{ key: "referrer", value: "instagram.com" },
-	{ key: "country", value: "Peru" },
-	{ key: "device", value: "Mobile" },
+	{ key: 'time', value: '14:02 UTC' },
+	{ key: 'referrer', value: 'instagram.com' },
+	{ key: 'country', value: 'Peru' },
+	{ key: 'device', value: 'Mobile' },
 ];
 ---
 

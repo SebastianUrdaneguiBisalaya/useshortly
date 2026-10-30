@@ -1,32 +1,29 @@
 ---
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from 'class-variance-authority';
 
-import { cn } from "../lib/tailwind/cn";
-import Typography from "./typography.astro";
+import { cn } from '../lib/tailwind/cn';
+import Typography from './typography.astro';
 
 // The dashed dividers are drawn per cell, so each column count needs its own rules for which cells skip a border.
-const gridVariants = cva("grid w-full sm:grid-cols-2", {
+const gridVariants = cva('grid w-full sm:grid-cols-2', {
 	variants: {
 		columns: {
-			2: "",
-			4: "lg:grid-cols-4",
+			2: '',
+			4: 'lg:grid-cols-4',
 		},
 	},
 	defaultVariants: { columns: 2 },
 });
 
-const cellVariants = cva(
-	"flex flex-col gap-2 border-b border-dashed border-black/15 px-4 py-10 last:border-b-0 md:px-12 sm:odd:border-r sm:[&:nth-last-child(-n+2)]:border-b-0",
-	{
-		variants: {
-			columns: {
-				2: "",
-				4: "md:px-8 lg:border-r lg:last:border-r-0",
-			},
+const cellVariants = cva('flex flex-col gap-2 border-b border-dashed border-black/15 px-4 py-10 last:border-b-0 md:px-12 sm:odd:border-r sm:[&:nth-last-child(-n+2)]:border-b-0', {
+	variants: {
+		columns: {
+			2: '',
+			4: 'md:px-8 lg:border-r lg:last:border-r-0',
 		},
-		defaultVariants: { columns: 2 },
 	},
-);
+	defaultVariants: { columns: 2 },
+});
 
 type Props = VariantProps<typeof gridVariants> & {
 	/**

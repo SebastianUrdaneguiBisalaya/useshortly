@@ -1,5 +1,5 @@
 ---
-import Typography from "../components/ui/typography.astro";
+import Typography from '../components/ui/typography.astro';
 
 // One link as the API returns it (`short_url`, `origin_url`, `expires_at`, `max_clicks`, `protected`,
 // `campaign_name`/`channel_name`, `qr_style`), the same `launch` link used across the page. Each row names the
@@ -7,39 +7,29 @@ import Typography from "../components/ui/typography.astro";
 type Row = { for: string; label: string; value: string; muted?: string };
 
 const rows: Row[] = [
-	{ for: "domains", label: "short URL", value: "go.example.com/launch" },
-	{ for: "links", label: "alias", value: "launch" },
+	{ for: 'domains', label: 'short URL', value: 'go.example.com/launch' },
+	{ for: 'links', label: 'alias', value: 'launch' },
 	{
-		for: "campaigns",
-		label: "destination",
-		value: "example.com/spring",
-		muted: "?utm_source=instagram&utm_medium=useshortly&utm_campaign=spring-launch",
+		for: 'campaigns',
+		label: 'destination',
+		value: 'example.com/spring',
+		muted: '?utm_source=instagram&utm_medium=useshortly&utm_campaign=spring-launch',
 	},
-	{ for: "campaigns", label: "campaign", value: "Spring launch / Instagram" },
-	{ for: "links", label: "expires", value: "Dec 31, 2026" },
-	{ for: "links", label: "click limit", value: "5,000" },
-	{ for: "links", label: "password", value: "••••••" },
+	{ for: 'campaigns', label: 'campaign', value: 'Spring launch / Instagram' },
+	{ for: 'links', label: 'expires', value: 'Dec 31, 2026' },
+	{ for: 'links', label: 'click limit', value: '5,000' },
+	{ for: 'links', label: 'password', value: '••••••' },
 ];
 
 const week = [44, 52, 61, 96, 58, 49, 52];
 const peak = Math.max(...week);
 
 // A fixed 9x9 pattern with the three finder squares, enough to read as a QR code at this size.
-const qr = [
-	"111110101",
-	"100010011",
-	"101010110",
-	"100010001",
-	"111110101",
-	"000001110",
-	"110101011",
-	"010110100",
-	"101011101",
-];
+const qr = ['111110101', '100010011', '101010110', '100010001', '111110101', '000001110', '110101011', '010110100', '101011101'];
 
 const rowClass =
-	"grid grid-cols-[6.5rem_1fr] items-baseline gap-3 px-4 py-2 transition-[opacity,background-color] duration-200 group-data-active/record:not-data-lit:opacity-35 data-lit:bg-black/4 motion-reduce:transition-none";
-const labelClass = "text-black/45";
+	'grid grid-cols-[6.5rem_1fr] items-baseline gap-3 px-4 py-2 transition-[opacity,background-color] duration-200 group-data-active/record:not-data-lit:opacity-35 data-lit:bg-black/4 motion-reduce:transition-none';
+const labelClass = 'text-black/45';
 ---
 
 <figure

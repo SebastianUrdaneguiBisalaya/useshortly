@@ -1,42 +1,36 @@
 ---
-import type { HTMLAttributes } from "astro/types";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { HTMLAttributes } from 'astro/types';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-import { cn } from "../lib/tailwind/cn";
+import { cn } from '../lib/tailwind/cn';
 
 const buttonVariants = cva(
-	"relative inline-flex items-center justify-center gap-2 px-5 py-3 font-primary text-sm leading-none whitespace-nowrap transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+	'relative inline-flex items-center justify-center gap-2 px-5 py-3 font-primary text-sm leading-none whitespace-nowrap transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
 	{
 		variants: {
 			variant: {
-				primary: "bg-black text-white hover:bg-black/85",
-				secondary: "border border-black/10 bg-transparent text-black hover:bg-black/5",
+				primary: 'bg-black text-white hover:bg-black/85',
+				secondary: 'border border-black/10 bg-transparent text-black hover:bg-black/5',
 			},
 		},
 		defaultVariants: {
-			variant: "primary",
+			variant: 'primary',
 		},
-	},
+	}
 );
 
 // A union per tag rather than `Polymorphic<{ as: "button" | "a" }>`, which only keeps the attributes both
 // elements share and so rejects `href`.
-type Props = VariantProps<typeof buttonVariants> &
-	(({ as?: "button" } & HTMLAttributes<"button">) | ({ as: "a" } & HTMLAttributes<"a">));
+type Props = VariantProps<typeof buttonVariants> & (({ as?: 'button' } & HTMLAttributes<'button'>) | ({ as: 'a' } & HTMLAttributes<'a'>));
 
-const { as: Tag = "button", variant, type, class: className, ...rest } = Astro.props as Props;
+const { as: Tag = 'button', variant, type, class: className, ...rest } = Astro.props as Props;
 
 // `<a type>` takes any MIME string while `<button type>` only takes these three, so `type` is resolved here
 // instead of spread: a polymorphic `Tag` must satisfy both elements' attributes at once.
-const buttonType = Tag === "button" ? ((type as "button" | "submit" | "reset" | null | undefined) ?? "button") : undefined;
+const buttonType = Tag === 'button' ? ((type as 'button' | 'submit' | 'reset' | null | undefined) ?? 'button') : undefined;
 
 // Corner brackets of the secondary variant: each one draws two sides of a small square just outside the border.
-const corners = [
-	"-top-px -left-px border-t border-l",
-	"-top-px -right-px border-t border-r",
-	"-bottom-px -left-px border-b border-l",
-	"-bottom-px -right-px border-b border-r",
-];
+const corners = ['-top-px -left-px border-t border-l', '-top-px -right-px border-t border-r', '-bottom-px -left-px border-b border-l', '-bottom-px -right-px border-b border-r'];
 ---
 
 <Tag

@@ -200,29 +200,29 @@ Because the API holds only the public key, even a stolen API `.env` cannot be us
 
 Read-only connections get the first group; connections where the user granted write access also get the second.
 
-| Tool                      | What it does                                                                |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `whoami`                  | The account the connection acts for and whether it is read-only.            |
-| `list_organizations`      | Organizations of the user, with their ids (call this first).                |
-| `list_links`              | Links of an organization, paged; filterable by campaign or channel.         |
-| `get_link`                | One link, with its campaign and channel.                                    |
+| Tool                      | What it does                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `whoami`                  | The account the connection acts for and whether it is read-only.                                  |
+| `list_organizations`      | Organizations of the user, with their ids (call this first).                                      |
+| `list_links`              | Links of an organization, paged; filterable by campaign or channel.                               |
+| `get_link`                | One link, with its campaign and channel.                                                          |
 | `get_link_stats`          | Clicks per day/hour/weekday in a time zone (`tz`), top referrers, countries, devices; filterable. |
-| `get_link_qr`             | The QR code of a link as a PNG image.                                       |
-| `list_campaigns`          | Campaigns of an organization, with how many channels and links each has.    |
-| `get_campaign`            | One campaign.                                                               |
-| `list_campaign_channels`  | The channels of a campaign (Instagram, email…).                             |
-| `get_campaign_stats`      | Clicks of a whole campaign and of each channel; filterable.                 |
-| `list_domains`            | Custom domains and, for unverified ones, the DNS record to create.          |
-| `create_link`             | Shorten a URL (alias, expiration, click limit, password, domain, channel).  |
-| `delete_link`             | Delete a link (marked destructive, so clients ask first).                   |
-| `create_campaign`         | Create a campaign.                                                          |
-| `update_campaign`         | Change a campaign's name or description.                                    |
-| `delete_campaign`         | Delete a campaign and its channels; its links stay (marked destructive).    |
-| `add_campaign_channel`    | Add a channel to a campaign.                                                |
-| `delete_campaign_channel` | Delete a channel; its links stay (marked destructive).                      |
-| `set_link_channel`        | Put a link in a channel, move it, or take it out of its campaign.           |
-| `add_domain`              | Register a custom domain and get its DNS TXT record.                        |
-| `verify_domain`           | Check the DNS record and verify the domain.                                 |
+| `get_link_qr`             | The QR code of a link as a PNG image.                                                             |
+| `list_campaigns`          | Campaigns of an organization, with how many channels and links each has.                          |
+| `get_campaign`            | One campaign.                                                                                     |
+| `list_campaign_channels`  | The channels of a campaign (Instagram, email…).                                                   |
+| `get_campaign_stats`      | Clicks of a whole campaign and of each channel; filterable.                                       |
+| `list_domains`            | Custom domains and, for unverified ones, the DNS record to create.                                |
+| `create_link`             | Shorten a URL (alias, expiration, click limit, password, domain, channel).                        |
+| `delete_link`             | Delete a link (marked destructive, so clients ask first).                                         |
+| `create_campaign`         | Create a campaign.                                                                                |
+| `update_campaign`         | Change a campaign's name or description.                                                          |
+| `delete_campaign`         | Delete a campaign and its channels; its links stay (marked destructive).                          |
+| `add_campaign_channel`    | Add a channel to a campaign.                                                                      |
+| `delete_campaign_channel` | Delete a channel; its links stay (marked destructive).                                            |
+| `set_link_channel`        | Put a link in a channel, move it, or take it out of its campaign.                                 |
+| `add_domain`              | Register a custom domain and get its DNS TXT record.                                              |
+| `verify_domain`           | Check the DNS record and verify the domain.                                                       |
 
 A link put in a campaign channel gets `utm_source` (the channel), `utm_medium=useshortly` and `utm_campaign` (the
 campaign) added to its destination, which with them must fit in 255 characters. Moving it rewrites those parameters;
@@ -244,7 +244,7 @@ Follow the steps in order: each one needs the one before.
 | ------------- | --------------------------------------- | -------------------------------------------------------------------- |
 | Go            | 1.26 or newer                           | the API                                                              |
 | Node.js       | 24                                      | this service                                                         |
-| pnpm          | 12.15.0 (`npm install -g pnpm@12.15.0`) | the workspace's package manager, pinned in the root `package.json`    |
+| pnpm          | 12.15.0 (`npm install -g pnpm@12.15.0`) | the workspace's package manager, pinned in the root `package.json`   |
 | Redis         | any recent                              | the API refuses to start without it (OTP codes, caches, rate limits) |
 | `sqlite3` CLI | any                                     | applies the API's SQL migrations                                     |
 

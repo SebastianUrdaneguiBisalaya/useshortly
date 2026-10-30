@@ -1,28 +1,28 @@
 ---
-import Layout from "../components/ui/layout.astro";
-import Typography from "../components/ui/typography.astro";
+import Layout from '../components/ui/layout.astro';
+import Typography from '../components/ui/typography.astro';
 
 const steps = [
 	{
-		numeral: "I",
-		title: "Deploy",
-		description: "Clone the repo and start it with Docker Compose. A single SQLite file holds everything, with optional Turso sync",
-		command: "docker compose up -d",
-		output: "✓ Container useshortly-app-1 Started",
+		numeral: 'I',
+		title: 'Deploy',
+		description: 'Clone the repo and start it with Docker Compose. A single SQLite file holds everything, with optional Turso sync',
+		command: 'docker compose up -d',
+		output: '✓ Container useshortly-app-1 Started',
 	},
 	{
-		numeral: "II",
-		title: "Shorten",
-		description: "Create links on your own domain from the dashboard, the REST API or an AI assistant through MCP",
-		command: "curl -X POST go.example.com/api/links",
+		numeral: 'II',
+		title: 'Shorten',
+		description: 'Create links on your own domain from the dashboard, the REST API or an AI assistant through MCP',
+		command: 'curl -X POST go.example.com/api/links',
 		output: '{ "short_url": "go.example.com/x7Kp2aQ" }',
 	},
 	{
-		numeral: "III",
-		title: "Measure",
-		description: "Every click reaches your server first, so you see its time, referrer, country and device",
-		command: "curl -I go.example.com/x7Kp2aQ",
-		output: "HTTP/1.1 302 Found",
+		numeral: 'III',
+		title: 'Measure',
+		description: 'Every click reaches your server first, so you see its time, referrer, country and device',
+		command: 'curl -I go.example.com/x7Kp2aQ',
+		output: 'HTTP/1.1 302 Found',
 	},
 ];
 ---

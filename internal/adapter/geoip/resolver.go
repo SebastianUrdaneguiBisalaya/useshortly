@@ -1,5 +1,5 @@
-// Package geoip finds the country of an address in a MaxMind GeoLite2/GeoIP2 Country or City
-// database (.mmdb) that the operator downloads and mounts; it is optional.
+// Package geoip finds the country of an address in an MMDB database (DB-IP IP to City Lite,
+// or any MaxMind-compatible Country/City .mmdb) that the operator downloads and mounts; it is optional.
 package geoip
 
 import (

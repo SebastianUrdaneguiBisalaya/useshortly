@@ -49,7 +49,7 @@ A visit to `GET /{code}` answers **302** (not 301), so every click reaches your 
 
 | Part | Technology |
 | --- | --- |
-| **Backend** (`/`, `cmd/api`, `internal`) | Go 1.26 · `gorilla/mux` (router) · SQLite through `tursogo` (optional Turso Cloud sync) · Redis (`go-redis`) · JWT (`golang-jwt`) · argon2id password hashing · Resend (email) · Google ID-token verification · MaxMind GeoIP (`geoip2-golang`) · `go-chi/httprate` (rate limits) · `godotenv` · OpenAPI 3.1 via `swag` · tests with `testify` |
+| **Backend** (`/`, `cmd/api`, `internal`) | Go 1.26 · `gorilla/mux` (router) · SQLite through `tursogo` (optional Turso Cloud sync) · Redis (`go-redis`) · JWT (`golang-jwt`) · argon2id password hashing · Resend (email) · Google ID-token verification · DB-IP City Lite GeoIP (`geoip2-golang`) · `go-chi/httprate` (rate limits) · `godotenv` · OpenAPI 3.1 via `swag` · tests with `testify` |
 | **Web app** (`apps/web`) | React 19 · React Router 8 (SSR) · Vite · Tailwind CSS 4 · TanStack Query and Table · Zustand · react-hook-form + Zod · Tiptap · Recharts · i18next · Axios + Orval (client generated from the OpenAPI spec) · Biome |
 | **MCP server** (`apps/mcp`) | Node.js 24 · TypeScript · Hono · Better Auth (OAuth 2.1, CIMD) · MCP SDK · Kysely · SQLite (Turso / better-sqlite3) · Vitest |
 | **Desktop app** (`apps/desktop`) | Electron · TypeScript (early scaffold) |
@@ -296,7 +296,7 @@ Configuration is read from the environment (a `.env` file is loaded only for loc
 | `GOOGLE_REDIRECT_URI` | `postmessage` | no | Keep `postmessage` for the web app's popup flow. |
 | `GOOGLE_DESKTOP_CLIENT_ID` | empty | no | "Desktop app" OAuth client id for the desktop app's Google sign-in. Empty disables Google there. Needs `GOOGLE_CLIENT_ID`. |
 | `GOOGLE_DESKTOP_CLIENT_SECRET` | empty | with the ID | Secret of that "Desktop app" client. |
-| `GEOIP_DB_PATH` | empty | no | Path to a MaxMind `.mmdb` file. Empty = the country of clicks is not recorded. See [GeoIP](#geoip). |
+| `GEOIP_DB_PATH` | empty | no | Path to a DB-IP City Lite `.mmdb` file. Empty = the country of clicks is not recorded. See [GeoIP](#geoip). |
 | `TRUST_PROXY` | `false` | no | Read the visitor's IP from `X-Forwarded-For`. Only `true` behind a reverse proxy. See [Reverse proxy](#reverse-proxy-and-trust_proxy). |
 | `RATE_LIMIT` | `true` | no | Turns the request limits on. Disable only if something in front already limits. |
 | `ABUSE_EMAIL` | empty | no | Shows a "report this link" address on the unlock page. |
@@ -376,22 +376,32 @@ your proxy must forward the original `Host` header, which is how the API knows w
 
 ### GeoIP
 
-Country analytics are optional and need a MaxMind database that you download yourself (the file is not
-distributed with the project):
+Country analytics are optional and use the free [DB-IP IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite)
+database, which you download yourself (the file is ~120 MB and is not distributed with the project).
+No account is needed. Any MaxMind-compatible Country/City `.mmdb` also works.
 
-1. Create a free account at [MaxMind](https://www.maxmind.com/en/geolite2/signup) and download
-   **GeoLite2 Country** (`GeoLite2-Country.mmdb`; the City database also works).
-2. Put the file somewhere readable and set its path:
+1. Download the **MMDB** format from [db-ip.com](https://db-ip.com/db/download/ip-to-city-lite)
+   and unzip it (`gunzip dbip-city-lite-YYYY-MM.mmdb.gz`).
+2. Put the file somewhere readable and set its path. Renaming it to a stable name
+   (`dbip-city-lite.mmdb`) means monthly updates do not change the env var:
 
    ```sh
-   GEOIP_DB_PATH=/path/to/GeoLite2-Country.mmdb
+   GEOIP_DB_PATH=/path/to/dbip-city-lite.mmdb
    ```
 
 3. Restart the API. If the path is wrong it fails at startup; if it is empty it logs
    `GEOIP_DB_PATH is not set` and clicks are stored without a country.
 
 Behind a proxy you also need `TRUST_PROXY=true`, otherwise every click is geolocated from the proxy's address.
-MaxMind updates the database regularly; replace the file and restart to refresh it.
+
+> [!IMPORTANT]
+> **Update the database every month.** DB-IP publishes a new City Lite release at the start of each
+> month. Download it, replace the file and restart the API; an old file keeps working but gets less
+> accurate over time.
+
+The database is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): pages that show
+results from it must link back to DB-IP (`<a href='https://db-ip.com'>IP Geolocation by DB-IP</a>`). The web
+dashboard already does this next to country analytics; keep it if you fork the UI.
 
 ### Reverse proxy and `TRUST_PROXY`
 
@@ -484,8 +494,9 @@ services:
       - ./geoip:/geoip:ro
 ```
 
-Put `GeoLite2-Country.mmdb` in `./geoip` (readable by everyone: `chmod 644`), set
-`GEOIP_DB_PATH=/geoip/GeoLite2-Country.mmdb` in `.env`, and run `./scripts/deploy.prod.sh` again.
+Put `dbip-city-lite.mmdb` in `./geoip` (readable by everyone: `chmod 644`), set
+`GEOIP_DB_PATH=/geoip/dbip-city-lite.mmdb` in `.env`, and run `./scripts/deploy.prod.sh` again.
+Every month, replace the file with the new release and restart the app (`docker compose restart app`).
 
 #### 4. Reverse proxy (nginx)
 

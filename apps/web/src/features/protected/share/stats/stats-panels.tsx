@@ -10,6 +10,7 @@ import { type ChoroplethGeoJSON, ChoroplethMap } from '~/components/ui/data-disp
 import { DatePicker } from '~/components/ui/forms-inputs/date-picker/date-picker';
 import { Select } from '~/components/ui/forms-inputs/select/select';
 import { Icon } from '~/components/ui/foundations/icon/icon';
+import { Link } from '~/components/ui/foundations/link/link';
 import { useLanguage } from '~/hooks/use-language';
 import { useTranslate } from '~/hooks/use-translate';
 import type { Locale } from '~/i18n';
@@ -440,6 +441,10 @@ function WorldMap({
 				<div className='aspect-video w-full animate-pulse rounded-md bg-muted' />
 			)}
 			{withoutCountry > 0 && <p className='mt-3 text-muted-foreground text-xs'>{t('protected.dashboard.charts.map.noCountry', { count: withoutCountry })}</p>}
+			{/* The country of a click comes from DB-IP City Lite (CC BY 4.0), which requires this link back. */}
+			<Link className='mt-2 text-xs' href='https://db-ip.com' target='_blank' variant='muted'>
+				{t('protected.dashboard.charts.map.attribution')}
+			</Link>
 		</Panel>
 	);
 }

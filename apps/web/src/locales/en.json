@@ -207,7 +207,8 @@
 					"title": "Clicks by country",
 					"description": "Click a country to filter by it.",
 					"legend": "Clicks",
-					"noCountry": "{{count}} clicks without a known country."
+					"noCountry": "{{count}} clicks without a known country.",
+					"attribution": "IP Geolocation by DB-IP"
 				},
 				"countries": {
 					"title": "Top countries",

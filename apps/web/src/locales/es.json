@@ -207,7 +207,8 @@
 					"title": "Clics por país",
 					"description": "Haz clic en un país para filtrar por él.",
 					"legend": "Clics",
-					"noCountry": "{{count}} clics sin país conocido."
+					"noCountry": "{{count}} clics sin país conocido.",
+					"attribution": "Geolocalización IP por DB-IP"
 				},
 				"countries": {
 					"title": "Países principales",

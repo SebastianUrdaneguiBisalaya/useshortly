@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { signInWithGoogle } from './google-sign-in.js';
+import { loadWindowState, trackWindowState, windowOptions } from './window-state.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,8 +48,10 @@ function isTrustedUrl(url: string) {
 }
 
 function createWindow() {
+	const windowState = loadWindowState();
+
 	mainWindow = new BrowserWindow({
-		height: 800,
+		...windowOptions(windowState),
 		show: false,
 		webPreferences: {
 			allowRunningInsecureContent: false,
@@ -59,8 +62,9 @@ function createWindow() {
 			spellcheck: false,
 			webSecurity: true,
 		},
-		width: 1280,
 	});
+
+	trackWindowState(mainWindow);
 
 	// Never let the renderer open arbitrary windows/navigations to a
 	// different origin - only our own local app URL is allowed in-app,
@@ -84,7 +88,12 @@ function createWindow() {
 		}
 	});
 
-	mainWindow.once('ready-to-show', () => mainWindow?.show());
+	// Reopen how the user left it; the first launch fills the work area
+	// (maximized, not fullscreen: menu bar/taskbar and dock stay visible).
+	mainWindow.once('ready-to-show', () => {
+		if (windowState.isMaximized) mainWindow?.maximize();
+		mainWindow?.show();
+	});
 
 	mainWindow.loadURL(WEB_URL).catch(error => {
 		console.error('Failed to load web app', error);

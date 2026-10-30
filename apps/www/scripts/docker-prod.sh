@@ -8,5 +8,5 @@ cd "$(dirname "$0")/../../.."
 name=useshortly-www
 docker build -f apps/www/Dockerfile -t "$name" .
 docker rm -f "$name" >/dev/null 2>&1 || true
-docker run -d --name "$name" --restart unless-stopped -p "127.0.0.1:${HOST_PORT:-3001}:3001" "$name"
+docker run -d --name "$name" --restart unless-stopped -p "127.0.0.1:${HOST_PORT:-3001}:3000" "$name"
 docker image prune -f

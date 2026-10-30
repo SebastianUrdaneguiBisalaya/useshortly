@@ -23,4 +23,8 @@ export type ListLinksParams = {
 	 * Only links in this channel
 	 */
 	channel_id?: number;
+	/**
+	 * Only links whose code or destination contains this text, ignoring case
+	 */
+	q?: string;
 };

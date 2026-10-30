@@ -20,6 +20,7 @@ export const ListLinksQueryParams = zod.object({
 	offset: zod.int().optional().describe('Items to skip'),
 	campaign_id: zod.int().optional().describe('Only links in a channel of this campaign'),
 	channel_id: zod.int().optional().describe('Only links in this channel'),
+	q: zod.string().optional().describe('Only links whose code or destination contains this text, ignoring case'),
 });
 
 export const ListLinksResponse = zod.object({

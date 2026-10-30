@@ -53,7 +53,7 @@ A visit to `GET /{code}` answers **302** (not 301), so every click reaches your 
 | **Web app** (`apps/web`) | React 19 · React Router 8 (SSR) · Vite · Tailwind CSS 4 · TanStack Query and Table · Zustand · react-hook-form + Zod · Tiptap · Recharts · i18next · Axios + Orval (client generated from the OpenAPI spec) · Biome |
 | **MCP server** (`apps/mcp`) | Node.js 24 · TypeScript · Hono · Better Auth (OAuth 2.1, CIMD) · MCP SDK · Kysely · SQLite (Turso / better-sqlite3) · Vitest |
 | **Desktop app** (`apps/desktop`) | Electron · TypeScript (early scaffold) |
-| **Landing site** (`apps/www`) | Next.js 16 · React 19 |
+| **Landing site** (`apps/www`) | Astro 7 (static site) |
 | **Infrastructure** | Docker / Docker Compose · Redis · plain-SQL migrations applied with the `sqlite3` CLI |
 
 ## Repository layout
@@ -242,8 +242,8 @@ from `api/openapi/swagger.json` after running `make openapi`).
 In Docker with hot reload instead: `./apps/web/scripts/docker-dev.sh` (it reaches the API on the host through
 `host.docker.internal:8080`; override with `VITE_API_PROXY_TARGET`).
 
-The landing site (`apps/www`) works the same way: `pnpm install && pnpm --filter www dev`
-(`http://localhost:3000`), or `./apps/www/scripts/docker-dev.sh`.
+The landing site (`apps/www`) is a static Astro site: `pnpm install && pnpm --filter www dev`
+(`http://localhost:4321`).
 
 ### MCP
 
@@ -537,8 +537,8 @@ cp .env.example .env     # leave VITE_API_URL empty; set VITE_GOOGLE_CLIENT_ID i
 The script replaces the previous container and drops dangling images. Without Docker:
 `pnpm install --frozen-lockfile && pnpm build && PORT=3000 pnpm start`.
 
-The landing site is the same: `./apps/www/scripts/docker-prod.sh` serves `127.0.0.1:3001` (`HOST_PORT` changes
-the port); proxy your main domain to it.
+The landing site is static: `pnpm --filter www build` writes it to `apps/www/dist`, which any web server can
+serve as-is (point your main domain's nginx `root` at it). `pnpm --filter www preview` serves the build locally.
 
 nginx for the web host:
 

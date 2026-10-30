@@ -8,5 +8,5 @@ tmp
 **/dist
 apps/mcp/data
 **/.react-router
-**/.next
+**/.astro
 apps/web/build

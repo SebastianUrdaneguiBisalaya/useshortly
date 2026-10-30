@@ -66,9 +66,10 @@ type CreateOrganizationRequest struct {
 	Description string `json:"description"`
 } // @name CreateOrganizationRequest
 
+// UpdateOrganizationRequest changes an organization; a missing field is left as it is.
 type UpdateOrganizationRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
 } // @name UpdateOrganizationRequest
 
 type InviteRequest struct {

@@ -53,10 +53,15 @@ func (s *Service) CreateOrganization(ctx context.Context, ownerID int64, name, d
 	return s.repo.CreateWithOwner(ctx, Organization{Name: name, Description: description, CreatedAt: s.now()}, ownerID)
 }
 
-// Update changes the name and description of the organization. Only the OWNER can, like Delete.
-func (s *Service) Update(ctx context.Context, actorID, tenantID int64, name, description string) (Organization, error) {
-	name, description = strings.TrimSpace(name), strings.TrimSpace(description)
-	if name == "" || utf8.RuneCountInString(name) > maxFieldLen || utf8.RuneCountInString(description) > maxFieldLen {
+// Update changes the name and/or description of the organization; a nil field is left as it is.
+// Only the OWNER can, like Delete.
+func (s *Service) Update(ctx context.Context, actorID, tenantID int64, name, description *string) (Organization, error) {
+	if name != nil {
+		if n := strings.TrimSpace(*name); n == "" || utf8.RuneCountInString(n) > maxFieldLen {
+			return Organization{}, ErrInvalidName
+		}
+	}
+	if description != nil && utf8.RuneCountInString(strings.TrimSpace(*description)) > maxFieldLen {
 		return Organization{}, ErrInvalidName
 	}
 	m, err := s.repo.FindMember(ctx, tenantID, actorID)
@@ -66,7 +71,17 @@ func (s *Service) Update(ctx context.Context, actorID, tenantID int64, name, des
 	if m.Role != RoleOwner {
 		return Organization{}, ErrNotOwner
 	}
-	return s.repo.Update(ctx, tenantID, name, description, s.now())
+	o, err := s.repo.FindByID(ctx, tenantID)
+	if err != nil {
+		return Organization{}, err
+	}
+	if name != nil {
+		o.Name = strings.TrimSpace(*name)
+	}
+	if description != nil {
+		o.Description = strings.TrimSpace(*description)
+	}
+	return s.repo.Update(ctx, tenantID, o.Name, o.Description, s.now())
 }
 
 // Delete removes the organization with its members, invitations, API keys, domains, links and

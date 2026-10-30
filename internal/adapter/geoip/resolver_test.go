@@ -54,7 +54,7 @@ func TestOpenFailsOnAMissingFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// Needs a real database: GEOIP_DB_PATH=/path/GeoLite2-Country.mmdb go test ./internal/adapter/geoip/
+// Needs a real database: GEOIP_DB_PATH=/path/dbip-city-lite.mmdb go test ./internal/adapter/geoip/
 func TestOpenRealDatabase(t *testing.T) {
 	path := os.Getenv("GEOIP_DB_PATH")
 	if path == "" {

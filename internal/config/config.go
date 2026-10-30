@@ -32,7 +32,7 @@ type Config struct {
 	GoogleDesktopSecret   string
 	RefreshTTL            time.Duration
 	LinkCacheTTL          time.Duration
-	// GeoIPPath is a MaxMind .mmdb database; empty disables the country of clicks.
+	// GeoIPPath is an MMDB database (DB-IP City Lite); empty disables the country of clicks.
 	GeoIPPath string
 	// TrustProxy reads the visitor's address from X-Forwarded-For (set it behind a reverse proxy).
 	TrustProxy bool

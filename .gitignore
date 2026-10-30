@@ -31,6 +31,9 @@ build-errors.log
 *.log
 
 /scripts/create-issues.sh
+# GeoIP databases (DB-IP City Lite is ~120 MB, download it yourself)
+*.mmdb
+
 # SQLite data
 *.db
 *.db-*

@@ -1,28 +1,12 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"],
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "ES2022"],
-    "allowJs": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "verbatimModuleSyntax": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/components": ["./src/components"],
+      "@/layouts": ["./src/layouts"]
     }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.mts",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  }
 }

@@ -14,7 +14,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/dist", "!**/pnpm-lock.json", "!**/pnpm-workspace.yaml", "!**/node_modules"]
+		"includes": ["**", "!**/dist", "!**/pnpm-lock.yaml", "!**/pnpm-workspace.yaml", "!**/node_modules"]
 	},
 	"formatter": {
 		"attributePosition": "auto",
@@ -59,7 +59,6 @@
 	},
 	"linter": {
 		"enabled": true,
-		"includes": ["!src/database/migrations/**/*.ts"],
 		"rules": {
 			"complexity": {
 				"noAdjacentSpacesInRegex": "error",
@@ -177,5 +176,5 @@
 			}
 		}
 	],
-	"vcs": { "clientKind": "git", "enabled": true, "root": "../..", "useIgnoreFile": true }
+	"vcs": { "clientKind": "git", "enabled": true, "useIgnoreFile": true }
 }

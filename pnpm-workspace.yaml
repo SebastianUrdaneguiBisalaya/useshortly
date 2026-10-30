@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+
+# Install scripts each app needs; anything not listed is skipped without prompting.
+allowBuilds:
+  electron-winstaller: true
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
+saveExact: true

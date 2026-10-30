@@ -69,7 +69,21 @@ apps/desktop/      Desktop app (scaffold)
 apps/www/          Landing site
 ```
 
-Each app under `apps/` is installed on its own with `pnpm`; there is no root workspace.
+The apps under `apps/` form one pnpm workspace with a single `pnpm-lock.yaml` and `biome.json` at the root.
+From the root, `pnpm install` installs every app and these scripts run across all of them:
+
+```sh
+pnpm install        # every app, one lockfile
+pnpm dev            # every app's dev server in parallel
+pnpm build
+pnpm test           # apps that have tests
+pnpm typecheck
+pnpm lint           # biome check apps
+pnpm format         # biome format --write apps
+pnpm --filter web dev   # one app only (web, www, desktop, @useshortly/mcp)
+```
+
+Running `pnpm <script>` inside an app folder still works on that app alone.
 
 ## Start project in development
 
@@ -228,7 +242,7 @@ from `api/openapi/swagger.json` after running `make openapi`).
 In Docker with hot reload instead: `./apps/web/scripts/docker-dev.sh` (it reaches the API on the host through
 `host.docker.internal:8080`; override with `VITE_API_PROXY_TARGET`).
 
-The landing site (`apps/www`) works the same way: `cd apps/www && pnpm install && pnpm dev`
+The landing site (`apps/www`) works the same way: `pnpm install && pnpm --filter www dev`
 (`http://localhost:3000`), or `./apps/www/scripts/docker-dev.sh`.
 
 ### MCP

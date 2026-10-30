@@ -20,14 +20,6 @@
 	"keywords": [],
 	"license": "ISC",
 	"private": false,
-	"devEngines": {
-		"packageManager": {
-			"name": "pnpm",
-			"version": "12.15.0",
-			"onFail": "download"
-		}
-	},
-	"packageManager": "pnpm@12.15.0",
 	"type": "module",
 	"dependencies": {
 		"@better-auth/cimd": "1.7.13",
@@ -44,7 +36,6 @@
 		"zod": "4.6.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.6.3",
 		"@types/better-sqlite3": "9.6.0",
 		"@types/node": "26.6.5",
 		"tsx": "4.23.15",

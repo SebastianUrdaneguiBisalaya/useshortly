@@ -38,7 +38,6 @@ build-errors.log
 
 # Node
 node_modules/
-pnpm-lock.yaml
 
 # React Router
 .react-router/

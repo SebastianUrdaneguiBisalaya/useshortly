@@ -244,7 +244,7 @@ Follow the steps in order: each one needs the one before.
 | ------------- | --------------------------------------- | -------------------------------------------------------------------- |
 | Go            | 1.26 or newer                           | the API                                                              |
 | Node.js       | 24                                      | this service                                                         |
-| pnpm          | 12.15.0 (`npm install -g pnpm@12.15.0`) | this service's package manager, pinned in `package.json`             |
+| pnpm          | 12.15.0 (`npm install -g pnpm@12.15.0`) | the workspace's package manager, pinned in the root `package.json`    |
 | Redis         | any recent                              | the API refuses to start without it (OTP codes, caches, rate limits) |
 | `sqlite3` CLI | any                                     | applies the API's SQL migrations                                     |
 

@@ -1,5 +1,6 @@
 {
 	"name": "desktop",
+	"productName": "useshortly",
 	"version": "1.0.0",
 	"description": "",
 	"main": "dist/main.js",
@@ -28,6 +29,7 @@
 		"typescript": "7.0.2"
 	},
 	"build": {
+		"appId": "com.sebastianurdanegui.useshortly",
 		"directories": {
 			"output": "release"
 		}

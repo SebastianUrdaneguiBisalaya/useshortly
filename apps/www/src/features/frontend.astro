@@ -1,0 +1,52 @@
+---
+import FeatureGrid from "../components/ui/feature-grid.astro";
+import IllustrationSlot from "../components/ui/illustration-slot.astro";
+import Layout from "../components/ui/layout.astro";
+import SectionIntro from "../components/ui/section-intro.astro";
+
+const features = [
+	{
+		title: "Links",
+		description: "Random codes or custom aliases, with an expiration date, a click limit or a password",
+	},
+	{
+		title: "Campaigns",
+		description: "Group links by channel, and the UTM parameters are added to each destination for you",
+	},
+	{
+		title: "Click analytics",
+		description: "Clicks by hour and weekday, top referrers, devices and a map of countries",
+	},
+	{
+		title: "QR codes",
+		description: "One for every link, styled to match your brand",
+	},
+	{
+		title: "Custom domains",
+		description: "Serve links from your own domain, verified with a DNS TXT record",
+	},
+	{
+		title: "Team and API keys",
+		description: "Invite members to your organization and create read or write keys for scripts",
+	},
+];
+---
+
+<Layout
+	as="section"
+	id="frontend"
+	class="scroll-mt-16"
+	frameClass="grid divide-y divide-dashed divide-black/15 md:grid-cols-2 md:divide-x md:divide-y-0"
+>
+	<div class="flex flex-col gap-12 px-4 py-16 md:px-12 md:py-32">
+		<SectionIntro
+			label="Frontend"
+			title="Run every link from one dashboard."
+			description="Create links, group them into campaigns and read their clicks, with your whole team in the same organization."
+		/>
+		<IllustrationSlot class="hidden md:block" />
+	</div>
+	<div class="flex items-center">
+		<FeatureGrid items={features} />
+	</div>
+</Layout>

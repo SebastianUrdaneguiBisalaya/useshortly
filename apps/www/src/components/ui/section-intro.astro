@@ -1,0 +1,18 @@
+---
+import Typography from "./typography.astro";
+
+type Props = {
+	/** Names the part of the project the section covers, e.g. "Backend". */
+	label: string;
+	title: string;
+	description?: string;
+};
+
+const { label, title, description } = Astro.props as Props;
+---
+
+<div class="flex flex-col gap-4">
+	<Typography as="span" variant="caption" class="text-black/60">{label}</Typography>
+	<Typography as="h2" variant="h3">{title}</Typography>
+	{description && <Typography class="max-w-md text-black/60">{description}</Typography>}
+</div>

@@ -1,0 +1,44 @@
+---
+import Layout from "../components/ui/layout.astro";
+import SectionIntro from "../components/ui/section-intro.astro";
+import StatList from "../components/ui/stat-list.astro";
+import McpDiagram from "./mcp-diagram.astro";
+
+const stats = [
+	{
+		value: "21",
+		title: "Tools",
+		description: "Shorten URLs, read click stats, verify domains and manage campaigns",
+	},
+	{
+		value: "2",
+		title: "Permission levels",
+		description: "Read-only or write, chosen by each user when they connect",
+	},
+	{
+		value: "0",
+		title: "API keys to paste",
+		description: "Clients sign in with OAuth 2.1, and access tokens expire after 15 minutes",
+	},
+];
+---
+
+<Layout
+	as="section"
+	id="mcp"
+	class="scroll-mt-16"
+	frameClass="grid md:grid-cols-2"
+>
+	<!-- The text comes first in the DOM so it leads on mobile; from `md` the diagram takes the left column. -->
+	<div class="flex flex-col gap-12 px-4 py-16 md:order-last md:px-12 md:py-32">
+		<SectionIntro
+			label="MCP"
+			title="Manage links from your AI assistant."
+			description="Connect Claude, Cursor or any MCP client to your instance and ask for what you need in plain words."
+		/>
+		<StatList items={stats} />
+	</div>
+	<div class="border-t border-dashed border-black/15 md:border-t-0 md:border-r">
+		<McpDiagram />
+	</div>
+</Layout>

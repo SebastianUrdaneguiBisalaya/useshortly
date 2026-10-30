@@ -4,9 +4,11 @@ import Layout from "../components/ui/layout.astro";
 import Typography from "../components/ui/typography.astro";
 
 const links = [
-	{ label: "Features", href: "#features" },
 	{ label: "How it works", href: "#how-it-works" },
-	{ label: "Docs", href: "https://github.com/SebastianUrdaneguiBisalaya/useshortly/blob/main/README.md" },
+	{ label: "Backend", href: "#backend" },
+	{ label: "Frontend", href: "#frontend" },
+	{ label: "MCP", href: "#mcp" },
+	{ label: "Desktop", href: "#desktop" }
 ];
 ---
 
@@ -16,7 +18,7 @@ const links = [
 	frameClass="flex h-16 items-stretch divide-x divide-dashed divide-black/15"
 >
 	<a href="/" class="flex items-center px-4 md:px-8" aria-label="useshortly home">
-		<Typography as="span" variant="h5">useshortly</Typography>
+		<Typography as="span" variant="h5" class="font-medium">useshortly</Typography>
 	</a>
 
 	<div class="flex-1" aria-hidden="true"></div>

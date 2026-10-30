@@ -1,0 +1,76 @@
+---
+import Layout from "../components/ui/layout.astro";
+import Typography from "../components/ui/typography.astro";
+
+const repo = "https://github.com/SebastianUrdaneguiBisalaya/useshortly";
+
+const columns = [
+	{
+		title: "Product",
+		links: [
+			{ label: "How it works", href: "#how-it-works" },
+			{ label: "Backend", href: "#backend" },
+			{ label: "Frontend", href: "#frontend" },
+			{ label: "MCP", href: "#mcp" },
+			{ label: "Desktop", href: "#desktop" },
+		],
+	},
+	{
+		title: "Project",
+		links: [
+			{ label: "GitHub", href: repo },
+			{ label: "Documentation", href: `${repo}/blob/main/README.md` },
+			{ label: "Contributing", href: `${repo}/blob/main/CONTRIBUTING.md` },
+			{ label: "Security", href: `${repo}/blob/main/SECURITY.md` },
+		],
+	},
+];
+---
+
+<Layout
+	as="footer"
+	class="border-b-0"
+	frameClass="grid divide-y divide-dashed divide-black/15 md:grid-cols-[1fr_14rem_14rem] md:divide-x md:divide-y-0"
+>
+	<div class="flex flex-col justify-between gap-12 px-4 py-12 md:px-12 md:py-16">
+		<div class="flex flex-col gap-2">
+			<Typography as="span" variant="h5" class="font-medium">useshortly</Typography>
+			<Typography variant="small" class="text-black/60">The link shortener you host yourself.</Typography>
+		</div>
+		<Typography as="small" variant="caption" class="text-black/60">
+			Released under the ISC License. © 2026{" "}
+			<a
+				href="https://sebastianurdanegui.com"
+				target="_blank"
+				rel="noopener"
+				class="underline underline-offset-2 transition-colors hover:text-black"
+			>
+				Sebastian Urdanegui Bisalaya
+			</a>.
+		</Typography>
+	</div>
+	{
+		columns.map((column) => (
+			<nav class="flex flex-col gap-4 px-4 py-12 md:px-8 md:py-16" aria-label={column.title}>
+				<Typography as="span" variant="caption" class="text-black/60">
+					{column.title}
+				</Typography>
+				<ul class="flex flex-col gap-2">
+					{column.links.map((link) => (
+						<li>
+							<a
+								href={link.href}
+								class="text-black/80 transition-colors hover:text-black"
+								{...(link.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}
+							>
+								<Typography as="span" variant="small">
+									{link.label}
+								</Typography>
+							</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+		))
+	}
+</Layout>

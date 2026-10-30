@@ -1,0 +1,14 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+import { cn } from "../lib/tailwind/cn";
+
+type Props = HTMLAttributes<"div">;
+
+const { class: className, ...rest } = Astro.props as Props;
+---
+
+<!-- Reserved space for a section's illustration; empty until the artwork exists. -->
+<div aria-hidden="true" class={cn("min-h-64 w-full", className)} {...rest}>
+	<slot />
+</div>

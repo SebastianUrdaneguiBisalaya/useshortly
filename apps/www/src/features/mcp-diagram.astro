@@ -1,0 +1,123 @@
+---
+import { Wrench } from "@lucide/astro";
+
+import Typography from "../components/ui/typography.astro";
+import ClaudeIcon from "../icons/claude.svg";
+import CodexIcon from "../icons/codex.svg";
+import GeminiIcon from "../icons/gemini.svg";
+import GrokIcon from "../icons/grok.svg";
+import McpIcon from "../icons/mcp.svg";
+import OpenAIIcon from "../icons/openai.svg";
+
+// Claude and Gemini keep their brand colors. The rest are single-color marks that ship in white for dark
+// backgrounds, so `monochrome` repaints them black, the color those brands use on light backgrounds.
+const clients = [
+	{ name: "Claude", Icon: ClaudeIcon, monochrome: false },
+	{ name: "ChatGPT", Icon: OpenAIIcon, monochrome: true },
+	{ name: "Gemini", Icon: GeminiIcon, monochrome: false },
+	{ name: "Codex", Icon: CodexIcon, monochrome: true },
+	{ name: "Grok", Icon: GrokIcon, monochrome: true },
+];
+
+// The clients sit in five equal columns, so each wire starts at its column's center (10%, 30%, ...) and bends
+// into the MCP node at 50%.
+const wires = clients.map((_, i) => {
+	const x = 10 + i * 20;
+	return `M${x} 0 C ${x} 22, 50 18, 50 40`;
+});
+
+// Repaints every shape of an SVG in the current text color.
+const monochromeClass = "[&_path]:fill-current [&_rect]:fill-current";
+---
+
+<figure
+	data-mcp-diagram
+	class="flex h-full flex-col justify-center px-4 py-16 md:px-12 md:py-32"
+	aria-label="Claude, ChatGPT, Gemini, Codex and Grok connect to your useshortly MCP server, which answers a question about a link's clicks"
+>
+	<ul class="grid grid-cols-5" aria-hidden="true">
+		{
+			clients.map(({ name, Icon, monochrome }) => (
+				<li data-client class="flex flex-col items-center gap-2">
+					<span class="flex size-12 items-center justify-center border border-dashed border-black/15 bg-cream">
+						<Icon class={`size-5 text-black ${monochrome ? monochromeClass : ""}`} />
+					</span>
+					<Typography as="span" variant="caption" class="text-black/60">
+						{name}
+					</Typography>
+				</li>
+			))
+		}
+	</ul>
+
+	<svg class="h-20 w-full text-black/30" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+		{
+			wires.map((d) => (
+				<path
+					data-wire
+					d={d}
+					fill="none"
+					stroke="currentColor"
+					stroke-dasharray="4 4"
+					vector-effect="non-scaling-stroke"
+				/>
+			))
+		}
+	</svg>
+
+	<div data-node class="flex flex-col items-center gap-2" aria-hidden="true">
+		<span class="flex size-14 items-center justify-center bg-black">
+			<McpIcon class={`size-7 text-cream ${monochromeClass}`} />
+		</span>
+		<Typography as="span" variant="caption" font="primary" class="text-black/60">
+			go.example.com/mcp
+		</Typography>
+	</div>
+
+	<div class="mx-auto h-10 border-l border-dashed border-black/30" aria-hidden="true"></div>
+
+	<div class="flex flex-col gap-4 border border-black/15 bg-cream p-4" aria-hidden="true">
+		<div data-step class="self-end bg-black/4 px-3 py-2">
+			<Typography as="span" variant="small">How did the launch link do this week?</Typography>
+		</div>
+		<div data-step class="flex items-center gap-2 text-black/60">
+			<Wrench size={14} />
+			<Typography as="span" variant="caption" font="primary">get_link_stats launch</Typography>
+		</div>
+		<div data-step>
+			<Typography as="span" variant="small">
+				412 clicks since Monday. Most came from instagram.com, 64% on mobile, led by Peru and Mexico.
+			</Typography>
+		</div>
+	</div>
+</figure>
+
+<script>
+	import { gsap } from "gsap";
+
+	// One sequence for the whole page: clients appear, wires connect them to the MCP node, then the chat plays out.
+	// Reduced motion (or no JS) shows the finished diagram.
+	const figure = document.querySelector<HTMLElement>("[data-mcp-diagram]");
+
+	if (figure && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		const q = gsap.utils.selector(figure);
+		const timeline = gsap.timeline({ paused: true, defaults: { duration: 0.4, ease: "power2.out" } });
+
+		timeline
+			.from(q("[data-client]"), { opacity: 0, y: 8, stagger: 0.06 })
+			.from(q("[data-wire]"), { opacity: 0, stagger: 0.05 }, "<0.2")
+			.from(q("[data-node]"), { opacity: 0, scale: 0.85 })
+			.from(q("[data-step]"), { opacity: 0, y: 6, stagger: 0.6 }, "+=0.2");
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry?.isIntersecting) {
+					timeline.play();
+					observer.disconnect();
+				}
+			},
+			{ threshold: 0.4 },
+		);
+		observer.observe(figure);
+	}
+</script>

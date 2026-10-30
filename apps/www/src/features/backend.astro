@@ -1,0 +1,37 @@
+---
+import Layout from "../components/ui/layout.astro";
+import SectionIntro from "../components/ui/section-intro.astro";
+import StatList from "../components/ui/stat-list.astro";
+import BackendDiagram from "./backend-diagram.astro";
+
+const stats = [
+	{
+		value: "7",
+		title: "Characters per code",
+		description: "Random base62 from crypto/rand, or a custom alias you pick",
+	},
+	{
+		value: "302",
+		title: "Redirect on every visit",
+		description: "Browsers don't cache it, so each click reaches your server and gets counted",
+	},
+	{
+		value: "1",
+		title: "SQLite file holds your data",
+		description: "Back it up by copying it, or sync it to Turso Cloud",
+	},
+];
+---
+
+<Layout
+	as="section"
+	id="backend"
+	class="scroll-mt-16"
+	frameClass="grid divide-y divide-dashed divide-black/15 md:grid-cols-2 md:divide-x md:divide-y-0"
+>
+	<div class="flex flex-col gap-12 px-4 py-16 md:px-12 md:py-32">
+		<SectionIntro label="Backend" title="One Go service and a SQLite file." />
+		<StatList items={stats} />
+	</div>
+	<BackendDiagram />
+</Layout>

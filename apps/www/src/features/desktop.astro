@@ -1,0 +1,41 @@
+---
+import FeatureGrid from "../components/ui/feature-grid.astro";
+import Layout from "../components/ui/layout.astro";
+import SectionIntro from "../components/ui/section-intro.astro";
+import DesktopMockup from "./desktop-mockup.astro";
+
+const features = [
+	{
+		title: "Its own window",
+		description: "The full dashboard, opened from your dock or start menu instead of a browser tab",
+	},
+	{
+		title: "Browser sign-in",
+		description: "Google sign-in opens your default browser, then hands the session back to the app",
+	},
+	{
+		title: "Remembers its place",
+		description: "Window size and position are restored every time you open it",
+	},
+	{
+		title: "Served locally",
+		description: "The interface runs on your machine and only talks to your own backend",
+	},
+];
+---
+
+<Layout as="section" id="desktop" class="scroll-mt-16" frameClass="flex flex-col">
+	<div class="px-4 pt-16 pb-12 md:px-12 md:pt-32 md:pb-16">
+		<SectionIntro
+			label="Desktop"
+			title="The dashboard in its own window."
+			description="An early preview for macOS, Windows and Linux, for anyone who would rather not keep a browser tab open."
+		/>
+	</div>
+	<div class="border-t border-dashed border-black/15">
+		<FeatureGrid items={features} columns={4} />
+	</div>
+	<div class="border-t border-dashed border-black/15">
+		<DesktopMockup />
+	</div>
+</Layout>

@@ -1,0 +1,49 @@
+---
+// A macOS window frame for a screenshot of the desktop app. Pass the image as the slot:
+// <DesktopMockup><img src={screenshot.src} alt="" class="size-full object-cover object-top" /></DesktopMockup>
+---
+
+<div data-desktop-stage class="overflow-hidden px-4 py-16 md:px-12 md:py-24">
+	<div
+		data-desktop-window
+		class="mx-auto max-w-6xl overflow-hidden rounded-xl border border-black/15 bg-white shadow-[0_48px_96px_-48px_rgb(0_0_0/0.4)]"
+	>
+		<div class="relative flex h-9 items-center gap-2 border-b border-black/10 bg-[#ececea] px-3" aria-hidden="true">
+			<span class="size-3 rounded-full bg-[#ff5f57]"></span>
+			<span class="size-3 rounded-full bg-[#febc2e]"></span>
+			<span class="size-3 rounded-full bg-[#28c840]"></span>
+			<span class="absolute inset-x-0 text-center font-secondary text-xs font-medium text-black/50">useshortly.app</span>
+		</div>
+		<div class="aspect-16/10 w-full bg-white">
+			<slot />
+		</div>
+	</div>
+</div>
+
+<script>
+	import { gsap } from "gsap";
+	import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+	gsap.registerPlugin(ScrollTrigger);
+
+	// Product-page reveal: the window rises from slightly smaller and lower, reaching full size as it centers on
+	// screen. Tied to scroll, so scrolling back reverses it. Reduced motion shows it at full size.
+	const stage = document.querySelector<HTMLElement>("[data-desktop-stage]");
+	const windowEl = stage?.querySelector<HTMLElement>("[data-desktop-window]");
+
+	if (stage && windowEl) {
+		gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+			gsap.fromTo(
+				windowEl,
+				{ scale: 0.82, y: 80, opacity: 0.4 },
+				{
+					scale: 1,
+					y: 0,
+					opacity: 1,
+					ease: "power1.out",
+					scrollTrigger: { trigger: stage, start: "top 90%", end: "center 60%", scrub: 0.8 },
+				},
+			);
+		});
+	}
+</script>

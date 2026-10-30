@@ -1,0 +1,45 @@
+---
+import Button from "../components/ui/button.astro";
+import Layout from "../components/ui/layout.astro";
+import Typography from "../components/ui/typography.astro";
+---
+
+<Layout
+	as="section"
+	frameClass="grid divide-y divide-dashed divide-black/15 md:grid-cols-[1fr_22rem] md:divide-x md:divide-y-0"
+>
+	<div class="flex items-center px-4 py-20 md:px-12 md:py-32">
+		<Typography as="h1">
+			The link shortener you <br />host yourself.
+		</Typography>
+	</div>
+	<div class="flex items-center px-4 py-10 md:px-12">
+		<Typography class="text-black/60">
+			An open source alternative to Bitly. Custom domains, click analytics, QR codes and password-protected
+			links, with no plans, usage caps or third party holding your data.
+		</Typography>
+	</div>
+</Layout>
+
+<Layout frameClass="flex flex-wrap items-center justify-between gap-6 px-4 py-8 md:px-12">
+	<Typography variant="small" class="text-black/60">Open source. Deploy it with Docker Compose.</Typography>
+	<div class="flex flex-wrap items-center gap-4">
+		<Button
+			as="a"
+			href="https://github.com/SebastianUrdaneguiBisalaya/useshortly/blob/main/README.md"
+			target="_blank"
+			rel="noopener"
+		>
+			Get started
+		</Button>
+		<Button
+			as="a"
+			variant="secondary"
+			href="https://github.com/SebastianUrdaneguiBisalaya/useshortly"
+			target="_blank"
+			rel="noopener"
+		>
+			Star on GitHub
+		</Button>
+	</div>
+</Layout>

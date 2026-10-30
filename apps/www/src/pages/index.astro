@@ -1,4 +1,7 @@
 ---
+import "../styles/global.css";
+import Hero from "../features/hero.astro"
+import Navbar from "../features/navbar.astro"
 ---
 
 <html lang="en">
@@ -8,9 +11,13 @@
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<title>useshortly — Open source, self-hosted link shortener</title>
+		<meta name="description" content="An open source alternative to Bitly you run on your own servers. Custom domains, click analytics, QR codes and API keys, with no plans or usage caps." />
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<Navbar />
+		<main class="w-full min-h-screen h-full flex flex-col items-center">
+			<Hero />
+		</main>
 	</body>
 </html>

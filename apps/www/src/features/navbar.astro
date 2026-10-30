@@ -1,0 +1,41 @@
+---
+import Button from "../components/ui/button.astro";
+import Layout from "../components/ui/layout.astro";
+import Typography from "../components/ui/typography.astro";
+
+const links = [
+	{ label: "Features", href: "#features" },
+	{ label: "How it works", href: "#how-it-works" },
+	{ label: "Docs", href: "https://github.com/SebastianUrdaneguiBisalaya/useshortly/blob/main/README.md" },
+];
+---
+
+<Layout
+	as="header"
+	class="sticky top-0 z-50 bg-cream"
+	frameClass="flex h-16 items-stretch divide-x divide-dashed divide-black/15"
+>
+	<a href="/" class="flex items-center px-4 md:px-8" aria-label="useshortly home">
+		<Typography as="span" variant="h5">useshortly</Typography>
+	</a>
+
+	<div class="flex-1" aria-hidden="true"></div>
+
+	<nav class="hidden items-center gap-8 px-8 md:flex">
+		{
+			links.map((link) => (
+				<a href={link.href} class="text-black/60 transition-colors hover:text-black">
+					<Typography as="span" variant="small">
+						{link.label}
+					</Typography>
+				</a>
+			))
+		}
+	</nav>
+
+	<div class="flex items-center px-4">
+		<Button as="a" href="https://github.com/SebastianUrdaneguiBisalaya/useshortly" target="_blank" rel="noopener">
+			GitHub
+		</Button>
+	</div>
+</Layout>

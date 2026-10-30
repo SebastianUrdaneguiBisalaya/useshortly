@@ -1,0 +1,23 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+import { cn } from "../lib/tailwind/cn";
+
+type Props = HTMLAttributes<"div"> & {
+	as?: "div" | "section" | "header" | "footer";
+	/** Classes for the inner frame (the bordered column), e.g. its grid or dividers. `class` styles the full-width row. */
+	frameClass?: string;
+};
+
+const { as: Tag = "div", class: className, frameClass, ...rest } = Astro.props as Props;
+---
+
+<!--
+	One row of the page's blueprint grid: the row's bottom border runs edge to edge, while the frame's side borders
+	line up with every other row's, so stacked rows draw continuous vertical guides.
+-->
+<Tag class={cn("w-full border-b border-dashed border-black/15 px-4 md:px-8", className)} {...rest}>
+	<div class={cn("mx-auto w-full max-w-7xl border-x border-dashed border-black/15", frameClass)}>
+		<slot />
+	</div>
+</Tag>

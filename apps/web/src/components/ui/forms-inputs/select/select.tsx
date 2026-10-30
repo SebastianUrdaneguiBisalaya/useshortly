@@ -22,6 +22,17 @@ export const defaultSelectLang: SelectLang = {
 	removeTag: 'Remove',
 };
 
+/** Props for a menu whose options come from a server search instead of the items it already has. */
+type SelectSearchProps = {
+	/**
+	 * Hides the items whose label does not contain the typed text. Turn it off when the options are already filtered by the server.
+	 * @default true
+	 */
+	filterItems?: boolean;
+	/** Called with the typed text on every change, and with `''` when the menu closes. Debounce it in the caller if it drives a request. */
+	onQueryChange?: (query: string) => void;
+};
+
 type SingleSelectProps<T extends string> = {
 	children: React.ReactNode;
 	multiple?: false;
@@ -35,7 +46,7 @@ type SingleSelectProps<T extends string> = {
 	 */
 	lang?: Partial<SelectLang>;
 	className?: string;
-};
+} & SelectSearchProps;
 
 type MultiSelectProps<T extends string> = {
 	children: React.ReactNode;
@@ -50,7 +61,7 @@ type MultiSelectProps<T extends string> = {
 	 */
 	lang?: Partial<SelectLang>;
 	className?: string;
-};
+} & SelectSearchProps;
 
 type SelectRootProps<T extends string> = SingleSelectProps<T> | MultiSelectProps<T>;
 
@@ -67,6 +78,7 @@ type SelectContextType = {
 	open: boolean;
 	setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 	query: string;
+	filterItems: boolean;
 	setQuery: React.Dispatch<React.SetStateAction<string>>;
 	triggerRef: React.RefObject<HTMLButtonElement | null>;
 	contentRef: React.RefObject<HTMLDivElement | null>;
@@ -131,6 +143,15 @@ function Root<T extends string>(props: SelectRootProps<T>) {
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [open, setOpen] = useState<boolean>(false);
 	const [query, setQuery] = useState<string>('');
+	const filterItems = props.filterItems ?? true;
+	const onQueryChange = useRef(props.onQueryChange);
+
+	useEffect(() => {
+		onQueryChange.current = props.onQueryChange;
+	});
+	useEffect(() => {
+		onQueryChange.current?.(query);
+	}, [query]);
 
 	useClickOutside(rootRef, () => setOpen(false), contentRef, open);
 	useEscapeKey(open, () => setOpen(false));
@@ -229,6 +250,7 @@ function Root<T extends string>(props: SelectRootProps<T>) {
 			value={{
 				contentId,
 				contentRef,
+				filterItems,
 				labels,
 				lang: resolvedLang,
 				multiple,
@@ -513,8 +535,27 @@ function Content({ children, width }: SelectContentProps) {
 	);
 }
 
-function ItemList({ children, className }: { children: React.ReactNode; className?: string }) {
-	return <div className={cn('flex-1 overflow-y-auto p-1 scrollbar-quiet space-y-0.5', className)}>{children}</div>;
+function ItemList({ children, className, onReachEnd }: { children: React.ReactNode; className?: string; onReachEnd?: () => void }) {
+	const listRef = useRef<HTMLDivElement>(null);
+	const endRef = useRef<HTMLDivElement>(null);
+
+	// Fires when the end of the list scrolls into view. The callback is a dependency on purpose: if the next page still
+	// leaves the end visible, observing again reports it, so the list keeps loading until it overflows.
+	useEffect(() => {
+		const list = listRef.current;
+		const end = endRef.current;
+		if (!onReachEnd || !list || !end) return;
+		const observer = new IntersectionObserver(entries => entries.some(entry => entry.isIntersecting) && onReachEnd(), { root: list });
+		observer.observe(end);
+		return () => observer.disconnect();
+	}, [onReachEnd]);
+
+	return (
+		<div className={cn('flex-1 overflow-y-auto p-1 scrollbar-quiet space-y-0.5', className)} ref={listRef}>
+			{children}
+			{onReachEnd && <div aria-hidden='true' className='h-px' ref={endRef} />}
+		</div>
+	);
 }
 
 function Search({ placeholder = 'Buscar…' }: { placeholder?: string }) {
@@ -551,10 +592,10 @@ type ItemProps<T extends string> = {
 };
 
 function Item<T extends string>({ className, classNameSelected, value, children, label: labelProp }: ItemProps<T>) {
-	const { multiple, value: selected, values, select, query } = useSelect();
+	const { multiple, value: selected, values, select, query, filterItems } = useSelect();
 
 	const searchLabel = labelProp ?? (typeof children === 'string' ? children : value);
-	if (query && !searchLabel.toLowerCase().includes(query.toLowerCase())) return null;
+	if (filterItems && query && !searchLabel.toLowerCase().includes(query.toLowerCase())) return null;
 
 	const isSelected = multiple ? values.includes(value) : selected === value;
 

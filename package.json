@@ -1,0 +1,28 @@
+{
+	"name": "useshortly",
+	"private": true,
+	"license": "ISC",
+	"author": {
+		"name": "Sebastian Marat Urdanegui Bisalaya",
+		"url": "https://www.sebastianurdanegui.com/"
+	},
+	"scripts": {
+		"build": "pnpm -r build",
+		"dev": "pnpm -r --parallel dev",
+		"format": "biome format --write apps",
+		"lint": "biome check apps",
+		"test": "pnpm -r --if-present test",
+		"typecheck": "pnpm -r typecheck"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.3"
+	},
+	"packageManager": "pnpm@12.15.0",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.15.0",
+			"onFail": "download"
+		}
+	}
+}

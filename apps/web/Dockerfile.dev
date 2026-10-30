@@ -1,8 +1,11 @@
 # Development image: dependencies are installed here, the source is mounted from the host (see scripts/docker-dev.sh).
+# Build from the repository root: docker build -f apps/web/Dockerfile.dev .
 FROM node:24-alpine
 RUN npm install -g pnpm@12.15.0
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/web/package.json ./apps/web/
+RUN pnpm install --frozen-lockfile --filter web
+WORKDIR /app/apps/web
 EXPOSE 5173
 CMD ["pnpm", "dev", "--host"]

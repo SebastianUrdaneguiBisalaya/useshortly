@@ -20,20 +20,16 @@
 	},
 	"private": false,
 	"license": "ISC",
-	"devEngines": {
-		"packageManager": {
-			"name": "pnpm",
-			"version": "12.15.0",
-			"onFail": "download"
-		}
-	},
-	"packageManager": "pnpm@12.15.0",
 	"type": "module",
 	"devDependencies": {
-		"@biomejs/biome": "2.6.3",
 		"@types/node": "26.6.5",
 		"electron": "45.0.0",
 		"electron-builder": "26.18.0",
 		"typescript": "7.0.2"
+	},
+	"build": {
+		"directories": {
+			"output": "release"
+		}
 	}
 }

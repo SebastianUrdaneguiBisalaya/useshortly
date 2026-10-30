@@ -1,0 +1,130 @@
+---
+import Typography from "../components/ui/typography.astro";
+
+// One link as the API returns it (`short_url`, `origin_url`, `expires_at`, `max_clicks`, `protected`,
+// `campaign_name`/`channel_name`, `qr_style`), the same `launch` link used across the page. Each row names the
+// feature it belongs to in `for`, matching the `key` of the Frontend features, so hovering a feature lights its rows.
+type Row = { for: string; label: string; value: string; muted?: string };
+
+const rows: Row[] = [
+	{ for: "domains", label: "short URL", value: "go.example.com/launch" },
+	{ for: "links", label: "alias", value: "launch" },
+	{
+		for: "campaigns",
+		label: "destination",
+		value: "example.com/spring",
+		muted: "?utm_source=instagram&utm_medium=useshortly&utm_campaign=spring-launch",
+	},
+	{ for: "campaigns", label: "campaign", value: "Spring launch / Instagram" },
+	{ for: "links", label: "expires", value: "Dec 31, 2026" },
+	{ for: "links", label: "click limit", value: "5,000" },
+	{ for: "links", label: "password", value: "••••••" },
+];
+
+const week = [44, 52, 61, 96, 58, 49, 52];
+const peak = Math.max(...week);
+
+// A fixed 9x9 pattern with the three finder squares, enough to read as a QR code at this size.
+const qr = [
+	"111110101",
+	"100010011",
+	"101010110",
+	"100010001",
+	"111110101",
+	"000001110",
+	"110101011",
+	"010110100",
+	"101011101",
+];
+
+const rowClass =
+	"grid grid-cols-[6.5rem_1fr] items-baseline gap-3 px-4 py-2 transition-[opacity,background-color] duration-200 group-data-active/record:not-data-lit:opacity-35 data-lit:bg-black/4 motion-reduce:transition-none";
+const labelClass = "text-black/45";
+---
+
+<figure
+	data-link-record
+	class="group/record border border-black/15 bg-cream"
+	aria-label="A link as the dashboard stores it: short URL, alias, destination with UTM parameters, campaign, expiration, click limit, password, clicks this week and its QR code"
+>
+	<div aria-hidden="true">
+		<div data-for="team" class={`${rowClass} grid-cols-[1fr_auto]! border-b border-dashed border-black/15 py-3`}>
+			<Typography as="span" variant="small" weight="medium">Acme</Typography>
+			<Typography as="span" variant="caption" class="text-black/45">created Oct 28, 2026</Typography>
+		</div>
+
+		<dl class="flex flex-col py-2">
+			{
+				rows.map((row) => (
+					<div data-for={row.for} class={rowClass}>
+						<dt>
+							<Typography as="span" variant="caption" font="primary" class={labelClass}>
+								{row.label}
+							</Typography>
+						</dt>
+						<dd class="min-w-0">
+							<Typography as="span" variant="caption" font="primary" class="wrap-break-word">
+								{row.value}
+								{row.muted && <span class="text-black/45">{row.muted}</span>}
+							</Typography>
+						</dd>
+					</div>
+				))
+			}
+
+			<div data-for="analytics" class={`${rowClass} items-center`}>
+				<dt>
+					<Typography as="span" variant="caption" font="primary" class={labelClass}>clicks</Typography>
+				</dt>
+				<dd class="flex items-center gap-3">
+					<Typography as="span" variant="caption" font="primary">412 this week</Typography>
+					<span class="flex h-4 items-end gap-0.5">
+						{week.map((clicks) => <span class="w-1 bg-black/60" style={`height:${(clicks / peak) * 100}%`} />)}
+					</span>
+				</dd>
+			</div>
+
+			<div data-for="qr" class={`${rowClass} items-center`}>
+				<dt>
+					<Typography as="span" variant="caption" font="primary" class={labelClass}>QR</Typography>
+				</dt>
+				<dd class="flex items-center gap-3">
+					<svg viewBox="0 0 9 9" class="size-10 shrink-0 bg-white p-0.5" shape-rendering="crispEdges">
+						{
+							qr.flatMap((line, y) =>
+								[...line].map((cell, x) => (cell === "1" ? <rect x={x} y={y} width="1" height="1" fill="#0a0a0a" /> : null)),
+							)
+						}
+					</svg>
+					<Typography as="span" variant="caption" font="primary" class="text-black/45">
+						your colors and logo
+					</Typography>
+				</dd>
+			</div>
+		</dl>
+	</div>
+</figure>
+
+<script>
+	// Hovering or focusing a Frontend feature lights the record rows it covers and dims the rest. It answers the
+	// visitor's pointer, so it isn't gated on reduced motion; the fade itself is turned off there by CSS.
+	const record = document.querySelector<HTMLElement>("[data-link-record]");
+	const features = document.querySelectorAll<HTMLElement>("#frontend [data-feature]");
+
+	if (record) {
+		const rows = record.querySelectorAll<HTMLElement>("[data-for]");
+
+		const light = (key: string | null) => {
+			record.toggleAttribute("data-active", key !== null);
+			for (const row of rows) row.toggleAttribute("data-lit", key !== null && row.dataset.for === key);
+		};
+
+		for (const feature of features) {
+			const key = feature.dataset.feature ?? null;
+			feature.addEventListener("pointerenter", () => light(key));
+			feature.addEventListener("pointerleave", () => light(null));
+			feature.addEventListener("focusin", () => light(key));
+			feature.addEventListener("focusout", () => light(null));
+		}
+	}
+</script>

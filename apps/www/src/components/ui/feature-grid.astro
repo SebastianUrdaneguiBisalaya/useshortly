@@ -1,6 +1,7 @@
 ---
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { cn } from "../lib/tailwind/cn";
 import Typography from "./typography.astro";
 
 // The dashed dividers are drawn per cell, so each column count needs its own rules for which cells skip a border.
@@ -28,8 +29,11 @@ const cellVariants = cva(
 );
 
 type Props = VariantProps<typeof gridVariants> & {
-	/** Keep the count a multiple of the columns: the dividers assume every row is full. */
-	items: { title: string; description: string }[];
+	/**
+	 * Keep the count a multiple of the columns: the dividers assume every row is full. A `key` exposes the cell as
+	 * `data-feature` and makes it focusable, for sections that react to the feature being pointed at.
+	 */
+	items: { title: string; description: string; key?: string }[];
 };
 
 const { items, columns } = Astro.props as Props;
@@ -38,7 +42,15 @@ const { items, columns } = Astro.props as Props;
 <ul class={gridVariants({ columns })}>
 	{
 		items.map((item) => (
-			<li class={cellVariants({ columns })}>
+			<li
+				class={cn(
+					cellVariants({ columns }),
+					item.key &&
+						"cursor-default transition-colors outline-none hover:bg-black/3 focus-visible:bg-black/3 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-inset motion-reduce:transition-none",
+				)}
+				data-feature={item.key}
+				tabindex={item.key ? 0 : undefined}
+			>
 				<Typography as="h3" variant="h6" font="secondary" weight="medium">
 					{item.title}
 				</Typography>

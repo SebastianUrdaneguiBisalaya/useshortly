@@ -18,7 +18,7 @@ export function QrCard({ link, onCustomize }: { link: Link; onCustomize: (link: 
 
 	return (
 		<figure className='flex flex-col gap-3'>
-			<div className='flex aspect-square items-center justify-center rounded-2xl p-4 ring-1 ring-border' style={{ backgroundColor: background }}>
+			<div className='flex aspect-square items-center justify-center rounded-2xl border border-border p-4' style={{ backgroundColor: background }}>
 				{link.short_url && <QrImage className='size-full' size={256} style={link.qr_style} value={link.short_url} />}
 			</div>
 			<figcaption className='flex items-start justify-between gap-2'>

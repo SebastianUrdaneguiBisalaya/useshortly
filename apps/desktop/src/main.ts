@@ -1,4 +1,3 @@
-import { type ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
@@ -7,41 +6,11 @@ import { loadWindowState, trackWindowState, windowOptions } from './window-state
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const isDev = !app.isPackaged;
-const WEB_PORT = 4173;
-const WEB_URL = isDev ? 'http://localhost:5173' : `http://127.0.0.1:${WEB_PORT}`;
+// The app only embeds the web app, it does not ship it. It loads the web app from this URL: the
+// vite dev server by default, or a deployed/self-hosted one through USESHORTLY_WEB_URL.
+const WEB_URL = (process.env.USESHORTLY_WEB_URL ?? 'http://localhost:5173').replace(/\/+$/, '');
 
-let webServerProcess: ChildProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
-
-// In dev, `apps/web`'s own `pnpm dev` (vite) is expected to already be running.
-// In production, we spawn its SSR server locally and only ever load from that
-// known local origin - never a remote or attacker-controlled URL.
-function startWebServer() {
-	if (isDev) return;
-
-	const webServerEntry = path.join(process.resourcesPath, 'web', 'build', 'server', 'index.js');
-
-	webServerProcess = spawn(process.execPath, [webServerEntry], {
-		env: {
-			...process.env,
-			ELECTRON_RUN_AS_NODE: '1',
-			PORT: String(WEB_PORT),
-		},
-		stdio: 'inherit',
-	});
-
-	webServerProcess.on('exit', code => {
-		if (code && code !== 0) {
-			console.error(`web server exited with code ${code}`);
-		}
-	});
-}
-
-function stopWebServer() {
-	webServerProcess?.kill();
-	webServerProcess = null;
-}
 
 function isTrustedUrl(url: string) {
 	return url === WEB_URL || url.startsWith(`${WEB_URL}/`);
@@ -137,18 +106,14 @@ if (!gotLock) {
 
 	app.whenReady().then(() => {
 		registerIpc();
-		startWebServer();
 		createWindow();
 	});
 
 	app.on('window-all-closed', () => {
-		stopWebServer();
 		if (process.platform !== 'darwin') app.quit();
 	});
 
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
-
-	app.on('before-quit', stopWebServer);
 }

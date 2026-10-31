@@ -182,8 +182,12 @@ export function signInRoutes({ config, auth, identity }: Deps) {
 const googleButton = `
 (function () {
   var btn = document.getElementById("google");
-  var box = document.getElementById("problem");
-  function fail(text) { box.textContent = text; box.hidden = false; }
+  // The #problem box comes after this script in the page, so look it up when it is needed.
+  function fail(text) {
+    var box = document.getElementById("problem");
+    box.textContent = text;
+    box.hidden = false;
+  }
   btn.addEventListener("click", function () {
     if (!window.google || !google.accounts) return fail("Google sign-in is still loading. Try again.");
     google.accounts.oauth2.initCodeClient({

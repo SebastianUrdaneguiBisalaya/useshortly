@@ -16,7 +16,8 @@ export function sameOrigin(publicUrl: string): MiddlewareHandler {
 /** Headers for the pages this server renders: no caching, no framing, only its own nonce'd code. */
 export function pageSecurity(c: Context, nonce: string, opts: { google: boolean }) {
 	c.header('Cache-Control', 'no-store');
-	c.header('Referrer-Policy', 'no-referrer');
+	// Not 'no-referrer': it makes browsers send "Origin: null" on form posts, which sameOrigin() rejects.
+	c.header('Referrer-Policy', 'same-origin');
 	c.header('X-Content-Type-Options', 'nosniff');
 	c.header(
 		'Content-Security-Policy',

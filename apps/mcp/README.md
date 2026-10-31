@@ -479,6 +479,10 @@ The URL is always `https://<your host>/mcp` (`http://localhost:4001/mcp` in deve
 
 - **Claude Code**: `claude mcp add --transport http useshortly https://mcp.example.com/mcp`, then run
   `/mcp` inside Claude Code and choose _Authenticate_. A browser opens on your `/sign-in` page.
+  To sign out, run `/mcp`, choose `useshortly` and _Clear authentication_ (the wording varies by version): it
+  deletes the tokens stored on your machine. To remove the server, run `claude mcp remove useshortly`.
+  Signing out is local: the access token expires on its own (15 minutes) and the refresh token after 14 days.
+  To cut access at once, delete the account in the API.
 - **Claude and other apps with custom connectors**: add a remote MCP server with that URL.
 - **MCP Inspector**: `npx @modelcontextprotocol/inspector`, transport _Streamable HTTP_, that URL.
 

@@ -41,14 +41,22 @@ const session = z.object({
 			last_name: z.string(),
 			image_url: z.string().optional(),
 		}),
-		refresh_token: z.string().min(1),
 	}),
 });
+
+/** The API hands the refresh token over in an HttpOnly cookie, never in the body. */
+function refreshCookie(res: Response): string | undefined {
+	for (const line of res.headers.getSetCookie()) {
+		const match = /^refresh_token=([^;]+)/.exec(line);
+		if (match) return match[1];
+	}
+	return undefined;
+}
 
 type Options = { apiUrl: string; fetch?: typeof fetch; timeoutMs?: number };
 
 export function createIdentityClient({ apiUrl, fetch: doFetch = fetch, timeoutMs = 10_000 }: Options): IdentityProvider {
-	const post = async (path: string, body: unknown, clientIp?: string): Promise<Response> => {
+	const post = async (path: string, body: unknown, clientIp?: string, cookie?: string): Promise<Response> => {
 		try {
 			return await doFetch(`${apiUrl}/api/v1${path}`, {
 				method: 'POST',
@@ -56,6 +64,7 @@ export function createIdentityClient({ apiUrl, fetch: doFetch = fetch, timeoutMs
 					'content-type': 'application/json',
 					// Lets an API behind a trusted proxy rate-limit the real visitor, not this server.
 					...(clientIp ? { 'x-forwarded-for': clientIp } : {}),
+					...(cookie ? { cookie } : {}),
 				},
 				body: JSON.stringify(body),
 				signal: AbortSignal.timeout(timeoutMs),
@@ -69,7 +78,7 @@ export function createIdentityClient({ apiUrl, fetch: doFetch = fetch, timeoutMs
 	// The API starts a session on every login. Only the identity is needed, so end it at once.
 	const revoke = async (refreshToken: string) => {
 		try {
-			await post('/auth/logout', { refresh_token: refreshToken });
+			await post('/auth/logout', {}, undefined, `refresh_token=${refreshToken}`);
 		} catch (error) {
 			console.warn('could not revoke the API session created for sign-in', error);
 		}
@@ -82,8 +91,10 @@ export function createIdentityClient({ apiUrl, fetch: doFetch = fetch, timeoutMs
 		if (!res.ok) throw new IdentityUnavailableError(`status ${res.status}`);
 		const parsed = session.safeParse(await res.json().catch(() => null));
 		if (!parsed.success) throw new IdentityUnavailableError('unexpected response shape');
-		const { user, refresh_token } = parsed.data.data;
-		await revoke(refresh_token);
+		const { user } = parsed.data.data;
+		const refreshToken = refreshCookie(res);
+		if (refreshToken) await revoke(refreshToken);
+		else console.warn('the API sign-in answer carried no refresh_token cookie, so its session could not be revoked');
 		return {
 			apiUserId: user.id,
 			email: user.email.toLowerCase(),

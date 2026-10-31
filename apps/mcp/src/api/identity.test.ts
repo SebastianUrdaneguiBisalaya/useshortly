@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createIdentityClient, IdentityUnavailableError, InvalidCredentialsError, RateLimitedError } from './identity.js';
 
 const apiUser = { id: 7, email: 'Ana@Example.com', email_verified: true, first_name: 'Ana', last_name: 'Lopez' };
-const sessionBody = { data: { user: apiUser, token: 'jwt', refresh_token: 'rft_abc' } };
+const sessionBody = { data: { user: apiUser } };
+const sessionResponse = () => Response.json(sessionBody, { headers: { 'set-cookie': 'refresh_token=rft_abc; Path=/api/v1/auth; HttpOnly; SameSite=Strict' } });
 
 function fakeApi(login: () => Response) {
 	const calls: { url: string; body: any; headers: Headers }[] = [];
@@ -16,7 +17,7 @@ function fakeApi(login: () => Response) {
 
 describe('identity client', () => {
 	it('maps the API user, lowercases the email and ends the API session it created', async () => {
-		const { client, calls } = fakeApi(() => Response.json(sessionBody));
+		const { client, calls } = fakeApi(() => sessionResponse());
 		const identity = await client.password('ana@example.com', 's3cret', '203.0.113.9');
 		expect(identity).toEqual({
 			apiUserId: 7,
@@ -28,11 +29,11 @@ describe('identity client', () => {
 		expect(calls.map(c => c.url)).toEqual(['http://api.test/api/v1/auth/login', 'http://api.test/api/v1/auth/logout']);
 		expect(calls[0]?.body).toEqual({ email: 'ana@example.com', password: 's3cret' });
 		expect(calls[0]?.headers.get('x-forwarded-for')).toBe('203.0.113.9');
-		expect(calls[1]?.body).toEqual({ refresh_token: 'rft_abc' });
+		expect(calls[1]?.headers.get('cookie')).toBe('refresh_token=rft_abc');
 	});
 
 	it('signs in with a Google code', async () => {
-		const { client, calls } = fakeApi(() => Response.json(sessionBody));
+		const { client, calls } = fakeApi(() => sessionResponse());
 		await client.google('4/0AbC');
 		expect(calls[0]?.url).toBe('http://api.test/api/v1/auth/google');
 		expect(calls[0]?.body).toEqual({ code: '4/0AbC' });
@@ -69,7 +70,7 @@ describe('identity client', () => {
 
 	it('still signs in when revoking the API session fails', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const fetchFn = vi.fn(async (url: string | URL | Request) => (String(url).endsWith('/auth/logout') ? new Response('{}', { status: 500 }) : Response.json(sessionBody)));
+		const fetchFn = vi.fn(async (url: string | URL | Request) => (String(url).endsWith('/auth/logout') ? new Response('{}', { status: 500 }) : sessionResponse()));
 		const client = createIdentityClient({ apiUrl: 'http://api.test', fetch: fetchFn as typeof fetch });
 		await expect(client.password('a@b.c', 'x')).resolves.toMatchObject({ apiUserId: 7 });
 		warn.mockRestore();

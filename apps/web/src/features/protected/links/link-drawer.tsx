@@ -114,7 +114,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 /** Custom HTML page shown to visitors who must type the password. Only protected links ever show it; editing happens in a large dialog. */
 function UnlockPageEditor({ orgID, link }: { orgID: number; link: Link }) {
 	const t = useTranslate();
-	const page = useGetLinkUnlockPage(orgID, link.id as number, { query: { enabled: Boolean(link.protected), retry: false } });
+	const page = useGetLinkUnlockPage(orgID, link.id as number, { query: { enabled: Boolean(link.protected), meta: { optional: true }, retry: false } });
 	const [editing, setEditing] = useState(false);
 	const saved = page.data?.data?.html || undefined;
 

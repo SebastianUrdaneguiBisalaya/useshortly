@@ -1,6 +1,6 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getApiErrorMessage, isSessionExpired } from '~/lib/api-error';
+import { getApiErrorMessage, isNotFound, isSessionExpired } from '~/lib/api-error';
 
 /**
  * Every failed request ends up here. A 401 on a protected endpoint has already been retried after a
@@ -39,9 +39,12 @@ const queryClient = new QueryClient({
 	mutationCache: new MutationCache({
 		onError: error => handleError(error),
 	}),
-	// One toast per failing resource.
+	// One toast per failing resource. A query with `meta: { optional: true }` reads something that may not exist yet, so its 404 is an answer, not a failure.
 	queryCache: new QueryCache({
-		onError: (error, query) => handleError(error, `query-${String(query.queryKey[0])}`),
+		onError: (error, query) => {
+			if (query.meta?.optional && isNotFound(error)) return;
+			handleError(error, `query-${String(query.queryKey[0])}`);
+		},
 	}),
 });
 

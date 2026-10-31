@@ -41,3 +41,8 @@ export function getApiErrorMessage(error: unknown) {
 export function isSessionExpired(error: unknown) {
 	return isAxiosError(error) && error.response?.status === 401 && !error.config?.url?.startsWith('/auth/');
 }
+
+/** `true` when the request failed with 404, e.g. a resource that is optional and was never created. */
+export function isNotFound(error: unknown) {
+	return isAxiosError(error) && error.response?.status === 404;
+}

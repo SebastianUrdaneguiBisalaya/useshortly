@@ -30,6 +30,9 @@ function DomainsContent({ orgID }: { orgID: number }) {
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [creating, setCreating] = useState(false);
+	// `viewing` is kept after closing so the modal keeps its content while it animates out.
+	const [viewing, setViewing] = useState<Domain>();
+	const [viewOpen, setViewOpen] = useState(false);
 	const [verifyFailed, setVerifyFailed] = useState(false);
 	const domains = useListDomains(orgID, {
 		limit: PAGE_SIZE,
@@ -83,7 +86,7 @@ function DomainsContent({ orgID }: { orgID: number }) {
 					const domain = row.original;
 					if (domain.id === undefined) return null;
 					return (
-						<div className='flex justify-end gap-1'>
+						<div className='flex justify-end gap-1' onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
 							{!domain.verified && (
 								<Button
 									aria-label={t('protected.domains.verify.label')}
@@ -153,6 +156,11 @@ function DomainsContent({ orgID }: { orgID: number }) {
 					data={domains.data?.data ?? []}
 					emptyMessage={t('protected.domains.empty')}
 					isLoading={domains.isLoading}
+					onRowClick={domain => {
+						if (!domain.verification) return;
+						setViewing(domain);
+						setViewOpen(true);
+					}}
 					pagination={{
 						onPageChange: setPage,
 						page,
@@ -168,7 +176,17 @@ function DomainsContent({ orgID }: { orgID: number }) {
 					}
 				/>
 			</Page.Body>
-			<CreateDomainDialog onOpenChange={setCreating} open={creating} orgID={orgID} />
+			<CreateDomainDialog
+				domain={creating ? undefined : viewing}
+				onOpenChange={open => {
+					if (!open) {
+						setCreating(false);
+						setViewOpen(false);
+					}
+				}}
+				open={creating || viewOpen}
+				orgID={orgID}
+			/>
 		</Page.Root>
 	);
 }

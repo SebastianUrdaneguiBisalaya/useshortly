@@ -10,19 +10,23 @@ import { Modal } from '~/components/ui/overlays-feedback/modal/modal';
 import { useTranslate } from '~/hooks/use-translate';
 import { createDomainSchema } from './domains-schemas';
 
-/** Asks for the host and, once added, shows the DNS record to create so the domain can be verified. */
-export function CreateDomainDialog({ orgID, open, onOpenChange }: { orgID: number; open: boolean; onOpenChange: (open: boolean) => void }) {
+/** Asks for the host and, once added, shows the DNS record to create so the domain can be verified. Given a `domain`, it only shows that record again. */
+export function CreateDomainDialog({ orgID, open, domain, onOpenChange }: { orgID: number; open: boolean; domain?: Domain; onOpenChange: (open: boolean) => void }) {
 	const t = useTranslate();
 	const titleId = useId();
 	const queryClient = useQueryClient();
 	const createDomain = useCreateDomain();
 	const schema = useMemo(() => createDomainSchema(t), [t]);
-	const [created, setCreated] = useState<Domain>();
+	const [justCreated, setCreated] = useState<Domain>();
+	const created = domain ?? justCreated;
 
-	const handleOpenChange = (next: boolean) => {
-		if (!next) setCreated(undefined);
-		onOpenChange(next);
-	};
+	// `justCreated` survives the close so the record stays on screen while the modal animates out; it is cleared when the modal opens again.
+	const [wasOpen, setWasOpen] = useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) setCreated(undefined);
+	}
+	const handleOpenChange = onOpenChange;
 	const copyLang = { copied: t('protected.domains.record.copied'), copy: t('protected.domains.record.copy') };
 
 	return (

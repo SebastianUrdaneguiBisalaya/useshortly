@@ -30,7 +30,7 @@ function McpContent() {
 	const url = mcpUrl();
 
 	return (
-		<Page.Root className='h-full py-3 sm:py-3' size='md'>
+		<Page.Root className='min-h-full py-3 sm:py-3' size='md'>
 			<DocsToc aria-label='On this page'>
 				{SECTIONS.map(section => (
 					<DocsToc.Item id={section.id} key={section.id} title={section.title} />

@@ -57,7 +57,7 @@ function CampaignDetailContent({ orgID }: { orgID: number }) {
 	const data = campaign.data?.data;
 
 	return (
-		<Page.Root className='h-full py-3 sm:py-3' size='full'>
+		<Page.Root className='min-h-full py-3 sm:py-3' size='full'>
 			<Page.Header>
 				<div>
 					<Link className='mb-2 inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground' to={toOrganization('/campaigns')}>

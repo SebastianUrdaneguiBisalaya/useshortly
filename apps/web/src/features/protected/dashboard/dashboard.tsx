@@ -52,7 +52,7 @@ function DashboardContent({ orgID }: { orgID: number }) {
 	const data = stats.data?.data;
 
 	return (
-		<Page.Root className='h-full py-3 sm:py-3' size='full'>
+		<Page.Root className='min-h-full py-3 sm:py-3' size='full'>
 			<Page.Header>
 				<div>
 					<Page.Title>{t('protected.dashboard.title')}</Page.Title>

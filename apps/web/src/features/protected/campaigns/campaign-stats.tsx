@@ -50,9 +50,9 @@ export function CampaignStats({ orgID, campaignID }: { orgID: number; campaignID
 								<Button.Text>{t('protected.campaigns.detail.export.action')}</Button.Text>
 							</Button>
 						</Popover.Trigger>
-						<Popover.Content align='end' className='flex w-56 flex-col gap-1 p-1'>
+						<Popover.Content align='end' className='flex w-48 flex-col gap-1 p-1'>
 							<Button
-								className='justify-start'
+								className='justify-start w-full'
 								onClick={() => {
 									setExportOpen(false);
 									void exporter.download(requestRange);
@@ -62,7 +62,7 @@ export function CampaignStats({ orgID, campaignID }: { orgID: number; campaignID
 								<Button.Text>{t('protected.campaigns.detail.export.period')}</Button.Text>
 							</Button>
 							<Button
-								className='justify-start'
+								className='justify-start w-full'
 								onClick={() => {
 									setExportOpen(false);
 									void exporter.download();

@@ -1,15 +1,25 @@
-# useshortly
+![Banner](./public/banner.png)
+
+<p style="width: 100%; display: flex; justify-content: center; font-weight: 800; font-size: 18px">The link shortener you host yourself.</p>
 
 Open source, self-hosted alternative to Bitly: a URL shortener you run on your own infrastructure and fully control.
 
 ## Table of contents
 
+- [Table of contents](#table-of-contents)
 - [Description](#description)
 - [Stack](#stack)
 - [Repository layout](#repository-layout)
 - [Start project in development](#start-project-in-development)
   - [Backend](#backend)
+    - [Requirements](#requirements)
+    - [1. Get a Redis URL](#1-get-a-redis-url)
+    - [2. Create your `.env`](#2-create-your-env)
+    - [3. Create the database](#3-create-the-database)
+    - [4. Run the API](#4-run-the-api)
+    - [Alternative: everything in Docker with hot reload](#alternative-everything-in-docker-with-hot-reload)
   - [Frontend Web](#frontend-web)
+    - [Google sign-in: Google Cloud Console setup](#google-sign-in-google-cloud-console-setup)
   - [MCP](#mcp)
 - [Backend reference](#backend-reference)
   - [Environment variables](#environment-variables)
@@ -21,6 +31,11 @@ Open source, self-hosted alternative to Bitly: a URL shortener you run on your o
   - [MCP access](#mcp-access)
 - [Start project in production](#start-project-in-production)
   - [Backend](#backend-1)
+    - [What you need](#what-you-need)
+    - [1. Configure `.env`](#1-configure-env)
+    - [2. Deploy](#2-deploy)
+    - [3. GeoIP](#3-geoip)
+    - [4. Reverse proxy (nginx)](#4-reverse-proxy-nginx)
   - [Frontend Web](#frontend-web-1)
   - [MCP](#mcp-1)
 - [Contributing](#contributing)

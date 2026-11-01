@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from 'electron';
 import { signInWithGoogle } from './google-sign-in.js';
 import { loadWindowState, trackWindowState, windowOptions } from './window-state.js';
 
@@ -9,6 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The app only embeds the web app, it does not ship it. It loads the web app from this URL: the
 // vite dev server by default, or a deployed/self-hosted one through USESHORTLY_WEB_URL.
 const WEB_URL = (process.env.USESHORTLY_WEB_URL ?? 'http://localhost:5173').replace(/\/+$/, '');
+
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const ICON_PNG = path.join(PUBLIC_DIR, 'useshortly-icon.png');
+const ICON_MAC_PNG = path.join(PUBLIC_DIR, 'useshortly-icon-mac.png');
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -21,6 +25,8 @@ function createWindow() {
 
 	mainWindow = new BrowserWindow({
 		...windowOptions(windowState),
+		// macOS takes the icon from the app bundle (.icns); Windows and Linux use the window icon.
+		...(process.platform === 'darwin' ? {} : { icon: ICON_PNG }),
 		show: false,
 		webPreferences: {
 			allowRunningInsecureContent: false,
@@ -105,6 +111,12 @@ if (!gotLock) {
 	});
 
 	app.whenReady().then(() => {
+		// In dev the app runs inside the stock Electron bundle, so set the dock icon explicitly.
+		// A PNG through nativeImage is more reliable than an .icns path here.
+		if (process.platform === 'darwin' && !app.isPackaged) {
+			const dockIcon = nativeImage.createFromPath(ICON_MAC_PNG);
+			if (!dockIcon.isEmpty()) app.dock?.setIcon(dockIcon);
+		}
 		registerIpc();
 		createWindow();
 	});

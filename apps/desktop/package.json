@@ -32,6 +32,20 @@
 		"appId": "com.sebastianurdanegui.useshortly",
 		"directories": {
 			"output": "release"
+		},
+		"files": [
+			"dist/**/*",
+			"public/**/*",
+			"package.json"
+		],
+		"mac": {
+			"icon": "public/useshortly-icon-mac.icns"
+		},
+		"win": {
+			"icon": "public/useshortly-icon.png"
+		},
+		"linux": {
+			"icon": "public/useshortly-icon.png"
 		}
 	}
 }

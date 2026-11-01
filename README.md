@@ -1,6 +1,6 @@
 ![Banner](./public/banner.png)
 
-<p style="width: 100%; display: flex; justify-content: center; font-weight: 800; font-size: 18px">The link shortener you host yourself.</p>
+<h3 align="center">The link shortener you host yourself.</h3>
 
 Open source, self-hosted alternative to Bitly: a URL shortener you run on your own infrastructure and fully control.
 
